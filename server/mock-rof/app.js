@@ -35,7 +35,8 @@ export function createMockRof({ store, now = () => new Date(), tokenSecret = 'mo
   app.use('/uploads', express.static(join(here, 'uploads')));
 
   // Dev-only fault injection (POST /__dev/faults): simulate ROF being down or slow.
-  app.locals.faults = { down: false, createOrderDelayMs: 0 };
+  // createOrderReject: a message → order create answers success:false with it.
+  app.locals.faults = { down: false, createOrderDelayMs: 0, createOrderReject: null };
   app.use('/api', (req, res, next) => (app.locals.faults.down ? res.status(503).json(fail('Service unavailable')) : next()));
 
   /* ---------- auth ---------- */

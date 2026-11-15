@@ -1,0 +1,75 @@
+/**
+ * Order as the app sees it (design spec §6.5): our totals and payment + ROF's status and timeline,
+ * folded into the four tracking steps of the design (+ a cancelled state).
+ */
+import { STATUS_LABEL, canCancel, canResendCode } from '../../rof/status.js';
+
+const STEPS = [
+  ['confirmed', 'Order confirmed'],
+  ['preparing', 'Preparing at the branch'],
+  ['out_for_delivery', 'Out for delivery'],
+  ['delivered', 'Delivered'],
+];
+
+const iso = (v) => (v ? new Date(v).toISOString() : null);
+
+function steps(row) {
+  const cancelled = Boolean(row.cancelled);
+  const step = row.step ?? 0;
+  const times = row.step_times || {};
+  const est = row.estimates || {};
+  const estimates = [null, est.preparingAt, est.outForDeliveryAt, est.windowStart];
+  return STEPS.map(([id, title], i) => {
+    const reached = times[i] !== undefined || (!cancelled && step >= i);
+    let state = 'todo';
+    if (cancelled) state = reached ? 'done' : 'todo';
+    else if (step === 3 || i < step) state = 'done';
+    else if (i === step) state = 'current';
+
+    let time = times[i] ?? null;
+    let estimated = false;
+    let timeEnd = null;
+    if (!time && i === 0) time = iso(row.created_at);
+    if (!time && !reached && !cancelled) {
+      time = estimates[i] ?? null;
+      estimated = true;
+      if (i === 3) timeEnd = est.windowEnd ?? null;
+    }
+    return { id, title, state, time, timeEnd, estimated };
+  });
+}
+
+/**
+ * @param {object} row       orders table row
+ * @param {{ payment?: object, branch?: object|null }} extra  payments row; branch from the branch service
+ */
+export function presentOrder(row, { payment = null, branch = null } = {}) {
+  const cancelled = Boolean(row.cancelled);
+  const step = row.step ?? 0;
+  const statusId = cancelled ? 'cancelled' : STEPS[step][0];
+  return {
+    id: row.id,
+    number: `KR-${row.rof_order_number}`,
+    status: { id: statusId, label: STATUS_LABEL[cancelled ? 'cancelled' : step], step, cancelled },
+    steps: steps(row),
+    items: (row.lines || []).map((l) => ({ productId: l.productId, name: l.name, qty: l.qty, price: l.price, image: l.image ?? null })),
+    subtotal: row.subtotal,
+    discount: row.discount,
+    deliveryFee: row.delivery_fee,
+    vat: row.vat,
+    total: row.total,
+    promoCode: row.promo_code ?? null,
+    payment: payment
+      ? { method: payment.method, brand: payment.brand ?? null, last4: payment.last4 ?? null, upiId: payment.upi_id ?? null }
+      : null,
+    branch: branch ?? (row.branch_id ? { id: row.branch_id, name: row.branch_name } : null),
+    distanceKm: row.distance_km ?? null,
+    address: row.address,
+    deliveryPhone: row.delivery_phone,
+    window: { start: iso(row.window_start), end: iso(row.window_end) },
+    canCancel: !cancelled && canCancel(row.rof_status),
+    canResendCode: !cancelled && canResendCode(row.rof_status),
+    createdAt: iso(row.created_at),
+    cancelledAt: iso(row.cancelled_at),
+  };
+}

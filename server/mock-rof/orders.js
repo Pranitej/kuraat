@@ -67,6 +67,7 @@ export function registerOrderRoutes(app, { store, now, ok, fail, availableToSell
   app.post('/api/orders/manual', async (req, res) => {
     const delay = app.locals.faults.createOrderDelayMs;
     if (delay) await new Promise((r) => setTimeout(r, delay));
+    if (app.locals.faults.createOrderReject) return res.json(fail(app.locals.faults.createOrderReject));
     const b = req.body || {};
     if (!b.customerName || !String(b.customerName).trim()) return res.json(fail('Customer name is required'));
     if (!/^\d{8,15}$/.test(String(b.phoneNumber || ''))) return res.json(fail('Phone number must be digits with country code'));

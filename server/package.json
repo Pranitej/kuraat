@@ -1,0 +1,35 @@
+{
+  "name": "kuraat-server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "kuraat backend — accounts, addresses, cart, payments and orders; connects to the RSOF order system (ROF). Independent app: install, run and deploy from this folder.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=.env src/index.js",
+    "start": "node --env-file-if-exists=.env src/index.js",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.js",
+    "db:seed": "node --env-file-if-exists=.env scripts/seed.js",
+    "mock-rof": "node --env-file-if-exists=.env mock-rof/index.js",
+    "mock-rof:advance": "node --env-file-if-exists=.env mock-rof/advance.js",
+    "rof:check": "node --env-file-if-exists=.env scripts/rof-check.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.4",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "knex": "^3.3.0",
+    "mysql2": "^3.24.6",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.2",
+    "vitest": "^5.1.0"
+  }
+}

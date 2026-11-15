@@ -1,0 +1,24 @@
+# Local MySQL 8 for development and tests. Start with: docker compose up -d
+# (Or point DATABASE_URL / TEST_DATABASE_URL at another MySQL 8, e.g. WAMP's.)
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: kuraat-mysql
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: kuraat
+      MYSQL_DATABASE: kuraat
+      MYSQL_USER: kuraat
+      MYSQL_PASSWORD: kuraat
+    volumes:
+      - kuraat-mysql-data:/var/lib/mysql
+      - ./docker/mysql-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ukuraat", "-pkuraat"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  kuraat-mysql-data:

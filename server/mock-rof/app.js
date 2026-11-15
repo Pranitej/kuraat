@@ -11,6 +11,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { registerOrderRoutes } from './orders.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const LOGINS_PER_MINUTE = 5;
@@ -32,6 +33,10 @@ export function createMockRof({ store, now = () => new Date(), tokenSecret = 'mo
   app.disable('x-powered-by');
   app.use(express.json());
   app.use('/uploads', express.static(join(here, 'uploads')));
+
+  // Dev-only fault injection (POST /__dev/faults): simulate ROF being down or slow.
+  app.locals.faults = { down: false, createOrderDelayMs: 0 };
+  app.use('/api', (req, res, next) => (app.locals.faults.down ? res.status(503).json(fail('Service unavailable')) : next()));
 
   /* ---------- auth ---------- */
 
@@ -131,6 +136,11 @@ export function createMockRof({ store, now = () => new Date(), tokenSecret = 'mo
     const b = db.branches.find((x) => x.id === req.params.id);
     res.json(b ? ok(b) : fail('Branch not found'));
   });
+
+  /* ---------- orders + dev controls ---------- */
+
+  const orders = registerOrderRoutes(app, { store, now, ok, fail, availableToSell });
+  app.locals.advanceAll = orders.advanceAll;
 
   app.use((req, res) => res.status(404).json(fail('Not found')));
   return app;

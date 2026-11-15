@@ -1,18 +1,24 @@
 /**
- * Test context: the real app wired to the test database (TEST_DATABASE_URL) and a settable clock.
- * Later tasks extend it with the fake ROF.
+ * Test context: the real app wired to the test database (TEST_DATABASE_URL), a settable clock, a
+ * captured logger and — with { withRof: true } — a fake ROF on a random port reached over real HTTP.
  */
 import { loadConfig } from '../../src/config/env.js';
-import { createDb, migrateLatest } from '../../src/db/knex.js';
 import { createContext } from '../../src/context.js';
+import { createDb, migrateLatest } from '../../src/db/knex.js';
 import { createApp } from '../../src/http/app.js';
+import { createRofClient } from '../../src/rof/client.js';
+import { createMockRofHarness } from './mockRof.js';
 
 export function createFakeClock(start = '2026-11-15T09:21:00.000Z') {
   let current = new Date(start).getTime();
   return {
     now: () => new Date(current),
-    set: (iso) => { current = new Date(iso).getTime(); },
-    advance: (ms) => { current += ms; },
+    set: (iso) => {
+      current = new Date(iso).getTime();
+    },
+    advance: (ms) => {
+      current += ms;
+    },
   };
 }
 
@@ -25,19 +31,31 @@ export async function truncateAll(db) {
   await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 }
 
-export async function createTestContext({ configOverrides = {} } = {}) {
+export async function createTestContext({ configOverrides = {}, withRof = false, rofTimeoutMs = 2000 } = {}) {
   const base = loadConfig(process.env);
-  const config = { ...base, ...configOverrides, databaseUrl: base.testDatabaseUrl };
+  const clock = createFakeClock();
+  let mockRof = null;
+  let rofServer = null;
+  let rof = null;
+  let config = { ...base, ...configOverrides, databaseUrl: base.testDatabaseUrl };
+
+  if (withRof) {
+    mockRof = createMockRofHarness({ now: () => clock.now() });
+    rofServer = await mockRof.listen();
+    const { email, password } = mockRof.store.data.credentials;
+    config = { ...config, rof: { ...config.rof, baseUrl: rofServer.baseUrl, email, password, timeoutMs: rofTimeoutMs } };
+    rof = createRofClient({ ...config.rof, now: () => clock.now().getTime() });
+  }
+
   const db = createDb(config.databaseUrl);
   await migrateLatest(db);
-  const clock = createFakeClock();
   const logs = [];
   const logger = {
     info: (...args) => logs.push(['info', args.join(' ')]),
     warn: (...args) => logs.push(['warn', args.join(' ')]),
     error: (...args) => logs.push(['error', args.join(' ')]),
   };
-  const ctx = createContext({ config, db, clock, logger });
+  const ctx = createContext({ config, db, rof, clock, logger });
   const app = createApp(ctx);
   return {
     ctx,
@@ -45,7 +63,11 @@ export async function createTestContext({ configOverrides = {} } = {}) {
     db,
     clock,
     logs,
+    mockRof,
     reset: () => truncateAll(db),
-    close: () => db.destroy(),
+    close: async () => {
+      await db.destroy();
+      if (rofServer) await rofServer.close();
+    },
   };
 }

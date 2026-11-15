@@ -4,11 +4,13 @@ import express from 'express';
 import helmet from 'helmet';
 import { addressRoutes } from '../modules/addresses/routes.js';
 import { authRoutes } from '../modules/auth/routes.js';
+import { branchRoutes } from '../modules/branches/routes.js';
 import { cardRoutes } from '../modules/cards/routes.js';
+import { catalogRoutes } from '../modules/catalog/routes.js';
 import { favoriteRoutes } from '../modules/favorites/routes.js';
 import { notificationRoutes } from '../modules/notifications/routes.js';
 import { meRoutes } from '../modules/users/routes.js';
-import { errorMiddleware, notFoundRoute } from './errors.js';
+import { errorHandler, notFoundRoute } from './errors.js';
 
 export function createApp(ctx) {
   const app = express();
@@ -28,9 +30,13 @@ export function createApp(ctx) {
   api.use('/favorites', favoriteRoutes(ctx));
   api.use('/cards', cardRoutes(ctx));
   api.use('/notifications', notificationRoutes(ctx));
+  if (ctx.rof) {
+    api.use(catalogRoutes(ctx));
+    api.use('/branches', branchRoutes(ctx));
+  }
 
   app.use('/api/v1', api);
   app.use(notFoundRoute);
-  app.use(errorMiddleware);
+  app.use(errorHandler(ctx.logger));
   return app;
 }

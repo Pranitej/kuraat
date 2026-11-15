@@ -1,12 +1,14 @@
-/** Server entry point: config → database → app. */
+/** Server entry point: config → database → ROF client → app. */
 import { loadConfig } from './config/env.js';
 import { createContext } from './context.js';
 import { createDb } from './db/knex.js';
 import { createApp } from './http/app.js';
+import { createRofClient } from './rof/client.js';
 
 const config = loadConfig();
 const db = createDb(config.databaseUrl);
-const ctx = createContext({ config, db });
+const rof = createRofClient(config.rof);
+const ctx = createContext({ config, db, rof });
 const app = createApp(ctx);
 
 app.listen(config.port, () => {

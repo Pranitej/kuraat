@@ -56,8 +56,13 @@ async function upsertPayment(ctx, userId, key, fields) {
   const now = ctx.clock.now();
   const existing = await ctx.db('payments').where({ idempotency_key: key }).first();
   if (existing) {
-    // A failed/voided earlier attempt: reuse its row for this attempt (clearing the old error).
-    await ctx.db('payments').where({ id: existing.id }).update({ error_code: null, error_message: null, ...fields, updated_at: now });
+    // A failed/voided earlier attempt: claim its row for this attempt. The status condition makes the
+    // claim atomic — of two simultaneous retries only one gets the row (the other is "in progress").
+    const claimed = await ctx.db('payments')
+      .where({ id: existing.id })
+      .whereIn('status', ['failed', 'voided'])
+      .update({ error_code: null, error_message: null, ...fields, updated_at: now });
+    if (!claimed) throw conflict('order_in_progress', 'Your order is being placed. Please wait a moment.');
     return existing.id;
   }
   const id = newId();
@@ -109,7 +114,12 @@ export async function placeOrder(ctx, userId, input) {
     paid = authorizePayment({ ...input.payment, amount }, { now: ctx.clock.now() });
   } catch (error) {
     if (error instanceof AppError && error.code === 'card_declined') {
-      await upsertPayment(ctx, userId, key, { method: input.payment.method, status: 'failed', amount, error_code: error.code, error_message: error.message });
+      // Record the decline; if another attempt with this key is already running, leave its row alone.
+      await upsertPayment(ctx, userId, key, { method: input.payment.method, status: 'failed', amount, error_code: error.code, error_message: error.message }).catch(
+        (e) => {
+          if (e.code !== 'order_in_progress') throw e;
+        },
+      );
     }
     throw error;
   }

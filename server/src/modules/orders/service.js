@@ -56,36 +56,39 @@ export function createOrdersService(ctx) {
 
     const step = stepOf(snapshot.status);
     if (step === null) ctx.logger.warn(`[orders] KR-${row.rof_order_number} has unknown ROF status ${snapshot.status}; keeping step ${row.step}`);
-    const wasCancelled = Boolean(row.cancelled);
-    const cancelled = wasCancelled || step === 'cancelled';
-    const numericStep = typeof step === 'number' ? step : row.step;
-    const times = { ...(row.step_times || {}), ...stepTimes(timeline) };
-    const changes = {
-      rof_status: snapshot.status,
-      rof_status_at: snapshot.status !== row.rof_status ? now : row.rof_status_at,
-      step: numericStep,
-      cancelled,
-      cancelled_at: cancelled ? row.cancelled_at || (times.cancelled ? new Date(times.cancelled) : now) : null,
-      branch_id: snapshot.branchId ?? row.branch_id,
-      branch_name: snapshot.branchName ?? row.branch_name,
-      step_times: times,
-      last_synced_at: now,
-      updated_at: now,
-    };
-
-    // One notification per milestone; a jump straight to Delivered skips "on its way".
-    const notified = [...(row.notified || [])];
-    const due = [];
-    if (cancelled && !notified.includes('cancelled')) due.push('cancelled');
-    if (!cancelled && numericStep === 3 && !notified.includes('delivered')) due.push('delivered');
-    if (!cancelled && numericStep === 2 && !notified.includes('out_for_delivery')) due.push('out_for_delivery');
-    if (due.includes('delivered') && !notified.includes('out_for_delivery')) notified.push('out_for_delivery');
-    notified.push(...due);
-
     const number = `KR-${row.rof_order_number}`;
-    const branchName = changes.branch_name || 'the branch';
     const link = { kind: 'order', id: row.id };
-    await ctx.db.transaction(async (trx) => {
+
+    // Lock the row: the poller, an open tracking screen and a cancel can refresh the same order at
+    // once; deciding notifications on the locked row sends each one exactly once.
+    return ctx.db.transaction(async (trx) => {
+      const current = await trx('orders').where({ id: row.id }).forUpdate().first();
+      const cancelled = Boolean(current.cancelled) || step === 'cancelled';
+      const numericStep = typeof step === 'number' ? step : current.step;
+      const times = { ...(current.step_times || {}), ...stepTimes(timeline) };
+      const changes = {
+        rof_status: snapshot.status,
+        rof_status_at: snapshot.status !== current.rof_status ? now : current.rof_status_at,
+        step: numericStep,
+        cancelled,
+        cancelled_at: cancelled ? current.cancelled_at || (times.cancelled ? new Date(times.cancelled) : now) : null,
+        branch_id: snapshot.branchId ?? current.branch_id,
+        branch_name: snapshot.branchName ?? current.branch_name,
+        step_times: times,
+        last_synced_at: now,
+        updated_at: now,
+      };
+
+      // One notification per milestone; a jump straight to Delivered skips "on its way".
+      const notified = [...(current.notified || [])];
+      const due = [];
+      if (cancelled && !notified.includes('cancelled')) due.push('cancelled');
+      if (!cancelled && numericStep === 3 && !notified.includes('delivered')) due.push('delivered');
+      if (!cancelled && numericStep === 2 && !notified.includes('out_for_delivery')) due.push('out_for_delivery');
+      if (due.includes('delivered') && !notified.includes('out_for_delivery')) notified.push('out_for_delivery');
+      notified.push(...due);
+
+      const branchName = changes.branch_name || 'the branch';
       await trx('orders')
         .where({ id: row.id })
         .update({ ...changes, step_times: JSON.stringify(times), notified: JSON.stringify(notified) });
@@ -100,8 +103,8 @@ export function createOrdersService(ctx) {
           await notify(trx, row.user_id, { type, title: `Order #${number} cancelled`, body: cancellationBody(payment), link }, now);
         }
       }
+      return { ...current, ...changes, notified };
     });
-    return { ...row, ...changes, notified };
   }
 
   async function mine(userId, id) {
@@ -147,8 +150,11 @@ export function createOrdersService(ctx) {
         throw error;
       }
       const now = ctx.clock.now();
-      const notified = [...(row.notified || []), 'cancelled'];
       await ctx.db.transaction(async (trx) => {
+        // A concurrent refresh may already have recorded this cancellation (and refunded).
+        const current = await trx('orders').where({ id: row.id }).forUpdate().first();
+        if ((current.notified || []).includes('cancelled')) return;
+        const notified = [...(current.notified || []), 'cancelled'];
         const payment = await trx('payments').where({ order_id: row.id }).first();
         await refundFor(trx, payment, now);
         await trx('orders')
@@ -158,7 +164,7 @@ export function createOrdersService(ctx) {
             cancelled_at: now,
             rof_status: 'Canceled',
             rof_status_at: now,
-            step_times: JSON.stringify({ ...(row.step_times || {}), cancelled: now.toISOString() }),
+            step_times: JSON.stringify({ ...(current.step_times || {}), cancelled: now.toISOString() }),
             notified: JSON.stringify(notified),
             updated_at: now,
           });

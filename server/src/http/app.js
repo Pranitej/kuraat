@@ -18,6 +18,12 @@ import { errorHandler, notFoundRoute } from './errors.js';
 export function createApp(ctx) {
   const app = express();
   app.disable('x-powered-by');
+  // Behind a proxy/load balancer, use the client's IP (X-Forwarded-For) for rate limits — otherwise
+  // every customer shares the proxy's IP and one login limit.
+  if (ctx.config.trustProxy !== false) {
+    const v = String(ctx.config.trustProxy);
+    app.set('trust proxy', /^\d+$/.test(v) ? Number(v) : v === 'true' ? true : v);
+  }
   app.use(helmet());
   app.use(cors({ origin: ctx.config.corsOrigins }));
   app.use(express.json({ limit: '1mb' }));

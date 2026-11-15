@@ -32,7 +32,14 @@ const schema = z.object({
   ORDER_POLL_INTERVAL_MS: integer(60000),
   PASSWORD_HASH_COST: z.preprocess(blankToUndefined, z.coerce.number().int().min(4).max(15).default(12)),
   AUTH_RATE_LIMIT_PER_MINUTE: integer(20),
+  OTP_ALLOW_TEST_IN_PRODUCTION: flag(false),
+  /** Express "trust proxy": e.g. 1 behind one reverse proxy / load balancer. Unset = do not trust. */
+  TRUST_PROXY: optionalText(),
 });
+
+const TEST_OTP_IN_PRODUCTION =
+  'OTP_MODE=test lets anyone sign in to any account with the test code. In production use it only for UAT, ' +
+  'by also setting OTP_ALLOW_TEST_IN_PRODUCTION=true.';
 
 /** Validated settings object used across the server. */
 export function loadConfig(env = process.env) {
@@ -42,6 +49,9 @@ export function loadConfig(env = process.env) {
     throw new Error(`Invalid configuration: ${problems}`);
   }
   const e = result.data;
+  if (e.NODE_ENV === 'production' && e.OTP_MODE === 'test' && !e.OTP_ALLOW_TEST_IN_PRODUCTION) {
+    throw new Error(`Invalid configuration: ${TEST_OTP_IN_PRODUCTION}`);
+  }
   return {
     port: e.PORT,
     nodeEnv: e.NODE_ENV,
@@ -63,5 +73,6 @@ export function loadConfig(env = process.env) {
     pollIntervalMs: e.ORDER_POLL_INTERVAL_MS,
     passwordHashCost: e.PASSWORD_HASH_COST,
     authRateLimitPerMinute: e.AUTH_RATE_LIMIT_PER_MINUTE,
+    trustProxy: e.TRUST_PROXY ?? false,
   };
 }

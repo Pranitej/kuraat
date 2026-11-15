@@ -67,6 +67,8 @@ Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test
 | `ORDER_POLL_INTERVAL_MS` | `60000` | How often unfinished orders are re-read from ROF |
 | `PASSWORD_HASH_COST` | `12` | bcrypt cost |
 | `AUTH_RATE_LIMIT_PER_MINUTE` | `20` | Per IP, for `/auth/*` |
+| `TRUST_PROXY` | unset | Set to `1` when running behind one reverse proxy / load balancer (so limits use the customer IP) |
+| `OTP_ALLOW_TEST_IN_PRODUCTION` | `false` | With `NODE_ENV=production` the server refuses `OTP_MODE=test` unless this is `true` — set it for UAT only |
 | `MOCK_ROF_*` | | Fake ROF only: port, login, `MOCK_AUTO_ADVANCE_SECONDS` (moves orders on a timer for demos) |
 
 Business rules ROF does not hold (fees, promo codes, opening hours, delivery slots, max detour) are in

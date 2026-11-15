@@ -6,7 +6,9 @@ import { addressRoutes } from '../modules/addresses/routes.js';
 import { authRoutes } from '../modules/auth/routes.js';
 import { branchRoutes } from '../modules/branches/routes.js';
 import { cardRoutes } from '../modules/cards/routes.js';
+import { cartRoutes } from '../modules/cart/routes.js';
 import { catalogRoutes } from '../modules/catalog/routes.js';
+import { checkoutRoutes } from '../modules/checkout/routes.js';
 import { favoriteRoutes } from '../modules/favorites/routes.js';
 import { notificationRoutes } from '../modules/notifications/routes.js';
 import { meRoutes } from '../modules/users/routes.js';
@@ -33,6 +35,8 @@ export function createApp(ctx) {
   if (ctx.rof) {
     api.use(catalogRoutes(ctx));
     api.use('/branches', branchRoutes(ctx));
+    api.use('/cart', cartRoutes(ctx));
+    api.use('/checkout', checkoutRoutes(ctx));
   }
 
   app.use('/api/v1', api);

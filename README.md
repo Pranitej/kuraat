@@ -7,25 +7,32 @@ assets and configuration, and is installed, built and deployed on its own — no
 
 ```
 kuraat/
-├── client/                              React web app (ReactJS + Tailwind CSS) — client demo of the mobile UI
-├── mobile/                              React Native app (next phase)
-├── server/                              Backend API (to be added)
-├── DESIGN_SYSTEM.md                     UI/UX specification for all three: tokens, components, 26 screens, flows, rules
-└── kuraat — Mobile App UI Screens.pdf   Source of truth for the UI
+├── client/            React web app (ReactJS + Tailwind CSS) — the mobile UI on the web
+├── mobile/            React Native app (next phase)
+├── server/            Backend API (Node.js + MySQL) — talks to the RSOF order system (ROF)
+├── docs/              Designs and implementation plans
+└── DESIGN_SYSTEM.md   UI/UX specification: tokens, components, 26 screens, flows, rules
 ```
+
+The two source PDFs (the UI screens and RSOF's *Order Integration API Guide*) are kept locally, outside git.
 
 | App | Status | Start here |
 |---|---|---|
-| `client/` | Complete — all 26 screens, frontend-only demo data | [client/README.md](client/README.md) |
+| `client/` | All 26 screens; still uses browser demo data — switching to the server is next | [client/README.md](client/README.md) |
+| `server/` | Built and tested against a local fake ROF; ready for RSOF UAT once the kuraat tenant and login exist | [server/README.md](server/README.md) |
 | `mobile/` | Not started (follows client approval) | [mobile/README.md](mobile/README.md) |
-| `server/` | Not started | [server/README.md](server/README.md) — API contract expected by the client |
 
-## Quick start (web client)
+## Quick start
 
 ```bash
-cd client
-npm install
-npm run dev        # http://localhost:5173
+# Backend (see server/README.md for details)
+cd server && npm install && cp .env.example .env
+docker compose up -d && npm run db:migrate && npm run db:seed
+npm run mock-rof      # terminal 1 — fake RSOF order system
+npm run dev           # terminal 2 — API on http://localhost:4000/api/v1
+
+# Web client
+cd client && npm install && npm run dev      # http://localhost:5173
 ```
 
-Demo sign-in: mobile **50 123 4821**, password **Kuraat@2026** (or choose "Get a code on WhatsApp" and enter any 6 digits).
+Test logins and cards: [client/TEST_CREDENTIALS.md](client/TEST_CREDENTIALS.md).

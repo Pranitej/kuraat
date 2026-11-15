@@ -17,7 +17,16 @@ export function connectionFromUrl(databaseUrl) {
 }
 
 export function createDb(databaseUrl) {
-  return knex({ client: 'mysql2', connection: connectionFromUrl(databaseUrl), pool: { min: 0, max: 10 } });
+  return knex({
+    client: 'mysql2',
+    connection: connectionFromUrl(databaseUrl),
+    pool: {
+      min: 0,
+      max: 10,
+      // Column defaults (CURRENT_TIMESTAMP) must be UTC too, whatever the MySQL server's own zone is.
+      afterCreate: (conn, done) => conn.query("SET time_zone = '+00:00'", (err) => done(err, conn)),
+    },
+  });
 }
 
 /** Migrations come from migrations/index.js (no folder scanning, so ESM and bundling never break it). */

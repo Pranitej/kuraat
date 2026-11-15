@@ -30,6 +30,7 @@ const schema = z.object({
   OTP_TEST_CODE: z.preprocess(blankToUndefined, z.string().regex(/^\d{6}$/, 'must be 6 digits').default('123456')),
   PRICES_INCLUDE_VAT: flag(true),
   ORDER_POLL_INTERVAL_MS: integer(60000),
+  PASSWORD_HASH_COST: z.preprocess(blankToUndefined, z.coerce.number().int().min(4).max(15).default(12)),
 });
 
 /** Validated settings object used across the server. */
@@ -59,5 +60,6 @@ export function loadConfig(env = process.env) {
     otp: { mode: e.OTP_MODE, testCode: e.OTP_TEST_CODE },
     pricesIncludeVat: e.PRICES_INCLUDE_VAT,
     pollIntervalMs: e.ORDER_POLL_INTERVAL_MS,
+    passwordHashCost: e.PASSWORD_HASH_COST,
   };
 }

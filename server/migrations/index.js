@@ -1,5 +1,7 @@
 /**
  * Ordered list of database migrations. Add new files to the end; never edit one that has already
- * run in a shared environment.
+ * run in a shared environment (UAT/production) — add a new migration instead.
  */
-export const migrations = [];
+import * as init from './001_init.js';
+
+export const migrations = [{ name: '001_init', ...init }];

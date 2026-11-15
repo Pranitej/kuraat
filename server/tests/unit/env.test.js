@@ -33,6 +33,12 @@ describe('loadConfig', () => {
     expect(c.pricesIncludeVat).toBe(false);
   });
 
+  test('password hash cost defaults to 12 and accepts 4–15', () => {
+    expect(loadConfig(valid).passwordHashCost).toBe(12);
+    expect(loadConfig({ ...valid, PASSWORD_HASH_COST: '4' }).passwordHashCost).toBe(4);
+    expect(() => loadConfig({ ...valid, PASSWORD_HASH_COST: '3' })).toThrow(/PASSWORD_HASH_COST/);
+  });
+
   test('rejects a missing ROF_BASE_URL', () => {
     expect(() => loadConfig({ ...valid, ROF_BASE_URL: undefined })).toThrow(/ROF_BASE_URL/);
   });

@@ -11,5 +11,7 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: 15000,
     hookTimeout: 30000,
+    // Cheap password hashing keeps auth tests fast (real environments use 12).
+    env: { PASSWORD_HASH_COST: '4' },
   },
 });

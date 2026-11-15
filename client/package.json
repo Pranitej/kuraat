@@ -1,0 +1,27 @@
+{
+  "name": "kuraat-client",
+  "private": true,
+  "version": "1.0.0",
+  "description": "kuraat — React web client (Tailwind CSS). Independent app: install, build and deploy from this folder.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource/noto-sans-arabic": "^5.3.0",
+    "@fontsource/source-sans-3": "^5.3.1",
+    "lucide-react": "^1.73.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.3.0",
+    "autoprefixer": "^10.6.2",
+    "postcss": "^8.5.33",
+    "tailwindcss": "^3.4.19",
+    "vite": "^8.3.8"
+  }
+}

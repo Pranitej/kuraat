@@ -1,0 +1,19 @@
+# Dependencies and builds (every app)
+node_modules
+dist
+coverage
+*.log
+.DS_Store
+
+# Secrets — real values live only in each app's local .env
+.env
+.env.*
+!.env.example
+
+# Source PDFs stay local (design + RSOF's internal API guide); see DESIGN_SYSTEM.md and docs/
+/*.pdf
+
+# Tool scratch
+.playwright-mcp
+.superpowers/
+server/mock-rof/data/

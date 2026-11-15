@@ -328,6 +328,8 @@ export function createSeed() {
     stock: initialStock(),
     orders: [],
     nextOrderNumber: 20418,
+    /** Login timestamps within the last minute (rate limit) and the total number of logins. */
     loginLog: [],
+    loginCount: 0,
   });
 }

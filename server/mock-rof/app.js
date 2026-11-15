@@ -45,12 +45,13 @@ export function createMockRof({ store, now = () => new Date(), tokenSecret = 'mo
     db.loginLog = db.loginLog.filter((at) => t - at < 60_000);
     if (db.loginLog.length >= LOGINS_PER_MINUTE) return res.status(429).json(fail('Too many login attempts'));
     db.loginLog.push(t);
+    db.loginCount = (db.loginCount || 0) + 1;
     const { email, password } = req.body || {};
     if (email !== db.credentials.email || password !== db.credentials.password) {
       return res.json(fail('Invalid email or password'));
     }
     const iat = nowSec();
-    const token = jwt.sign({ sub: email, tenantId: db.tenantId, iat, exp: iat + tokenTtlSec }, tokenSecret);
+    const token = jwt.sign({ sub: email, tenantId: db.tenantId, iat, exp: iat + tokenTtlSec }, app.locals.tokenSecret);
     return res.json(ok({ token, tenantId: db.tenantId }));
   });
 

@@ -21,6 +21,7 @@ describe('loadConfig', () => {
     expect(c.jwt).toMatchObject({ accessTtlSec: 900, refreshTtlDays: 30 });
     expect(c.pricesIncludeVat).toBe(true);
     expect(c.pollIntervalMs).toBe(60000);
+    expect(c.authRateLimitPerMinute).toBe(20);
   });
 
   test('drops a trailing slash from ROF_BASE_URL', () => {

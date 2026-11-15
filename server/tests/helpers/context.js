@@ -31,13 +31,20 @@ export async function createTestContext({ configOverrides = {} } = {}) {
   const db = createDb(config.databaseUrl);
   await migrateLatest(db);
   const clock = createFakeClock();
-  const ctx = createContext({ config, db, clock });
+  const logs = [];
+  const logger = {
+    info: (...args) => logs.push(['info', args.join(' ')]),
+    warn: (...args) => logs.push(['warn', args.join(' ')]),
+    error: (...args) => logs.push(['error', args.join(' ')]),
+  };
+  const ctx = createContext({ config, db, clock, logger });
   const app = createApp(ctx);
   return {
     ctx,
     app,
     db,
     clock,
+    logs,
     reset: () => truncateAll(db),
     close: () => db.destroy(),
   };

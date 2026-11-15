@@ -31,6 +31,7 @@ const schema = z.object({
   PRICES_INCLUDE_VAT: flag(true),
   ORDER_POLL_INTERVAL_MS: integer(60000),
   PASSWORD_HASH_COST: z.preprocess(blankToUndefined, z.coerce.number().int().min(4).max(15).default(12)),
+  AUTH_RATE_LIMIT_PER_MINUTE: integer(20),
 });
 
 /** Validated settings object used across the server. */
@@ -61,5 +62,6 @@ export function loadConfig(env = process.env) {
     pricesIncludeVat: e.PRICES_INCLUDE_VAT,
     pollIntervalMs: e.ORDER_POLL_INTERVAL_MS,
     passwordHashCost: e.PASSWORD_HASH_COST,
+    authRateLimitPerMinute: e.AUTH_RATE_LIMIT_PER_MINUTE,
   };
 }

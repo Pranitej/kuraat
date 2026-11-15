@@ -2,6 +2,8 @@
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
+import { authRoutes } from '../modules/auth/routes.js';
+import { meRoutes } from '../modules/users/routes.js';
 import { errorMiddleware, notFoundRoute } from './errors.js';
 
 export function createApp(ctx) {
@@ -16,6 +18,8 @@ export function createApp(ctx) {
     await ctx.db.raw('select 1');
     res.json({ status: 'ok', db: 'ok' });
   });
+  api.use('/auth', authRoutes(ctx));
+  api.use('/me', meRoutes(ctx));
 
   app.use('/api/v1', api);
   app.use(notFoundRoute);

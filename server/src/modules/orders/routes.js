@@ -1,4 +1,4 @@
-/** /api/v1/orders — place an order (more order routes arrive with tracking). */
+/** /api/v1/orders — place, list, detail (live from ROF), cancel, resend delivery code. */
 import express from 'express';
 import { z } from 'zod';
 import { requireAuth } from '../../http/auth.js';
@@ -31,6 +31,22 @@ export function orderRoutes(ctx) {
   router.post('/', validate({ body: placeSchema }), async (req, res) => {
     const { order, created } = await placeOrder(ctx, req.userId, req.body);
     res.status(created ? 201 : 200).json(order);
+  });
+
+  router.get('/', validate({ query: z.object({ tab: z.enum(['ongoing', 'delivered', 'all']).default('all') }) }), async (req, res) => {
+    res.json(await ctx.orders.list(req.userId, req.validQuery.tab));
+  });
+
+  router.get('/:id', async (req, res) => {
+    res.json(await ctx.orders.get(req.userId, req.params.id));
+  });
+
+  router.post('/:id/cancel', async (req, res) => {
+    res.json(await ctx.orders.cancel(req.userId, req.params.id));
+  });
+
+  router.post('/:id/resend-code', async (req, res) => {
+    res.json(await ctx.orders.resendCode(req.userId, req.params.id));
   });
 
   return router;

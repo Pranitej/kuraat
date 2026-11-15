@@ -22,7 +22,6 @@ import { deliveryCandidates } from '../checkout/branchChoice.js';
 import { estimates } from '../checkout/window.js';
 import { notify } from '../notifications/service.js';
 import { authorizePayment } from '../payments/simulator.js';
-import { presentOrder } from './present.js';
 
 const UNCONFIRMED = "We couldn't confirm your order with the store. Please contact us before trying again — you won't be charged twice.";
 
@@ -50,12 +49,7 @@ async function replay(ctx, userId, existing) {
   return null; // failed / voided: this key may try again
 }
 
-export async function orderFor(ctx, orderId) {
-  const row = await ctx.db('orders').where({ id: orderId }).first();
-  const payment = await ctx.db('payments').where({ order_id: orderId }).first();
-  const branch = row.branch_id ? await ctx.branches.getBranch(row.branch_id).catch(() => null) : null;
-  return presentOrder(row, { payment, branch });
-}
+const orderFor = async (ctx, orderId) => ctx.orders.present(await ctx.db('orders').where({ id: orderId }).first());
 
 /** Insert or (for a failed/voided earlier attempt) overwrite the payment row for this key. */
 async function upsertPayment(ctx, userId, key, fields) {

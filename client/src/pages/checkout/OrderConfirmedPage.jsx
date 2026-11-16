@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Check, Clock, MapPin, Store } from 'lucide-react';
 import { Button, Card, IconTile, MaroonPanel, Modal } from '@/components/ui';
-import { productImage } from '@/assets/images.js';
-import { useOrders } from '@/context/OrderContext.jsx';
-import { formatAddress, formatDistance, formatOrderDate, formatSAR, formatWindow, getBranch, getProduct } from '@/domain';
+import { useOrder } from '@/context/OrderContext.jsx';
+import { formatAddress, formatDistance, formatOrderDate, formatSAR, formatWindow } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { session } from '@/lib/storage.js';
 import { useDocumentTitle } from '@/hooks';
@@ -14,13 +13,13 @@ export default function OrderConfirmedPage() {
   useDocumentTitle('Order confirmed');
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { getById } = useOrders();
-  const order = getById(orderId);
+  const { order, loading } = useOrder(orderId);
   const popupKey = `branch-popup-seen:${orderId}`;
   const [popup, setPopup] = useState(() => !session.read(popupKey));
 
+  if (!order && loading) return <div className="min-h-[60dvh]" aria-busy="true" />;
   if (!order) return <Navigate to={ROUTES.orders} replace />;
-  const branch = getBranch(order.branchId);
+  const branch = order.branch || { id: null, name: 'the branch', address: '' };
   const closePopup = () => {
     session.write(popupKey, true);
     setPopup(false);
@@ -34,7 +33,7 @@ export default function OrderConfirmedPage() {
         </div>
         <h1 className="mt-5 text-title">Order confirmed!</h1>
         <p className="mt-1 text-body text-white/80">
-          Order #{order.id} · {formatOrderDate(order.schedule.createdAt)}
+          Order #{order.number} · {formatOrderDate(order.createdAt)}
         </p>
       </MaroonPanel>
 
@@ -44,19 +43,22 @@ export default function OrderConfirmedPage() {
             <IconTile icon={Clock} tone="white" />
             <div>
               <p className="text-label font-normal text-muted">Estimated delivery</p>
-              <p className="text-[18px] font-bold leading-6 text-ink">{formatWindow(order.schedule.windowStart, order.schedule.windowEnd)}</p>
+              <p className="text-[18px] font-bold leading-6 text-ink">{formatWindow(order.window.start, order.window.end)}</p>
             </div>
           </div>
 
           <h2 className="mt-6 text-h3 text-ink">Your items</h2>
           <ul className="mt-3 flex flex-col gap-3">
             {order.items.map((item) => {
-              const product = getProduct(item.productId);
               return (
                 <li key={item.productId} className="flex items-center gap-3.5">
-                  <img src={productImage(product.images[0])} alt="" className="size-14 shrink-0 rounded-sm object-cover" style={{ objectPosition: product.cardFocus }} />
+                  {item.image ? (
+                    <img src={item.image} alt="" className="size-14 shrink-0 rounded-sm object-cover" />
+                  ) : (
+                    <span className="size-14 shrink-0 rounded-sm bg-sand" aria-hidden />
+                  )}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] font-bold text-ink">{product.name}</p>
+                    <p className="truncate text-[15px] font-bold text-ink">{item.name}</p>
                     <p className="text-label font-normal text-muted">Qty {item.qty}</p>
                   </div>
                   <p className="tabular text-[15px] font-semibold text-ink">{formatSAR(item.price * item.qty)}</p>
@@ -87,7 +89,7 @@ export default function OrderConfirmedPage() {
           <IconTile icon={Store} size={72} iconSize={30} />
           <p className="mt-5 text-body text-muted">Your order will be delivered from</p>
           <h2 id="branch-popup-title" className="mt-1 text-[22px] font-bold leading-7 text-ink">
-            {branch.displayName}
+            {branch.name}
           </h2>
           <p className="mt-1.5 text-body text-muted">{branch.address}</p>
           <div className="mt-5 flex w-full gap-3 rounded-lg bg-sand px-4 py-3.5 text-left text-[15px] leading-[22px] text-copy">

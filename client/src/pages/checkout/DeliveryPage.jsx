@@ -10,7 +10,7 @@ import { useAddresses } from '@/context/AddressContext.jsx';
 import { useAuth } from '@/context/AuthContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { useCheckout } from '@/context/CheckoutContext.jsx';
-import { useDeliveryBranch } from '@/hooks/useDeliveryBranch.js';
+import { useDeliveryQuote } from '@/hooks/useDeliveryQuote.js';
 import { formatAddress, formatPhone, validateMobile } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
@@ -32,7 +32,7 @@ export default function DeliveryPage() {
   const [phoneTouched, setPhoneTouched] = useState(Boolean(checkout.deliveryPhone));
   const [errors, setErrors] = useState({});
   const productIds = useMemo(() => items.map((i) => i.productId), [items]);
-  const delivery = useDeliveryBranch(productIds, selected);
+  const { quote: delivery, error: quoteError } = useDeliveryQuote({ addressId: selected?.id, productIds });
 
   // Follow the selected address's phone until the user edits the field
   useEffect(() => {
@@ -133,6 +133,11 @@ export default function DeliveryPage() {
 
       {delivery && (
         <DeliveryFromCard className="mt-5" icon="store" branch={delivery.branch} distanceKm={delivery.distanceKm} showDistance />
+      )}
+      {quoteError && (
+        <p role="alert" className="mt-5 text-label text-hotpink">
+          {quoteError.message}
+        </p>
       )}
 
       {!isDesktop && <BottomBar>{cta}</BottomBar>}

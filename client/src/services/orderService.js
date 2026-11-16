@@ -1,89 +1,24 @@
-/** Orders service (demo implementation of the future /orders API). */
+/** Orders on the server (server/README.md → Orders): placed in RSOF, tracked from RSOF. */
+import { onlyDigits } from '@/domain';
+import { apiRequest } from './api.js';
 
-import { computeTotals, getProduct, findPromo, chooseBranch, orderSchedule, formatSAR, paymentLabel, uid } from '@/domain';
-import { getDb, updateDb, userBucket } from './db.js';
-import { request, ApiError } from './request.js';
+const path = (id) => `/orders/${encodeURIComponent(id)}`;
 
-export async function listOrders(userId) {
-  return request(
-    () => [...(getDb().orders?.[userId] || [])].sort((a, b) => new Date(b.schedule.createdAt) - new Date(a.schedule.createdAt)),
-    { min: 250, max: 500 },
-  );
-}
+export const listOrders = () => apiRequest('/orders');
+export const getOrder = (id) => apiRequest(path(id));
 
-export async function getOrder(userId, id) {
-  return request(() => {
-    const order = (getDb().orders?.[userId] || []).find((o) => o.id === id);
-    if (!order) throw new ApiError('We could not find this order.', { code: 'not_found' });
-    return order;
-  }, { min: 200, max: 400 });
-}
+/** Pays (simulated in UAT) and places the order for the server cart. Same key → same order. */
+export const placeOrder = ({ addressId, deliveryPhone, payment, idempotencyKey }) =>
+  apiRequest('/orders', { method: 'POST', body: { addressId, deliveryPhone: onlyDigits(deliveryPhone), payment, idempotencyKey } });
 
-/**
- * Places an order after payment. Re-checks branch selection and stock "server-side".
- * @param {{ userId, cart: {items, promoCode}, address, deliveryPhone, payment }} input
- */
-export async function placeOrder({ userId, cart, address, deliveryPhone, payment }) {
-  return request(
-    () =>
-      updateDb((db) => {
-        if (!cart.items.length) throw new ApiError('Your cart is empty.', { code: 'empty_cart' });
-        const promo = findPromo(cart.promoCode);
-        const totals = computeTotals(cart.items, getProduct, promo);
-        const choice = chooseBranch(address.location, cart.items.map((i) => i.productId));
-        db.meta.orderSeq += 1;
-        const id = `KR-${db.meta.orderSeq}`;
-        const now = new Date();
-        const order = {
-          id,
-          userId,
-          items: totals.lines.map((l) => ({ productId: l.productId, qty: l.qty, price: l.product.price })),
-          subtotal: totals.subtotal,
-          discount: totals.discount,
-          delivery: totals.delivery,
-          total: totals.total,
-          vat: totals.vat,
-          promoCode: promo ? promo.code : null,
-          branchId: choice.branch.id,
-          distanceKm: choice.distanceKm,
-          address: { ...address },
-          deliveryPhone,
-          payment,
-          schedule: orderSchedule(now),
-        };
-        userBucket(db, 'orders', userId).unshift(order);
+export const cancelOrder = (id) => apiRequest(`${path(id)}/cancel`, { method: 'POST' });
 
-        const notifications = userBucket(db, 'notifications', userId);
-        if (payment.method !== 'cod') {
-          notifications.unshift({
-            id: uid('n'),
-            type: 'payment',
-            title: 'Payment received',
-            body: `${formatSAR(order.total)} paid with ${paymentLabel(payment)}.`,
-            createdAt: now.toISOString(),
-            read: false,
-            link: { kind: 'order', id },
-          });
-        }
-        notifications.unshift({
-          id: uid('n'),
-          type: 'order',
-          title: `Order #${id} confirmed`,
-          body: `It will be delivered from ${choice.branch.displayName}.`,
-          createdAt: new Date(now.getTime() + 1000).toISOString(),
-          read: false,
-          link: { kind: 'order', id },
-        });
+/** @returns {Promise<{ sent: boolean, resendAt: string }>} */
+export const resendCode = (id) => apiRequest(`${path(id)}/resend-code`, { method: 'POST' });
 
-        // Order placed → cart is emptied on the "server"
-        if (db.carts?.[userId]) db.carts[userId] = { items: [], promoCode: null };
-        return order;
-      }),
-    { min: 500, max: 800 },
-  );
-}
-
-/** Whether the user has completed an order before (for first-order promos). */
-export function hasOrders(userId) {
-  return (getDb().orders?.[userId] || []).length > 0;
+/** The payment part of the order request. Card details go to the server once and are never stored. */
+export function toPaymentBody(method, { card, upiId, saveCard } = {}) {
+  if (method === 'card') return { method: 'card', card: { number: onlyDigits(card.number), expiry: card.expiry, cvv: card.cvv }, saveCard: Boolean(saveCard) };
+  if (method === 'upi') return { method: 'upi', upiId: (upiId || '').trim() };
+  return { method: 'cod' };
 }

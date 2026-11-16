@@ -193,8 +193,6 @@ export function CartProvider({ children }) {
       removePromo,
       reload: load,
       flush,
-      // Kept for the payment screen until it places orders through the server.
-      raw: { items, promoCode },
     };
   }, [items, priced, promoCode, notices, getProduct, status, syncing, error, add, setQty, remove, restore, applyPromo, removePromo, load, flush]);
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { Banknote, CreditCard, Lock, TriangleAlert } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
@@ -7,13 +7,12 @@ import { Button, RadioDot, TextField, Toggle } from '@/components/ui';
 import { CheckoutLayout, CheckoutSteps, OrderSummary } from '@/components/checkout/CheckoutParts.jsx';
 import DeliveryFromCard from '@/components/shop/DeliveryFromCard.jsx';
 import { useAddresses } from '@/context/AddressContext.jsx';
-import { useAuth } from '@/context/AuthContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { useCheckout } from '@/context/CheckoutContext.jsx';
 import { useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { useDeliveryBranch } from '@/hooks/useDeliveryBranch.js';
-import { processPayment, saveCard } from '@/services/paymentService.js';
+import { useDeliveryQuote } from '@/hooks/useDeliveryQuote.js';
+import { toPaymentBody } from '@/services/orderService.js';
 import { formatCardNumber, formatExpiry, formatSAR, onlyDigits, validateCardNumber, validateCvv, validateExpiry, validateUpi } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
@@ -25,19 +24,27 @@ const METHODS = [
   { id: 'cod', title: 'Cash on delivery', subtitle: 'Pay when your order arrives', icon: Banknote },
 ];
 
+/** Server field names → this form's error slots. */
+const FIELD_ERRORS = { 'card.number': 'number', 'card.expiry': 'expiry', 'card.cvv': 'cvv', upiId: 'upi' };
+
 /** 14 · Payment */
 export default function PaymentPage() {
   useDocumentTitle('Payment');
   const navigate = useNavigate();
   const toast = useToast();
   const isDesktop = useIsDesktop();
-  const { user } = useAuth();
   const cart = useCart();
   const { addresses, defaultAddress } = useAddresses();
   const { placeOrder } = useOrders();
   const checkout = useCheckout();
   const address = addresses.find((a) => a.id === checkout.addressId) || defaultAddress;
-  const delivery = useDeliveryBranch(cart.items.map((i) => i.productId), address);
+  const { quote: delivery } = useDeliveryQuote({ addressId: address?.id, productIds: cart.items.map((i) => i.productId) });
+  const { ensureIdempotencyKey } = checkout;
+
+  // One key per checkout, made when the payment screen opens and reused on every retry.
+  useEffect(() => {
+    ensureIdempotencyKey();
+  }, [ensureIdempotencyKey]);
 
   const [method, setMethod] = useState(checkout.paymentMethod || 'card');
   const [card, setCard] = useState({ number: '', expiry: '', cvv: '' });
@@ -69,20 +76,20 @@ export default function PaymentPage() {
     setProcessing(true);
     setErrors({});
     try {
-      const payment = await processPayment({ method, card, upiId, amount: totals.total });
-      if (method === 'card' && save) saveCard(user.id, { brand: payment.brand, last4: payment.last4, expiry: card.expiry });
+      await cart.flush(); // the server places the cart it has
       const order = await placeOrder({
-        cart: cart.raw,
-        address,
+        addressId: address.id,
         deliveryPhone: checkout.deliveryPhone || address.phone,
-        payment: { method: payment.method, brand: payment.brand, last4: payment.last4, upiId: payment.upiId, transactionId: payment.transactionId, paidAt: payment.paidAt },
+        payment: toPaymentBody(method, { card, upiId, saveCard: save }),
+        idempotencyKey: ensureIdempotencyKey(),
       });
-      cart.reload();
+      cart.reload(); // the server emptied it
       checkout.reset({ lastOrderId: order.id, paymentMethod: method });
       navigate(ROUTES.paymentSuccess(order.id), { replace: true });
     } catch (err) {
+      if (err.code === 'idempotency_conflict') checkout.renewIdempotencyKey();
       setProcessing(false);
-      setErrors({ form: err.message });
+      setErrors({ form: err.message, ...(FIELD_ERRORS[err.field] ? { [FIELD_ERRORS[err.field]]: err.message } : {}) });
       toast.show(err.code === 'card_declined' ? 'Payment declined' : 'Payment could not be completed', { tone: 'error' });
     }
   };

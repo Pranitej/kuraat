@@ -6,12 +6,13 @@ import BottomBar from '@/components/layout/BottomBar.jsx';
 import { BackButton } from '@/components/layout/ScreenHeader.jsx';
 import { FavoriteButton } from '@/components/shop/ProductCard.jsx';
 import DeliveryFromCard from '@/components/shop/DeliveryFromCard.jsx';
-import { deliveryWindow, formatSAR, formatWindow } from '@/domain';
+import { formatSAR, formatWindow } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useCart } from '@/context/CartContext.jsx';
 import { useCatalog } from '@/context/CatalogContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { useDeliveryBranch } from '@/hooks/useDeliveryBranch.js';
+import { useDeliveryQuote } from '@/hooks/useDeliveryQuote.js';
+import { useAddresses } from '@/context/AddressContext.jsx';
 import { useDocumentTitle, useGoBack, useIsDesktop, useScrollY } from '@/hooks';
 import { cn } from '@/lib/cn.js';
 
@@ -62,7 +63,8 @@ export default function ProductDetailPage() {
   const scrollY = useScrollY();
   const isDesktop = useIsDesktop();
   const swipe = useRef(null);
-  const delivery = useDeliveryBranch(product ? [product.id] : []);
+  const { defaultAddress } = useAddresses();
+  const { quote: delivery } = useDeliveryQuote({ addressId: product ? defaultAddress?.id : null, productIds: product ? [product.id] : [] });
   const images = useMemo(() => product?.images || [], [product]);
 
   if (!product && catalog.status === 'loading') {
@@ -86,9 +88,9 @@ export default function ProductDetailPage() {
   }
 
   const openZoom = (i = active) => navigate(ROUTES.productPhotos(product.id, i));
-  const window_ = deliveryWindow(new Date());
+
   const deliveryMeta = delivery
-    ? [delivery.isNearest ? 'Closest to you' : `${delivery.distanceKm} km away`, delivery.inStock ? 'In stock' : 'Limited stock', formatWindow(window_.start, window_.end, new Date(), { long: false })].join(' · ')
+    ? [delivery.isNearest ? 'Closest to you' : `${delivery.distanceKm} km away`, delivery.inStock ? 'In stock' : 'Limited stock', formatWindow(delivery.window.start, delivery.window.end, new Date(), { long: false })].join(' · ')
     : null;
   const inCart = quantityOf(product.id);
 

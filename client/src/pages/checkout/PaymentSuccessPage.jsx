@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { Button, Card, CirclePattern, ProgressBar, WhatsAppIcon } from '@/components/ui';
-import { useOrders } from '@/context/OrderContext.jsx';
-import { formatDateTime, formatSAR, getBranch, paymentLabel } from '@/domain';
+import { useOrder } from '@/context/OrderContext.jsx';
+import { formatDateTime, formatSAR, paymentLabel } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 
@@ -11,15 +11,14 @@ import { useDocumentTitle } from '@/hooks';
 export default function PaymentSuccessPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { getById } = useOrders();
-  const order = getById(orderId);
-  const cod = order?.payment.method === 'cod';
+  const { order, loading } = useOrder(orderId);
+  const cod = order?.payment?.method === 'cod';
   useDocumentTitle(cod ? 'Order placed' : 'Payment successful');
   const [progress, setProgress] = useState(8);
   const confirmed = progress >= 100;
 
   useEffect(() => {
-    if (!order) return undefined;
+    if (!order?.id) return undefined;
     const steps = [
       [500, 34],
       [1200, 58],
@@ -28,21 +27,22 @@ export default function PaymentSuccessPage() {
     ];
     const timers = steps.map(([t, v]) => setTimeout(() => setProgress(v), t));
     return () => timers.forEach(clearTimeout);
-  }, [order]);
+  }, [order?.id]);
 
+  if (!order && loading) return <div className="min-h-[calc(100dvh-76px)]" aria-busy="true" />;
   if (!order) return <Navigate to={ROUTES.orders} replace />;
-  const branch = getBranch(order.branchId);
+  const branchName = order.branch?.name || 'the branch';
 
   const rows = cod
     ? [
-        ['Order number', `#${order.id}`],
-        ['Date', formatDateTime(order.schedule.createdAt)],
+        ['Order number', `#${order.number}`],
+        ['Date', formatDateTime(order.createdAt)],
         ['Method', 'Cash on delivery'],
         ['Amount due', formatSAR(order.total)],
       ]
     : [
         ['Transaction ID', order.payment.transactionId],
-        ['Date', formatDateTime(order.payment.paidAt || order.schedule.createdAt)],
+        ['Date', formatDateTime(order.payment.paidAt || order.createdAt)],
         ['Method', paymentLabel(order.payment)],
         ['Amount', formatSAR(order.total)],
       ];
@@ -79,7 +79,7 @@ export default function PaymentSuccessPage() {
 
         <div className="mt-auto pt-10">
           <p className="text-center text-body text-muted" aria-live="polite">
-            {confirmed ? `Confirmed by ${branch.displayName}` : 'Confirming your order with the branch…'}
+            {confirmed ? `Confirmed by ${branchName}` : 'Confirming your order with the branch…'}
           </p>
           <ProgressBar value={progress} className="mt-3" label="Confirming with the branch" />
           <Button block className="mt-5" disabled={!confirmed} onClick={() => navigate(ROUTES.orderConfirmed(order.id), { replace: true })}>

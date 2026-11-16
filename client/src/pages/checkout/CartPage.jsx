@@ -7,7 +7,8 @@ import { Button, EmptyState, InfoBanner, Skeleton, Tag, inputBase, inputShell } 
 import { CartItemCard, CheckoutLayout, CheckoutSteps, OrderSummary } from '@/components/checkout/CheckoutParts.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { useDeliveryBranch } from '@/hooks/useDeliveryBranch.js';
+import { useDeliveryQuote } from '@/hooks/useDeliveryQuote.js';
+import { useAddresses } from '@/context/AddressContext.jsx';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
 import { cn } from '@/lib/cn.js';
@@ -25,7 +26,8 @@ export default function CartPage() {
   const toast = useToast();
   const isDesktop = useIsDesktop();
   const { lines, count, totals, promo, setQty, remove, restore, applyPromo, removePromo, items, status, error, syncing, blocked, flush, reload } = useCart();
-  const delivery = useDeliveryBranch(items.map((i) => i.productId));
+  const { defaultAddress } = useAddresses();
+  const { quote: delivery } = useDeliveryQuote({ addressId: defaultAddress?.id, productIds: items.map((i) => i.productId) });
   const [code, setCode] = useState('');
   const [promoError, setPromoError] = useState('');
   const [applying, setApplying] = useState(false);

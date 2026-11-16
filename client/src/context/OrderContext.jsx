@@ -1,48 +1,47 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as api from '@/services/orderService.js';
-import { getDb } from '@/services/db.js';
 import { useAuth } from './AuthContext.jsx';
 import { useNow } from '@/hooks';
 
 const OrderContext = createContext(null);
 
-const sortOrders = (list) => [...list].sort((a, b) => new Date(b.schedule.createdAt) - new Date(a.schedule.createdAt));
-
+/**
+ * Orders from the server. `byId` keeps every order seen (placed, opened, listed) so screens show
+ * it at once and refresh it in the background.
+ */
 export function OrderProvider({ children }) {
   const { user } = useAuth();
   const userId = user?.id;
-  const [orders, setOrders] = useState(() => (userId ? sortOrders(getDb().orders?.[userId] || []) : []));
-  const [loading, setLoading] = useState(false);
-  const now = useNow(20000); // live status updates
-
-  const refresh = useCallback(async () => {
-    if (!userId) return setOrders([]);
-    setLoading(true);
-    try {
-      setOrders(await api.listOrders(userId));
-    } finally {
-      setLoading(false);
-    }
-    return undefined;
-  }, [userId]);
+  const [byId, setById] = useState({});
+  const now = useNow(30000);
 
   useEffect(() => {
-    setOrders(userId ? sortOrders(getDb().orders?.[userId] || []) : []);
-    refresh();
-  }, [userId, refresh]);
+    setById({});
+  }, [userId]);
+
+  const upsert = useCallback((order) => setById((m) => ({ ...m, [order.id]: order })), []);
 
   const placeOrder = useCallback(
     async (input) => {
-      const order = await api.placeOrder({ ...input, userId });
-      setOrders((prev) => sortOrders([order, ...prev.filter((o) => o.id !== order.id)]));
+      const order = await api.placeOrder(input);
+      upsert(order);
       return order;
     },
-    [userId],
+    [upsert],
   );
 
   const value = useMemo(
-    () => ({ orders, loading, refresh, placeOrder, now, getById: (id) => orders.find((o) => o.id === id) || null }),
-    [orders, loading, refresh, placeOrder, now],
+    () => ({
+      // The order list moves to the server in the next step; until then it is empty.
+      orders: [],
+      loading: false,
+      refresh: async () => {},
+      placeOrder,
+      upsert,
+      now,
+      getById: (id) => byId[id] || null,
+    }),
+    [byId, placeOrder, upsert, now],
   );
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;
@@ -52,4 +51,27 @@ export function useOrders() {
   const ctx = useContext(OrderContext);
   if (!ctx) throw new Error('useOrders must be used inside OrderProvider');
   return ctx;
+}
+
+/** One order: the copy already seen first, then fresh from the server (live RSOF status). */
+export function useOrder(id) {
+  const { getById, upsert } = useOrders();
+  const order = getById(id);
+  const [state, setState] = useState({ loading: true, error: null });
+
+  const refresh = useCallback(async () => {
+    try {
+      upsert(await api.getOrder(id));
+      setState({ loading: false, error: null });
+    } catch (error) {
+      setState({ loading: false, error });
+    }
+  }, [id, upsert]);
+
+  useEffect(() => {
+    setState({ loading: true, error: null });
+    refresh();
+  }, [refresh]);
+
+  return { order, loading: state.loading && !order, error: state.error, refresh };
 }

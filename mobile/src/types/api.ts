@@ -124,7 +124,14 @@ export type Order = {
   id: string;
   number: string;
   status: OrderStatus;
-  steps: { id: string; label: string; state: string; time: string | null; timeEnd?: string | null; estimated: boolean }[];
+  steps: {
+    id: string;
+    title: string;
+    state: 'done' | 'current' | 'todo';
+    time: string | null;
+    timeEnd?: string | null;
+    estimated: boolean;
+  }[];
   items: { productId: string; name: string; qty: number; price: number; image: string | null }[];
   subtotal: number;
   discount: number;
@@ -140,7 +147,7 @@ export type Order = {
     transactionId: string | null;
     paidAt: string | null;
   } | null;
-  branch: (Partial<Branch> & { id: string; name: string }) | null;
+  branch: (Partial<Omit<Branch, 'phone' | 'location'>> & { id: string; name: string; phone?: string; location?: LatLng }) | null;
   distanceKm: number | null;
   address: Partial<Address> & { city?: string };
   deliveryPhone: string;

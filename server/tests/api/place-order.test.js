@@ -178,7 +178,7 @@ describe('placing an order', () => {
     await api('put', '/cart', pdfCart);
     const res = await place({ payment: { method: 'cod' } });
     expect(res.status).toBe(201);
-    expect(res.body.payment).toEqual({ method: 'cod', brand: null, last4: null, upiId: null });
+    expect(res.body.payment).toEqual({ method: 'cod', brand: null, last4: null, upiId: null, transactionId: null, paidAt: null });
     expect(await payment()).toMatchObject({ status: 'captured', transaction_id: null });
     expect(await t.db('notifications').where({ type: 'payment' })).toHaveLength(0);
   });

@@ -1,10 +1,33 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as auth from '@/services/authService.js';
+import { onSignedOut } from '@/services/api.js';
 
 const AuthContext = createContext(null);
 
+/**
+ * The signed-in customer. On start the stored session is restored from the server (`status`
+ * 'restoring' until then); every call that signs in updates `user`.
+ */
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => auth.getSessionUser());
+  const [user, setUser] = useState(null);
+  const [status, setStatus] = useState('restoring');
+
+  useEffect(() => {
+    let alive = true;
+    auth
+      .restoreSession()
+      .catch(() => null) // server unreachable: start signed out; signing in shows the error
+      .then((restored) => {
+        if (!alive) return;
+        setUser(restored);
+        setStatus('ready');
+      });
+    const off = onSignedOut(() => setUser(null));
+    return () => {
+      alive = false;
+      off();
+    };
+  }, []);
 
   const withUser = useCallback(
     (fn) =>
@@ -20,8 +43,9 @@ export function AuthProvider({ children }) {
   const value = useMemo(
     () => ({
       user,
+      status,
       isAuthenticated: Boolean(user),
-      // WhatsApp OTP
+      // WhatsApp code
       requestOtp: auth.requestOtp,
       resendOtp: auth.resendOtp,
       getPendingOtp: auth.getPendingOtp,
@@ -31,15 +55,15 @@ export function AuthProvider({ children }) {
       signInWithPassword: withUser(auth.signInWithPassword),
       completeSignupWithPassword: withUser(auth.completeSignupWithPassword),
       resetPasswordWithOtp: withUser(auth.resetPasswordWithOtp),
-      changePassword: withUser((data) => auth.changePassword(user?.id, data)),
+      changePassword: withUser(auth.changePassword),
       // Profile
-      updateProfile: withUser((changes) => auth.updateProfile(user?.id, changes)),
+      updateProfile: withUser(auth.updateProfile),
       signOut: async () => {
         await auth.signOut();
         setUser(null);
       },
     }),
-    [user, withUser],
+    [user, status, withUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

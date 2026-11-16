@@ -3,15 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import AppProviders from '@/context/AppProviders.jsx';
 import AppRoutes from '@/routes/AppRoutes.jsx';
-import { local, session } from '@/lib/storage.js';
+import { local } from '@/lib/storage.js';
 import './index.css';
 
-// Presenter shortcut: open /?reset-demo to restore the original demo data and sign out.
-if (new URLSearchParams(window.location.search).has('reset-demo')) {
-  local.clearAll();
-  session.clearAll();
-  window.history.replaceState(null, '', '/');
-}
+// Data now lives on the server: drop what the old browser-only demo stored.
+local.remove('db');
+local.remove('session');
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

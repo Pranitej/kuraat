@@ -9,21 +9,26 @@ import { useDocumentTitle } from '@/hooks';
 /** 01 · Splash — brand moment while the session restores; auto-advances, tap to skip. */
 export default function SplashPage() {
   useDocumentTitle('');
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, status } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [elapsed, setElapsed] = useState(false);
+  const [tapped, setTapped] = useState(false);
   const done = useRef(false);
 
-  const go = useCallback(() => {
-    if (done.current) return;
+  // Leave after the brand moment (or a tap) — but only once the session check has finished.
+  useEffect(() => {
+    if (done.current || status !== 'ready' || !(elapsed || tapped)) return;
     done.current = true;
     navigate(isAuthenticated ? ROUTES.home : ROUTES.welcome, { replace: true });
-  }, [isAuthenticated, navigate]);
+  }, [status, elapsed, tapped, isAuthenticated, navigate]);
+
+  const go = useCallback(() => setTapped(true), []);
 
   useEffect(() => {
-    const timers = [setTimeout(() => setStep(1), 800), setTimeout(() => setStep(2), 1600), setTimeout(go, 2500)];
+    const timers = [setTimeout(() => setStep(1), 800), setTimeout(() => setStep(2), 1600), setTimeout(() => setElapsed(true), 2500)];
     return () => timers.forEach(clearTimeout);
-  }, [go]);
+  }, []);
 
   return (
     <button

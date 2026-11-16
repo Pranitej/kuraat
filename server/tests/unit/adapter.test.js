@@ -73,6 +73,9 @@ describe('products', () => {
       subtitle: null,
       badge: null,
       featured: false,
+      highlights: [],
+      ingredients: null,
+      allergens: [],
       details: [],
     });
     expect(JSON.stringify(p)).not.toMatch(/sellingPrice|availableToSell|primaryImageUrl|customFields/);
@@ -102,6 +105,41 @@ describe('products', () => {
     );
     expect(p).toMatchObject({ subtitle: 'Signature gift box', badge: 'New', featured: true, meta: '30 pcs · 480 g' });
     expect(p.details).toEqual([{ key: 'pieces', label: 'Pieces', value: '30 pcs' }]); // empty storage hidden
+  });
+
+  test('weight, pieces and dimensions become the three highlight tiles, in that order', () => {
+    const p = toProduct(
+      { ...guideDetailProduct, customFields: { dimensions: '32 × 14 × 5 cm', pieces: '30 pcs', weight_g: 480 }, customFieldDefinitions: [] },
+      { baseUrl: BASE },
+    );
+    expect(p.highlights).toEqual([
+      { label: 'Weight', value: '480 g' },
+      { label: 'Pieces', value: '30 pcs' },
+      { label: 'Dimensions', value: '32 × 14 × 5 cm' },
+    ]);
+  });
+
+  test('ingredients and allergens get their own fields and are not detail rows', () => {
+    const p = toProduct(
+      {
+        ...guideDetailProduct,
+        customFields: { weight_g: 480, ingredients: 'Chocolate, cream.', allergens: 'Milk, Nuts , ,Soy' },
+        customFieldDefinitions: [
+          { fieldKey: 'weight_g', label: 'Net weight', dataType: 'number', displayOrder: 1 },
+          { fieldKey: 'allergens', label: 'Allergens', dataType: 'text', displayOrder: 2 },
+          { fieldKey: 'ingredients', label: 'Ingredients', dataType: 'text', displayOrder: 3 },
+        ],
+      },
+      { baseUrl: BASE },
+    );
+    expect(p.ingredients).toBe('Chocolate, cream.');
+    expect(p.allergens).toEqual(['Milk', 'Nuts', 'Soy']);
+    expect(p.details).toEqual([{ key: 'weight_g', label: 'Net weight', value: '480 g' }]);
+  });
+
+  test('allergens given as a list are kept as a list, trimmed', () => {
+    const p = toProduct({ ...guideListProduct, customFields: { allergens: ['Milk', ' Nuts ', ''] } }, { baseUrl: BASE });
+    expect(p.allergens).toEqual(['Milk', 'Nuts']);
   });
 
   test('stock: out of stock unless oversell; max quantity capped by stock and 20', () => {

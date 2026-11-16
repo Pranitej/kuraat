@@ -50,9 +50,9 @@ const CATEGORIES = [
 
 /** Custom fields RSOF's admin would create in product settings (guide §5). */
 const FIELD_DEFINITIONS = [
-  { fieldKey: 'weight_g', label: 'Weight', dataType: 'number', displayOrder: 1 },
+  { fieldKey: 'weight_g', label: 'Net weight', dataType: 'number', displayOrder: 1 },
   { fieldKey: 'pieces', label: 'Pieces', dataType: 'text', displayOrder: 2 },
-  { fieldKey: 'dimensions', label: 'Dimensions', dataType: 'text', displayOrder: 3 },
+  { fieldKey: 'dimensions', label: 'Dimensions (L × W × H)', dataType: 'text', displayOrder: 3 },
   { fieldKey: 'shelf_life', label: 'Shelf life', dataType: 'text', displayOrder: 4 },
   { fieldKey: 'storage', label: 'Storage', dataType: 'text', displayOrder: 5 },
   { fieldKey: 'allergens', label: 'Allergens', dataType: 'text', displayOrder: 6 },

@@ -102,7 +102,7 @@ describe('fake ROF — catalogue', () => {
     expect(res.body.data.images).toHaveLength(3);
     expect(res.body.data.images[0]).toMatchObject({ isPrimary: true, displayOrder: 0 });
     expect(res.body.data.customFields).toMatchObject({ weight_g: 480, pieces: '30 pcs', featured: true });
-    expect(res.body.data.customFieldDefinitions.find((d) => d.fieldKey === 'weight_g')).toMatchObject({ label: 'Weight', dataType: 'number' });
+    expect(res.body.data.customFieldDefinitions.find((d) => d.fieldKey === 'weight_g')).toMatchObject({ label: 'Net weight', dataType: 'number' });
   });
 
   test('unknown product → HTTP 200 with success:false', async () => {

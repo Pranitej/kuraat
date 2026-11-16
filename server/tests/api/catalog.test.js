@@ -51,8 +51,15 @@ describe('catalogue', () => {
     const res = await get(`/products/${PRODUCT_IDS.classic}`);
     expect(res.body.images).toHaveLength(3);
     expect(res.body.subtitle).toBe('Signature gift box · Contains milk, nuts');
-    expect(res.body.details.map((d) => d.label)).toEqual(['Weight', 'Pieces', 'Dimensions', 'Shelf life', 'Storage', 'Allergens', 'Ingredients']);
+    expect(res.body.details.map((d) => d.label)).toEqual(['Net weight', 'Pieces', 'Dimensions (L × W × H)', 'Shelf life', 'Storage']);
     expect(res.body.details[0].value).toBe('480 g');
+    expect(res.body.highlights).toEqual([
+      { label: 'Weight', value: '480 g' },
+      { label: 'Pieces', value: '30 pcs' },
+      { label: 'Dimensions', value: '32 × 14 × 5 cm' },
+    ]);
+    expect(res.body.ingredients).toMatch(/^Chocolate, cream/);
+    expect(res.body.allergens).toEqual(['Milk', 'Nuts', 'Soy', 'May contain gluten']);
   });
 
   test('inactive or unknown product → 404 not_found', async () => {

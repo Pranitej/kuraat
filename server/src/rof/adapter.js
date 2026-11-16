@@ -3,7 +3,7 @@
  * client.js that knows ROF field names. If UAT's replies differ from the guide, fix them here.
  */
 import { MAX_ITEM_QTY } from '../config/business.js';
-import { FIELD_MAP, PLACEMENT_ONLY_KEYS } from './fields.js';
+import { FIELD_MAP, HIGHLIGHTS, PLACEMENT_ONLY_KEYS } from './fields.js';
 
 const isBlank = (v) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
 
@@ -21,6 +21,13 @@ function formatFieldValue(key, value) {
   if (key === FIELD_MAP.weight && typeof value === 'number') return `${value} g`;
   if (Array.isArray(value)) return value.join(', ');
   return String(value).trim();
+}
+
+/** "Milk, Nuts" or ["Milk", "Nuts"] → ["Milk", "Nuts"] (blanks dropped). */
+function listValue(value) {
+  if (isBlank(value)) return [];
+  const items = Array.isArray(value) ? value : String(value).split(',');
+  return items.map((v) => String(v).trim()).filter(Boolean);
 }
 
 function piecesText(value) {
@@ -75,6 +82,12 @@ export function toProduct(raw, { baseUrl }) {
     subtitle: isBlank(fields[FIELD_MAP.subtitle]) ? null : String(fields[FIELD_MAP.subtitle]).trim(),
     badge: isBlank(fields[FIELD_MAP.badge]) ? null : String(fields[FIELD_MAP.badge]).trim(),
     featured: fields[FIELD_MAP.featured] === true || fields[FIELD_MAP.featured] === 'true',
+    highlights: HIGHLIGHTS.filter((h) => !isBlank(fields[h.key])).map((h) => ({
+      label: h.label,
+      value: h.key === FIELD_MAP.pieces ? piecesText(fields[h.key]) : formatFieldValue(h.key, fields[h.key]),
+    })),
+    ingredients: isBlank(fields[FIELD_MAP.ingredients]) ? null : String(fields[FIELD_MAP.ingredients]).trim(),
+    allergens: listValue(fields[FIELD_MAP.allergens]),
     details,
   };
 }

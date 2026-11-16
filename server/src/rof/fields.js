@@ -16,7 +16,20 @@ export const FIELD_MAP = {
   badge: 'badge',
   /** true on the product shown in the Home hero. */
   featured: 'featured',
+  /** "32 × 14 × 5 cm" — third tile on the product page (also a detail row). */
+  dimensions: 'dimensions',
+  /** Text for the "Ingredients & allergens" section. */
+  ingredients: 'ingredients',
+  /** Comma-separated text or a list — the allergen tags in that section. */
+  allergens: 'allergens',
 };
 
-/** Keys used for placement only — never shown as plain detail rows. */
-export const PLACEMENT_ONLY_KEYS = [FIELD_MAP.subtitle, FIELD_MAP.badge, FIELD_MAP.featured];
+/** The three tiles under the product title (PDF screen 09), in this order; missing ones are left out. */
+export const HIGHLIGHTS = [
+  { key: FIELD_MAP.weight, label: 'Weight' },
+  { key: FIELD_MAP.pieces, label: 'Pieces' },
+  { key: FIELD_MAP.dimensions, label: 'Dimensions' },
+];
+
+/** Keys with their own place on the product page — never shown as plain detail rows. */
+export const PLACEMENT_ONLY_KEYS = [FIELD_MAP.subtitle, FIELD_MAP.badge, FIELD_MAP.featured, FIELD_MAP.ingredients, FIELD_MAP.allergens];

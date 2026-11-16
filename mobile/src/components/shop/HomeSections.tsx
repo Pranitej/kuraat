@@ -97,7 +97,7 @@ export function SearchBar({
   );
 }
 
-type Chip = { id: string; label: string };
+type ChipOption = { id: string; label: string };
 
 /** Sort + category sheet from the filter button (derived from the chip styling). */
 export function FilterSheet({
@@ -110,7 +110,7 @@ export function FilterSheet({
 }: {
   open: boolean;
   onClose: () => void;
-  categories: Chip[];
+  categories: ChipOption[];
   category: string;
   sort: string;
   onApply: (f: { category: string; sort: string }) => void;
@@ -135,7 +135,7 @@ export function FilterSheet({
         Sort by
       </Text>
       <View style={styles.wrap}>
-        {SORT_OPTIONS.map((o: Chip) => (
+        {SORT_OPTIONS.map((o: ChipOption) => (
           <Chip key={o.id} active={sort === o.id} onPress={() => onApply({ category, sort: o.id })}>
             {o.label}
           </Chip>

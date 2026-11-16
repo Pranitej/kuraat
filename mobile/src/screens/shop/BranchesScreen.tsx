@@ -24,6 +24,12 @@ export default function BranchesScreen() {
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('All');
   const [selected, setSelected] = useState<string | null>(params.branch ?? null);
+  // A new ?branch= while this screen is open selects that branch (adjusting state during render).
+  const [linked, setLinked] = useState(params.branch);
+  if (params.branch !== linked) {
+    setLinked(params.branch);
+    if (params.branch) setSelected(params.branch);
+  }
   const scroll = useRef<ScrollViewInstance>(null);
   const listY = useRef(0);
   const cardY = useRef<Record<string, number>>({});
@@ -43,10 +49,9 @@ export default function BranchesScreen() {
       if (y != null) scroll.current?.scrollTo({ y: Math.max(0, listY.current + y - 120), animated: true });
     }, delay);
 
-  // "View branch details" / branch cards open with ?branch=: highlight it and bring it into view.
+  // "View branch details" / branch cards open with ?branch=: bring it into view once laid out.
   useEffect(() => {
     if (!params.branch) return undefined;
-    setSelected(params.branch);
     const t = scrollTo(params.branch, 300);
     return () => clearTimeout(t);
   }, [params.branch]);

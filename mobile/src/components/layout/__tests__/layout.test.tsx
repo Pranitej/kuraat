@@ -9,7 +9,6 @@ jest.mock('@react-native-community/netinfo', () => ({ useNetInfo: jest.fn() }));
 jest.mock('expo-router', () => ({
   useRouter: () => ({ canGoBack: () => true, back: mockBack, replace: jest.fn() }),
   // jest.mock factories cannot use imports; runs the effect once like a focused screen.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   useFocusEffect: (fn: () => void | (() => void)) => require('react').useEffect(fn, []),
 }));
 const mockBack = jest.fn();

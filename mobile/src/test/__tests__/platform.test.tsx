@@ -7,12 +7,10 @@ describe('Arabic-language phones and large text (review focus 4)', () => {
     const calls: string[] = [];
     jest.isolateModules(() => {
       // A fresh module registry: spy on the React Native instance the layout will use.
-      /* eslint-disable @typescript-eslint/no-require-imports */
       const { I18nManager: fresh } = require('react-native') as { I18nManager: typeof I18nManager };
       jest.spyOn(fresh, 'allowRTL').mockImplementation((v: boolean) => void calls.push(`allowRTL(${v})`));
       jest.spyOn(fresh, 'forceRTL').mockImplementation((v: boolean) => void calls.push(`forceRTL(${v})`));
       require('@/app/_layout');
-      /* eslint-enable @typescript-eslint/no-require-imports */
     });
     expect(calls).toEqual(['allowRTL(false)', 'forceRTL(false)']);
   });

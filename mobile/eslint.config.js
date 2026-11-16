@@ -27,4 +27,9 @@ module.exports = defineConfig([
       'react-hooks/refs': 'warn',
     },
   },
+  {
+    // jest.mock factories must require() their replacement modules.
+    files: ['**/*.test.ts', '**/*.test.tsx', 'src/test/**'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
 ]);

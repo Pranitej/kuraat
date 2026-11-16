@@ -54,15 +54,15 @@ export function useAsyncAction<E = Error>() {
 }
 
 /**
- * Android back on screens after an order (Payment successful, Order confirmed): go Home instead of
- * back into Payment.
+ * Android back on screens after an order (Payment successful, Order confirmed): back to the Home
+ * already in the stack (or a fresh one) instead of back into Payment.
  */
 export function useBackToHome(): void {
   const router = useRouter();
   useFocusEffect(
     useCallback(() => {
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        router.replace('/home');
+        router.dismissTo('/home');
         return true;
       });
       return () => sub.remove();

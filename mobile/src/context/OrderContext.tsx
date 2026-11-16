@@ -16,7 +16,8 @@ const whenActive = (fn: () => void) => () => {
 export type PlaceOrderInput = {
   addressId: string;
   deliveryPhone: string;
-  payment: { method: PaymentMethod } & Record<string, unknown>;
+  /** Built by the shared toPaymentBody (orderService.js). */
+  payment: { method: string } & Record<string, unknown>;
   idempotencyKey: string;
 };
 

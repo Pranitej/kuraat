@@ -7,6 +7,7 @@ import type { ReactElement } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProviders } from '@/context/AppProviders';
+import { useAuth } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { tokenStore } from '@/lib/storage.js';
 import { jestFetch, type FetchCall } from './jestFetch';
@@ -91,6 +92,11 @@ export function fakeServer(extra: (c: FetchCall) => Reply = () => undefined) {
   });
 }
 
+/** Like the app's guarded routes: a screen mounts only once the stored session has been checked. */
+function SessionChecked({ children }: { children: ReactElement }) {
+  return useAuth().status === 'ready' ? children : null;
+}
+
 const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
 
 /**
@@ -105,7 +111,9 @@ export async function renderScreen(ui: ReactElement, { signedIn = true, server =
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider initialMetrics={metrics}>
         <ToastProvider>
-          <AppProviders>{ui}</AppProviders>
+          <AppProviders>
+            <SessionChecked>{ui}</SessionChecked>
+          </AppProviders>
         </ToastProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>,

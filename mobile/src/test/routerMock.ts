@@ -12,6 +12,7 @@ export const mockRouter = {
   navigate: jest.fn(),
   back: jest.fn(),
   dismissAll: jest.fn(),
+  dismissTo: jest.fn(),
   setParams: jest.fn(),
   canGoBack: jest.fn(() => true),
 };

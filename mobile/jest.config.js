@@ -6,6 +6,11 @@ module.exports = {
   resolver: '<rootDir>/jest.resolver.js',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    // Same in-memory fakes as the logic tests (vitest.config.mjs) for the device stores.
+    '^expo-sqlite/kv-store$': '<rootDir>/src/test/fakes/kvStore.ts',
+    '^expo-secure-store$': '<rootDir>/src/test/fakes/secureStore.ts',
+    '^expo-constants$': '<rootDir>/src/test/fakes/constants.ts',
+    '^expo-crypto$': '<rootDir>/src/test/fakes/crypto.ts',
     // Lucide ships ESM (.mjs) for bundlers; Jest uses its CommonJS build.
     '^lucide-react-native/icons/(.*)$': '<rootDir>/node_modules/lucide-react-native/dist/cjs/icons/$1.js',
     '^lucide-react-native$': '<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js',
@@ -13,6 +18,6 @@ module.exports = {
     '(^|/)installUIRuntimeBindings$': '<rootDir>/src/test/stubs/installUIRuntimeBindings.js',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@shopify/flash-list|lucide-react-native|react-native-svg)',
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@shopify/flash-list|lucide-react-native|react-native-svg|standard-navigation)',
   ],
 };

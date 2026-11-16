@@ -18,4 +18,13 @@ module.exports = defineConfig([
       'src/hooks/useDeliveryQuote.js',
     ],
   },
+  {
+    // The data providers mirror the web app's on purpose (same reset-on-sign-out effects and
+    // ref-based sync callbacks), so these two React Compiler advisories are warnings here.
+    files: ['src/context/**', 'src/hooks/**'],
+    rules: {
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/refs': 'warn',
+    },
+  },
 ]);

@@ -4,6 +4,7 @@ import {
   toBranch,
   toCategory,
   toCreatedOrder,
+  toOrderItems,
   toOrderSnapshot,
   toProduct,
   toRofOrderPayload,
@@ -202,6 +203,11 @@ describe('other mappings', () => {
     expect(
       toTimeline([{ statusFrom: 'Created', statusTo: 'AssignedToBranch', statusToLabel: 'Assigned To Branch', createdOn: '2026-11-15T12:21:00Z' }]),
     ).toEqual([{ status: 'AssignedToBranch', at: '2026-11-15T12:21:00Z' }]);
+  });
+
+  test('order items (GET /api/orders/{id} products) → [{ productId, qty }]', () => {
+    expect(toOrderItems({ products: [{ productId: 'p1', productName: 'X', quantity: 2 }] })).toEqual([{ productId: 'p1', qty: 2 }]);
+    expect(toOrderItems({})).toEqual([]);
   });
 });
 

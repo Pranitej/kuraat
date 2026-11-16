@@ -154,5 +154,8 @@ export const toOrderSnapshot = (raw) => ({
   createdAt: raw.createdOn ?? null,
 });
 
+/** GET /api/orders/{id} products (guide §9.1) → [{ productId, qty }]. */
+export const toOrderItems = (raw) => (raw.products || []).map((p) => ({ productId: p.productId, qty: Number(p.quantity) }));
+
 /** GET /api/orders/{id}/timeline (guide §9.2, oldest first) → [{ status, at }]. */
 export const toTimeline = (rows = []) => rows.map((r) => ({ status: r.statusTo, at: r.createdOn }));

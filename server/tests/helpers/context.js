@@ -31,7 +31,8 @@ export async function truncateAll(db) {
   await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 }
 
-export async function createTestContext({ configOverrides = {}, withRof = false, rofTimeoutMs = 2000 } = {}) {
+/** rofData: the fake ROF's starting state (default: the seed without the demo orders). */
+export async function createTestContext({ configOverrides = {}, withRof = false, rofTimeoutMs = 2000, rofData } = {}) {
   const base = loadConfig(process.env);
   const clock = createFakeClock();
   let mockRof = null;
@@ -40,7 +41,7 @@ export async function createTestContext({ configOverrides = {}, withRof = false,
   let config = { ...base, ...configOverrides, databaseUrl: base.testDatabaseUrl };
 
   if (withRof) {
-    mockRof = createMockRofHarness({ now: () => clock.now() });
+    mockRof = createMockRofHarness({ now: () => clock.now(), ...(rofData ? { data: rofData } : {}) });
     rofServer = await mockRof.listen();
     const { email, password } = mockRof.store.data.credentials;
     config = { ...config, rof: { ...config.rof, baseUrl: rofServer.baseUrl, email, password, timeoutMs: rofTimeoutMs } };

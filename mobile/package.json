@@ -2,7 +2,7 @@
   "name": "kuraat-mobile",
   "version": "1.0.0",
   "private": true,
-  "description": "kuraat — React Native (Expo) customer app for Android and iOS. Independent app: install, run and build from this folder.",
+  "description": "kuraat â€” React Native (Expo) customer app for Android and iOS. Independent app: install, run and build from this folder.",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -45,7 +45,7 @@
     "expo-updates": "~58.0.22",
     "lucide-react-native": "^1.73.0",
     "react": "19.3.0",
-    "react-dom": "^19.3.0",
+    "react-dom": "19.3.0",
     "react-native": "0.88.1",
     "react-native-gesture-handler": "~3.3.0",
     "react-native-keyboard-controller": "1.22.7",

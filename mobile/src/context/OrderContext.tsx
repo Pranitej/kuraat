@@ -3,7 +3,7 @@ import { orderStatusView } from '@/domain';
 import { isAppActive, useAppActive } from '@/hooks/appState';
 import { useNow } from '@/hooks';
 import * as api from '@/services/orderService.js';
-import type { Order, PaymentMethod } from '@/types/api';
+import type { Order } from '@/types/api';
 import { useAuth } from './AuthContext';
 
 const POLL_MS = 30_000;

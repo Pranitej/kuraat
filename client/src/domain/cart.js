@@ -22,6 +22,16 @@ export function lineWarning(line) {
   }
 }
 
+/**
+ * Stock wording for a delivery quote: the server says true/false when it checked per-branch stock
+ * and null when that check is off (then nothing is claimed — stock is confirmed at order time).
+ */
+export function quoteStockLabel(inStock) {
+  if (inStock === true) return 'In stock';
+  if (inStock === false) return 'Limited stock';
+  return null;
+}
+
 /** Lines that cannot be ordered stop checkout until they are removed. */
 export const isCartBlocked = (lines) => lines.some((l) => BLOCKING.includes(l.warning));
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { cartLines, isCartBlocked, lineWarning } from './cart.js';
+import { cartLines, isCartBlocked, lineWarning, quoteStockLabel } from './cart.js';
 
 describe('lineWarning', () => {
   test('explains each server warning', () => {
@@ -11,6 +11,15 @@ describe('lineWarning', () => {
 
   test('no warning → null', () => {
     expect(lineWarning({ warning: null, product: { price: 1 } })).toBeNull();
+  });
+});
+
+describe('quoteStockLabel', () => {
+  test('known stock says so; unknown stock (check off on the server) says nothing', () => {
+    expect(quoteStockLabel(true)).toBe('In stock');
+    expect(quoteStockLabel(false)).toBe('Limited stock');
+    expect(quoteStockLabel(null)).toBeNull();
+    expect(quoteStockLabel(undefined)).toBeNull();
   });
 });
 

@@ -6,7 +6,7 @@ import BottomBar from '@/components/layout/BottomBar.jsx';
 import { BackButton } from '@/components/layout/ScreenHeader.jsx';
 import { FavoriteButton } from '@/components/shop/ProductCard.jsx';
 import DeliveryFromCard from '@/components/shop/DeliveryFromCard.jsx';
-import { formatSAR, formatWindow } from '@/domain';
+import { formatSAR, formatWindow, quoteStockLabel } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useCart } from '@/context/CartContext.jsx';
 import { useCatalog } from '@/context/CatalogContext.jsx';
@@ -90,7 +90,7 @@ export default function ProductDetailPage() {
   const openZoom = (i = active) => navigate(ROUTES.productPhotos(product.id, i));
 
   const deliveryMeta = delivery
-    ? [delivery.isNearest ? 'Closest to you' : `${delivery.distanceKm} km away`, delivery.inStock ? 'In stock' : 'Limited stock', formatWindow(delivery.window.start, delivery.window.end, new Date(), { long: false })].join(' · ')
+    ? [delivery.isNearest ? 'Closest to you' : `${delivery.distanceKm} km away`, quoteStockLabel(delivery.inStock), formatWindow(delivery.window.start, delivery.window.end, new Date(), { long: false })].filter(Boolean).join(' · ')
     : null;
   const inCart = quantityOf(product.id);
 

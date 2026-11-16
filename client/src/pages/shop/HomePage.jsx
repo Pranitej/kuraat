@@ -129,7 +129,7 @@ export default function HomePage() {
               compact
               icon={CloudOff}
               title="We can't reach the store right now"
-              message={catalog.error?.message || 'Please try again in a moment.'}
+              message={catalog.error?.code === 'network' ? catalog.error.message : 'Please try again in a moment.'}
               actionLabel="Try again"
               onAction={catalog.refresh}
             />

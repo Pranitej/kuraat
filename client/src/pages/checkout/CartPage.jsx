@@ -15,7 +15,7 @@ import { cn } from '@/lib/cn.js';
 
 function availabilityText(count, delivery) {
   const lead = count === 1 ? 'This item is' : count === 2 ? 'Both items are' : `All ${count} items are`;
-  if (!delivery.inStock) return [`Some items are limited at `, `. We will confirm stock with the branch at checkout.`];
+  if (delivery.inStock === false) return [`Some items are limited at `, `. We will confirm stock with the branch at checkout.`];
   return [`${lead} available at `, delivery.isNearest ? ', your nearest branch. Stock is confirmed at checkout.' : ', the nearest branch with everything in stock. Stock is confirmed at checkout.'];
 }
 
@@ -92,7 +92,13 @@ export default function CartPage() {
     return (
       <div className="mx-auto max-w-column lg:max-w-[1080px] lg:px-8">
         {header}
-        <EmptyState icon={CloudOff} title="We can't reach the store right now" message={error?.message} actionLabel="Try again" onAction={reload} />
+        <EmptyState
+          icon={CloudOff}
+          title="We can't reach the store right now"
+          message={error?.code === 'network' ? error.message : 'Please try again in a moment.'}
+          actionLabel="Try again"
+          onAction={reload}
+        />
       </div>
     );
   }

@@ -31,27 +31,38 @@ export function toDate(value) {
   return value instanceof Date ? value : new Date(value);
 }
 
+/** Saudi Arabia is UTC+3 all year (no daylight saving); every time in the app is shown in it. */
+const SAUDI_OFFSET_MINUTES = 180;
+const DAY_MS = 24 * 3600 * 1000;
+
+/**
+ * The same instant moved so that the local getters (getHours, getDate…) read Saudi wall time,
+ * whatever the device's own time zone. Only for reading parts — never send it to the server.
+ */
+export function saudiDate(value) {
+  const d = toDate(value);
+  return new Date(d.getTime() + (SAUDI_OFFSET_MINUTES + d.getTimezoneOffset()) * 60 * 1000);
+}
+
 export function isSameDay(a, b) {
-  const x = toDate(a);
-  const y = toDate(b);
+  const x = saudiDate(a);
+  const y = saudiDate(b);
   return x.getFullYear() === y.getFullYear() && x.getMonth() === y.getMonth() && x.getDate() === y.getDate();
 }
 
 export function isYesterday(date, now = new Date()) {
-  const y = new Date(now);
-  y.setDate(y.getDate() - 1);
-  return isSameDay(date, y);
+  return isSameDay(date, new Date(toDate(now).getTime() - DAY_MS));
 }
 
 /** 24h clock "12:21" — as used across the PDF. */
 export function formatTime(value) {
-  const d = toDate(value);
+  const d = saudiDate(value);
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /** 12h clock without minutes when on the hour: "5 PM", "4:30 PM", "12 AM". */
 export function formatTime12(value, { compact = true } = {}) {
-  const d = toDate(value);
+  const d = saudiDate(value);
   const h = d.getHours();
   const m = d.getMinutes();
   const suffix = h >= 12 ? 'PM' : 'AM';
@@ -62,13 +73,13 @@ export function formatTime12(value, { compact = true } = {}) {
 
 /** "15 Nov 2026" */
 export function formatDate(value) {
-  const d = toDate(value);
+  const d = saudiDate(value);
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 /** "8 Nov" */
 export function formatDayMonth(value) {
-  const d = toDate(value);
+  const d = saudiDate(value);
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
@@ -93,16 +104,16 @@ export function formatNotificationTime(value, now = new Date()) {
 
 /** Delivery window: "Today, 5:00 – 7:00 PM" / "Tomorrow, 12:00 – 2:00 PM". */
 export function formatWindow(start, end, now = new Date(), { long = true } = {}) {
-  const s = toDate(start);
-  const e = toDate(end);
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const day = isSameDay(s, now) ? 'Today' : isSameDay(s, tomorrow) ? 'Tomorrow' : formatDayMonth(s);
+  const tomorrow = new Date(toDate(now).getTime() + DAY_MS);
+  const day = isSameDay(start, now) ? 'Today' : isSameDay(start, tomorrow) ? 'Tomorrow' : formatDayMonth(start);
+  // Read hours in Saudi time below.
+  const s = saudiDate(start);
+  const e = saudiDate(end);
   if (!long) {
     // "Today, 5 – 7 PM"
     const sameSuffix = (s.getHours() >= 12) === (e.getHours() >= 12 || e.getHours() === 0);
-    const startLabel = sameSuffix ? formatTime12(s).replace(/ (AM|PM)$/, '') : formatTime12(s);
-    return `${day}, ${startLabel} – ${formatTime12(e)}`;
+    const startLabel = sameSuffix ? formatTime12(start).replace(/ (AM|PM)$/, '') : formatTime12(start);
+    return `${day}, ${startLabel} – ${formatTime12(end)}`;
   }
   const h12 = (d) => (d.getHours() % 12 === 0 ? 12 : d.getHours() % 12);
   return `${day}, ${h12(s)}:${pad(s.getMinutes())} – ${h12(e)}:${pad(e.getMinutes())} ${e.getHours() >= 12 ? 'PM' : 'AM'}`;

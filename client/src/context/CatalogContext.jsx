@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { listCategories, listProducts } from '@/services/catalogService.js';
+import { getProductDetail, listCategories, listProducts } from '@/services/catalogService.js';
 import { useAuth } from './AuthContext.jsx';
 
 const CatalogContext = createContext(null);
@@ -13,7 +13,18 @@ const EMPTY = { products: [], categories: [], status: 'loading', error: null };
 export function CatalogProvider({ children }) {
   const { isAuthenticated } = useAuth();
   const [state, setState] = useState(EMPTY);
+  const [full, setFull] = useState({}); // id → full product (with detail rows) or null when gone
   const loadedAt = useRef(0);
+
+  /** Product page: fetch the full product once per session (the list copy shows meanwhile). */
+  const loadProduct = useCallback(async (id) => {
+    try {
+      const product = await getProductDetail(id);
+      setFull((f) => ({ ...f, [id]: product }));
+    } catch (error) {
+      if (error.code === 'not_found') setFull((f) => ({ ...f, [id]: null }));
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setState((s) => ({ ...s, status: s.products.length ? 'ready' : 'loading', error: null }));
@@ -30,6 +41,7 @@ export function CatalogProvider({ children }) {
     if (!isAuthenticated) {
       loadedAt.current = 0;
       setState(EMPTY);
+      setFull({});
       return undefined;
     }
     load();
@@ -42,8 +54,9 @@ export function CatalogProvider({ children }) {
 
   const value = useMemo(() => {
     const byId = new Map(state.products.map((p) => [p.id, p]));
-    return { ...state, refresh: load, getProduct: (id) => byId.get(id) || null };
-  }, [state, load]);
+    const getProduct = (id) => (id in full ? full[id] : byId.get(id) || null);
+    return { ...state, refresh: load, getProduct, loadProduct };
+  }, [state, full, load, loadProduct]);
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
 }

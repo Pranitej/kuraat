@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, Maximize, PackageSearch, ShoppingBag, ZoomIn } from 'lucide-react';
 import { Button, Card, EmptyState, IconButton, QuantityStepper, Skeleton, Tag } from '@/components/ui';
@@ -47,6 +47,10 @@ export default function ProductDetailPage() {
   const { productId } = useParams();
   const catalog = useCatalog();
   const product = catalog.getProduct(productId);
+  const { loadProduct } = catalog;
+  useEffect(() => {
+    loadProduct(productId);
+  }, [productId, loadProduct]);
   useDocumentTitle(product?.name || 'Product');
   const navigate = useNavigate();
   const goBack = useGoBack(ROUTES.home);

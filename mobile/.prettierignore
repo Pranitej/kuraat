@@ -1,0 +1,11 @@
+# Shared byte-for-byte with ../client (see parity.json) — formatted there, never here.
+src/domain/
+src/services/
+src/test/stubFetch.js
+src/theme/tokens.js
+src/config/routes.js
+src/config/options.js
+src/hooks/useDeliveryQuote.js
+node_modules/
+.expo/
+.export-check/

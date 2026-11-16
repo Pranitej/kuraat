@@ -1,13 +1,14 @@
-# kuraat — mobile (React Native)
+# kuraat — mobile (React Native, Expo)
 
-Reserved for the React Native app, which will be built after the web client demo is approved.
-This folder will be its own project (own `package.json`, assets and build tooling), independent of `client/` and `server/`.
+The kuraat customer app for **Android and iOS**, built with Expo SDK 58 (React Native 0.88, New Architecture).
+It talks to the same kuraat server API as the web app and shares its client logic file-for-file
+(see `../PARITY.md`). Independent app: install, run and build from this folder.
 
-Starting points:
+> Work in progress — the full run guide, structure and release checklist are written as the screens land.
 
-- **Design:** `../DESIGN_SYSTEM.md` (tokens, components, all 26 screens, navigation, restrictions) and the PDF.
-- **Tokens:** copy `../client/src/theme/tokens.js` (plain JS, no CSS).
-- **Business logic:** copy `../client/src/domain/` (pricing and VAT, delivery-branch selection, delivery slots,
-  order status, validation, formatting). It has no DOM or React dependencies.
-- **Assets:** logo and product photos in `../client/src/assets/images/`.
-- **API:** the endpoints described in `../server/README.md`.
+```bash
+cd mobile
+npm install
+cp .env.example .env     # put your laptop's Wi-Fi IP in EXPO_PUBLIC_API_BASE_URL
+npx expo start           # scan the QR code with Expo Go (Android / iOS)
+```

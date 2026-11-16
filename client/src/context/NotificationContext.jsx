@@ -1,53 +1,61 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as api from '@/services/notificationService.js';
-import { getDb } from '@/services/db.js';
 import { useAuth } from './AuthContext.jsx';
 import { useOrders } from './OrderContext.jsx';
 
 const NotificationContext = createContext(null);
+const POLL_MS = 30_000;
 
-const sortList = (list) => [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
+/**
+ * The customer's notifications (newest first). Refreshed on sign-in, every 30 s while the tab is
+ * visible, and whenever an order's status changes (the server notifies about those).
+ */
 export function NotificationProvider({ children }) {
   const { user } = useAuth();
   const userId = user?.id;
-  const { orders, now } = useOrders();
-  const [items, setItems] = useState(() => (userId ? sortList(getDb().notifications?.[userId] || []) : []));
+  const { orders } = useOrders();
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const statusKey = orders.map((o) => `${o.id}:${o.status.id}`).join('|');
 
   const refresh = useCallback(async () => {
-    if (!userId) return setItems([]);
-    setLoading(true);
-    try {
-      setItems(await api.listNotifications(userId));
-    } finally {
-      setLoading(false);
-    }
-    return undefined;
-  }, [userId]);
-
-  // Refresh when the user changes, when orders change, and as the clock moves (status pushes)
-  useEffect(() => {
     if (!userId) {
       setItems([]);
       return;
     }
-    if (api.syncOrderNotifications(userId)) refresh();
-    else setItems(sortList(getDb().notifications?.[userId] || []));
-  }, [userId, orders, now, refresh]);
+    setLoading(true);
+    try {
+      setItems(await api.listNotifications());
+    } catch {
+      // keep the last list; the bell retries on the next poll
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
 
-  const markRead = useCallback(
-    async (id) => {
-      setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-      await api.markNotificationRead(userId, id);
-    },
-    [userId],
-  );
+  useEffect(() => {
+    setItems([]);
+    refresh();
+    if (!userId) return undefined;
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') refresh();
+    }, POLL_MS);
+    return () => clearInterval(t);
+  }, [userId, refresh]);
+
+  useEffect(() => {
+    if (statusKey) refresh();
+  }, [statusKey, refresh]);
+
+  const markRead = useCallback(async (id) => {
+    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    await api.markNotificationRead(id).catch(() => {});
+  }, []);
 
   const markAllRead = useCallback(async () => {
-    await api.markAllNotificationsRead(userId);
+    await api.markAllNotificationsRead();
     setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, [userId]);
+  }, []);
 
   const value = useMemo(
     () => ({ items, loading, refresh, markRead, markAllRead, unreadCount: items.filter((n) => !n.read).length }),

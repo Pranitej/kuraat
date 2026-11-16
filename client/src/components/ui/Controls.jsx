@@ -58,13 +58,13 @@ export function ChipRow({ children, className }) {
   );
 }
 
-/** Tag / badge (light: sand + maroon, dark: maroon + white). */
+/** Tag / badge (light: sand + maroon, dark: maroon + white, alert: hot pink — e.g. "Cancelled"). */
 export function Tag({ tone = 'light', icon: Icon, children, className }) {
   return (
     <span
       className={cn(
         'inline-flex h-6 shrink-0 items-center gap-1 whitespace-nowrap rounded-pill px-2.5 text-tag',
-        tone === 'dark' ? 'bg-maroon text-white' : 'bg-sand text-maroon',
+        tone === 'dark' ? 'bg-maroon text-white' : tone === 'alert' ? 'bg-hotpink/10 text-hotpink' : 'bg-sand text-maroon',
         className,
       )}
     >

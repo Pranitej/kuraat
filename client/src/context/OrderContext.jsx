@@ -1,25 +1,62 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { orderStatusView } from '@/domain';
 import * as api from '@/services/orderService.js';
 import { useAuth } from './AuthContext.jsx';
 import { useNow } from '@/hooks';
 
 const OrderContext = createContext(null);
+const POLL_MS = 30_000;
+const isOngoing = (o) => orderStatusView(o).ongoing;
+const whenVisible = (fn) => () => {
+  if (document.visibilityState === 'visible') fn();
+};
 
 /**
- * Orders from the server. `byId` keeps every order seen (placed, opened, listed) so screens show
- * it at once and refresh it in the background.
+ * The customer's orders from the server (status read live from RSOF). Every order seen — listed,
+ * placed or opened — is kept by id so screens show it at once and refresh it in the background.
+ * The list is re-read every 30 s while any order is still on its way.
  */
 export function OrderProvider({ children }) {
   const { user } = useAuth();
   const userId = user?.id;
   const [byId, setById] = useState({});
-  const now = useNow(30000);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(null);
+  const now = useNow(POLL_MS);
+
+  const upsert = useCallback((order) => setById((m) => ({ ...m, [order.id]: order })), []);
+
+  const refresh = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const list = await api.listOrders();
+      setById((m) => ({ ...m, ...Object.fromEntries(list.map((o) => [o.id, o])) }));
+      setError(null);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+      setLoaded(true);
+    }
+  }, [userId]);
 
   useEffect(() => {
     setById({});
-  }, [userId]);
+    setLoaded(false);
+    setError(null);
+    refresh();
+  }, [refresh]);
 
-  const upsert = useCallback((order) => setById((m) => ({ ...m, [order.id]: order })), []);
+  const orders = useMemo(() => Object.values(byId).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), [byId]);
+  const anyOngoing = orders.some(isOngoing);
+
+  useEffect(() => {
+    if (!anyOngoing) return undefined;
+    const t = setInterval(whenVisible(refresh), POLL_MS);
+    return () => clearInterval(t);
+  }, [anyOngoing, refresh]);
 
   const placeOrder = useCallback(
     async (input) => {
@@ -31,17 +68,8 @@ export function OrderProvider({ children }) {
   );
 
   const value = useMemo(
-    () => ({
-      // The order list moves to the server in the next step; until then it is empty.
-      orders: [],
-      loading: false,
-      refresh: async () => {},
-      placeOrder,
-      upsert,
-      now,
-      getById: (id) => byId[id] || null,
-    }),
-    [byId, placeOrder, upsert, now],
+    () => ({ orders, loading, loaded, error, refresh, placeOrder, upsert, now, getById: (id) => byId[id] || null }),
+    [orders, loading, loaded, error, refresh, placeOrder, upsert, now, byId],
   );
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;
@@ -53,7 +81,10 @@ export function useOrders() {
   return ctx;
 }
 
-/** One order: the copy already seen first, then fresh from the server (live RSOF status). */
+/**
+ * One order: the copy already seen first, then fresh from the server; re-read every 30 s while it
+ * is on its way (the tracking screen). Also cancel and delivery-code resend.
+ */
 export function useOrder(id) {
   const { getById, upsert } = useOrders();
   const order = getById(id);
@@ -73,5 +104,15 @@ export function useOrder(id) {
     refresh();
   }, [refresh]);
 
-  return { order, loading: state.loading && !order, error: state.error, refresh };
+  const ongoing = order ? isOngoing(order) : false;
+  useEffect(() => {
+    if (!ongoing) return undefined;
+    const t = setInterval(whenVisible(refresh), POLL_MS);
+    return () => clearInterval(t);
+  }, [ongoing, refresh]);
+
+  const cancel = useCallback(async () => upsert(await api.cancelOrder(id)), [id, upsert]);
+  const resendCode = useCallback(() => api.resendCode(id), [id]);
+
+  return { order, loading: state.loading && !order, error: state.error, refresh, cancel, resendCode };
 }

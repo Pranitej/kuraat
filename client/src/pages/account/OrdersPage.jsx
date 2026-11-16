@@ -4,7 +4,7 @@ import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import { Chip, EmptyState, Skeleton } from '@/components/ui';
 import { OrderCard } from '@/components/account/OrderParts.jsx';
 import { useOrders } from '@/context/OrderContext.jsx';
-import { orderStatus } from '@/domain';
+import { orderStatusView } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 
@@ -17,19 +17,22 @@ const FILTERS = [
 /** 20 · My orders  ·  21 · My orders (empty) */
 export default function OrdersPage() {
   useDocumentTitle('My orders');
-  const { orders, now, loading } = useOrders();
+  const { orders, now, loaded } = useOrders();
   const [filter, setFilter] = useState('all');
 
+  // Ongoing = not delivered and not cancelled; Delivered = delivered (cancelled orders: All only).
   const list = useMemo(
     () =>
       orders.filter((o) => {
-        const s = orderStatus(o, now);
-        return filter === 'all' || (filter === 'ongoing' ? s.ongoing : !s.ongoing);
+        const s = orderStatusView(o);
+        if (filter === 'ongoing') return s.ongoing;
+        if (filter === 'delivered') return s.step === 3 && !s.cancelled;
+        return true;
       }),
-    [orders, now, filter],
+    [orders, filter],
   );
 
-  const showEmpty = !orders.length && !loading;
+  const showEmpty = !orders.length && loaded;
 
   return (
     <div className="pb-10">
@@ -55,7 +58,7 @@ export default function OrdersPage() {
                 ))}
               </div>
               <div className="mt-4 flex flex-col gap-3">
-                {!orders.length && loading
+                {!orders.length && !loaded
                   ? [0, 1].map((i) => <Skeleton key={i} className="h-[220px] rounded-xl" />)
                   : list.map((o) => <OrderCard key={o.id} order={o} now={now} />)}
               </div>

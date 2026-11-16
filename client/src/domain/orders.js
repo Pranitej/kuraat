@@ -1,60 +1,39 @@
-/** Order status + timeline (pure). Status is derived from the order's schedule and the clock. */
-
+/**
+ * Order display helpers (pure) for the server's orders: status from RSOF folded into the four
+ * tracking steps (+ cancelled), with real or estimated times. Times are shown in Saudi time.
+ */
 import { formatDayMonth, formatTime, formatTime12, formatWindow, isSameDay } from './format.js';
+
+const DAY_MS = 24 * 3600 * 1000;
 
 /** '' for today, 'Tomorrow, ' or '8 Nov, ' otherwise. */
 function dayPrefix(value, now) {
   if (isSameDay(value, now)) return '';
-  const t = new Date(now);
-  t.setDate(t.getDate() + 1);
-  return isSameDay(value, t) ? 'Tomorrow, ' : `${formatDayMonth(value)}, `;
+  return isSameDay(value, new Date(new Date(now).getTime() + DAY_MS)) ? 'Tomorrow, ' : `${formatDayMonth(value)}, `;
 }
 
-export const ORDER_STATUS = {
-  confirmed: { id: 'confirmed', label: 'Confirmed', tone: 'dark', ongoing: true, step: 0 },
-  preparing: { id: 'preparing', label: 'Preparing', tone: 'dark', ongoing: true, step: 1 },
-  out_for_delivery: { id: 'out_for_delivery', label: 'Out for delivery', tone: 'dark', ongoing: true, step: 2 },
-  delivered: { id: 'delivered', label: 'Delivered', tone: 'light', ongoing: false, step: 3 },
-};
-
-export function orderStatus(order, now = new Date()) {
-  const t = now.getTime();
-  const at = (k) => new Date(order.schedule[k]).getTime();
-  if (t >= at('deliveredAt')) return ORDER_STATUS.delivered;
-  if (t >= at('outForDeliveryAt')) return ORDER_STATUS.out_for_delivery;
-  if (t >= at('preparingAt')) return ORDER_STATUS.preparing;
-  return ORDER_STATUS.confirmed;
+/** { id, label, step, cancelled, ongoing, tone } — tone for the status tag (dark · light · alert). */
+export function orderStatusView(order) {
+  const { id, label, step = 0, cancelled = false } = order.status;
+  return { id, label, step, cancelled, ongoing: !cancelled && step < 3, tone: cancelled ? 'alert' : step >= 3 ? 'light' : 'dark' };
 }
 
-/** Timeline rows for the order detail screen (PDF screen 22). */
-export function orderTimeline(order, now = new Date()) {
-  const status = orderStatus(order, now);
-  const s = order.schedule;
-  const state = (step) => (status.step > step ? 'done' : status.step === step ? 'current' : 'todo');
-  const steps = [
-    { id: 'confirmed', title: 'Order confirmed', time: `${dayPrefix(s.createdAt, now)}${formatTime(s.createdAt)}`, state: 'done' },
-    {
-      id: 'preparing',
-      title: 'Preparing at the branch',
-      time: status.step >= 1 ? `${dayPrefix(s.preparingAt, now)}${formatTime(s.preparingAt)}` : `Estimated ${dayPrefix(s.preparingAt, now)}${formatTime(s.preparingAt)}`,
-      state: state(1),
-    },
-    {
-      id: 'out_for_delivery',
-      title: 'Out for delivery',
-      time: status.step >= 2 ? `${dayPrefix(s.outForDeliveryAt, now)}${formatTime(s.outForDeliveryAt)}` : `Estimated ${dayPrefix(s.outForDeliveryAt, now)}${formatTime12(s.outForDeliveryAt, { compact: false })}`,
-      state: state(2),
-    },
-    {
-      id: 'delivered',
-      title: 'Delivered',
-      time: status.step >= 3 ? `${dayPrefix(s.deliveredAt, now)}${formatTime(s.deliveredAt)}` : `Estimated ${formatWindow(s.windowStart, s.windowEnd, now).replace(/^Today, /, '')}`,
-      state: status.step >= 3 ? 'done' : 'todo',
-    },
-  ];
-  // When delivered, every step is done
-  if (status.step >= 3) steps.forEach((st) => (st.state = 'done'));
-  return steps;
+function stepTime(s, now) {
+  if (!s.time) return '';
+  const prefix = dayPrefix(s.time, now);
+  if (!s.estimated) return `${prefix}${formatTime(s.time)}`;
+  if (s.id === 'delivered' && s.timeEnd) return `Estimated ${formatWindow(s.time, s.timeEnd, now).replace(/^Today, /, '')}`;
+  if (s.id === 'out_for_delivery') return `Estimated ${prefix}${formatTime12(s.time, { compact: false })}`;
+  return `Estimated ${prefix}${formatTime(s.time)}`;
+}
+
+/** Rows for the tracking timeline (PDF screen 22); a cancelled order ends with "Order cancelled". */
+export function orderTimelineView(order, now = new Date()) {
+  const rows = order.steps.map((s) => ({ id: s.id, title: s.title, state: s.state, time: stepTime(s, now) }));
+  if (!order.status.cancelled) return rows;
+  const reached = rows.filter((r) => r.state !== 'todo');
+  const at = order.cancelledAt;
+  return [...reached, { id: 'cancelled', title: 'Order cancelled', state: 'cancelled', time: at ? `${dayPrefix(at, now)}${formatTime(at)}` : '' }];
 }
 
 export function orderItemCount(order) {

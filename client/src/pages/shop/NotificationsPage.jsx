@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BellOff, CreditCard, Gift, Lock, Package, Tag, Truck } from 'lucide-react';
+import { BellOff, CreditCard, Gift, Lock, Package, PackageX, Tag, Truck } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import { EmptyState, Spinner } from '@/components/ui';
 import { useNotifications } from '@/context/NotificationContext.jsx';
@@ -17,6 +17,7 @@ const ICONS = {
   out_for_delivery: Truck,
   product: Tag,
   security: Lock,
+  cancelled: PackageX,
 };
 
 /** 26 · Notifications */

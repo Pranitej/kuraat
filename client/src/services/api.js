@@ -17,6 +17,8 @@ export { API_BASE_URL };
 
 const NETWORK_MESSAGE = "We can't reach kuraat right now. Check your connection and try again.";
 const GENERIC_MESSAGE = 'Something went wrong. Please try again.';
+/** A request that gets no answer in this time fails as `network` (an unreachable server never hangs the app). */
+export const REQUEST_TIMEOUT_MS = 15_000;
 
 export class ApiError extends Error {
   constructor(message, { code = 'error', field = null, status = 0 } = {}) {
@@ -59,16 +61,35 @@ function endSession() {
 
 /* ---------------- Requests ---------------- */
 
-async function send(path, { method = 'GET', body, signal, token }) {
+async function send(path, { method = 'GET', body, signal, token, timeoutMs = REQUEST_TIMEOUT_MS }) {
   const headers = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
+  // Our own controller: aborts on the caller's signal (passed through as AbortError) or on the
+  // time limit (reported as a network failure).
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  const forwardAbort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener('abort', forwardAbort, { once: true });
   let res;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal });
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
+    });
   } catch (error) {
-    if (error?.name === 'AbortError') throw error;
+    if (error?.name === 'AbortError' && !timedOut) throw error;
     throw new ApiError(NETWORK_MESSAGE, { code: 'network' });
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', forwardAbort);
   }
   if (res.status === 204) return null;
   let data = null;
@@ -107,7 +128,8 @@ function refreshSession() {
 
 /**
  * @param {string} path  e.g. '/cart' (relative to API_BASE_URL)
- * @param {{ method?: string, body?: any, signal?: AbortSignal }} [options]
+ * @param {{ method?: string, body?: any, signal?: AbortSignal, timeoutMs?: number }} [options]
+ *   timeoutMs: how long to wait for an answer (default REQUEST_TIMEOUT_MS)
  */
 export async function apiRequest(path, options = {}) {
   const token = getTokens()?.accessToken ?? null;

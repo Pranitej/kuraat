@@ -38,6 +38,14 @@ describe('09/10 · Product detail', () => {
     await waitFor(() => expect(calls.find((c) => c.path === '/favorites' && c.method === 'PUT')?.body).toEqual({ productIds: ['p1'] }));
   });
 
+  test('on a tablet the photos fill the 640 pt column, not the whole window', async () => {
+    const dims = jest.spyOn(require('react-native'), 'useWindowDimensions').mockReturnValue({ width: 1024, height: 1366, scale: 2, fontScale: 1 });
+    await renderScreen(<ProductDetailScreen />);
+    const photo = await screen.findByTestId('hero-photo-0');
+    expect(photo.props.style).toMatchObject({ width: 640 });
+    dims.mockRestore();
+  });
+
   test('Read more shows the full description', async () => {
     await renderScreen(<ProductDetailScreen />);
     await fireEvent.press(await screen.findByRole('button', { name: 'Read more' }));

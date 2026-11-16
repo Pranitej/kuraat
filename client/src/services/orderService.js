@@ -7,9 +7,16 @@ const path = (id) => `/orders/${encodeURIComponent(id)}`;
 export const listOrders = () => apiRequest('/orders');
 export const getOrder = (id) => apiRequest(path(id));
 
-/** Pays (simulated in UAT) and places the order for the server cart. Same key → same order. */
+/**
+ * Pays (simulated in UAT) and places the order for the server cart. Same key → same order, so a
+ * retry after a time-out is safe. Waits up to 60 s: the server may try RSOF more than once.
+ */
 export const placeOrder = ({ addressId, deliveryPhone, payment, idempotencyKey }) =>
-  apiRequest('/orders', { method: 'POST', body: { addressId, deliveryPhone: onlyDigits(deliveryPhone), payment, idempotencyKey } });
+  apiRequest('/orders', {
+    method: 'POST',
+    body: { addressId, deliveryPhone: onlyDigits(deliveryPhone), payment, idempotencyKey },
+    timeoutMs: 60_000,
+  });
 
 export const cancelOrder = (id) => apiRequest(`${path(id)}/cancel`, { method: 'POST' });
 

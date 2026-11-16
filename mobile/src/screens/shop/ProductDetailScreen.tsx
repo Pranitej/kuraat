@@ -107,7 +107,9 @@ export default function ProductDetailScreen() {
   const { productId } = useLocalSearchParams<{ productId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
+  // The gallery lives in the screen column (640 pt max on tablets), so pages are that wide.
+  const width = Math.min(windowWidth, layout.maxWidth);
   const catalog = useCatalog();
   const product = catalog.getProduct(productId);
   const { loadProduct } = catalog;
@@ -213,7 +215,7 @@ export default function ProductDetailScreen() {
               accessibilityRole="imagebutton"
               accessibilityLabel={`${product.name} — photo ${index + 1} of ${images.length}. Opens the photo viewer`}
             >
-              <Image source={{ uri: src }} style={{ width, height: heroHeight }} contentFit="cover" transition={150} />
+              <Image testID={`hero-photo-${index}`} source={{ uri: src }} style={{ width, height: heroHeight }} contentFit="cover" transition={150} />
             </Pressable>
           )}
         />

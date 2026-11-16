@@ -122,3 +122,47 @@ describe('expired access token', () => {
     expect(calls).toHaveLength(1);
   });
 });
+
+describe('requests that never answer', () => {
+  /** fetch that only settles when its signal aborts (an unreachable server on a phone's Wi-Fi). */
+  const hangingFetch = () =>
+    vi.fn(
+      (url, init = {}) =>
+        new Promise((_, reject) => {
+          init.signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+        }),
+    );
+
+  afterEach(() => vi.useRealTimers());
+
+  test('give up after 15 s with the network message, so start-up never hangs', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', hangingFetch());
+    const result = apiRequest('/me').catch((e) => e);
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(await result).toMatchObject({ name: 'ApiError', code: 'network' });
+  });
+
+  test('a longer limit can be given per request (placing an order waits for RSOF)', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', hangingFetch());
+    let settled = false;
+    const result = apiRequest('/orders', { method: 'POST', body: {}, timeoutMs: 60_000 })
+      .catch((e) => e)
+      .finally(() => {
+        settled = true;
+      });
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(45_000);
+    expect(await result).toMatchObject({ code: 'network' });
+  });
+
+  test("the caller's own abort still rejects as an AbortError", async () => {
+    vi.stubGlobal('fetch', hangingFetch());
+    const controller = new AbortController();
+    const result = apiRequest('/me', { signal: controller.signal }).catch((e) => e);
+    controller.abort();
+    expect(await result).toMatchObject({ name: 'AbortError' });
+  });
+});

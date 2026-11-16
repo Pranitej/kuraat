@@ -35,4 +35,4 @@ npm run dev           # terminal 2 — API on http://localhost:4000/api/v1
 cd client && npm install && npm run dev      # http://localhost:5173
 ```
 
-Test logins and cards: [client/TEST_CREDENTIALS.md](client/TEST_CREDENTIALS.md).
+Local URLs, test logins, cards and database access: [TEST_CREDENTIALS.md](TEST_CREDENTIALS.md).

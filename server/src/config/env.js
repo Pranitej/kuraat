@@ -22,6 +22,9 @@ const schema = z.object({
   JWT_REFRESH_SECRET: text().pipe(z.string().min(32, 'must be at least 32 characters')),
   CORS_ORIGINS: z.preprocess(blankToUndefined, z.string().default('http://localhost:5173')),
   ROF_BASE_URL: text().pipe(z.url()),
+  // Where the apps load RSOF's product photos from; defaults to ROF_BASE_URL. Locally a phone
+  // cannot use "localhost": set it to the laptop's Wi-Fi address (e.g. http://192.168.1.10:8080).
+  ROF_MEDIA_BASE_URL: z.preprocess(blankToUndefined, z.url().optional()),
   ROF_EMAIL: text(),
   ROF_PASSWORD: text(),
   ROF_INVENTORY_CHECK: flag(false),
@@ -63,6 +66,7 @@ export function loadConfig(env = process.env) {
     jwt: { accessSecret: e.JWT_ACCESS_SECRET, refreshSecret: e.JWT_REFRESH_SECRET, accessTtlSec: 900, refreshTtlDays: 30 },
     rof: {
       baseUrl: e.ROF_BASE_URL.replace(/\/+$/, ''),
+      mediaBaseUrl: (e.ROF_MEDIA_BASE_URL || e.ROF_BASE_URL).replace(/\/+$/, ''),
       email: e.ROF_EMAIL,
       password: e.ROF_PASSWORD,
       inventoryCheck: e.ROF_INVENTORY_CHECK,

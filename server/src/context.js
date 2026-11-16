@@ -11,7 +11,8 @@ export function createContext({ config, db, rof = null, clock = { now: () => new
   const ctx = { config, db, rof, clock, logger };
   if (rof) {
     const now = () => clock.now().getTime();
-    ctx.catalog = createCatalogService({ rof, baseUrl: config.rof.baseUrl, now, logger });
+    // Photo links are built for the apps, so they use the media base (see ROF_MEDIA_BASE_URL).
+    ctx.catalog = createCatalogService({ rof, baseUrl: config.rof.mediaBaseUrl, now, logger });
     ctx.branches = createBranchService({ rof, now });
     ctx.orders = createOrdersService(ctx);
   }

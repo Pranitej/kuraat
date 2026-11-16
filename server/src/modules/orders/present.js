@@ -13,6 +13,12 @@ const STEPS = [
 
 const iso = (v) => (v ? new Date(v).toISOString() : null);
 
+/** A photo link saved under the ROF address, served from the media address (ROF_MEDIA_BASE_URL). */
+function rebase(url, media) {
+  if (!url || !media?.from || !media.to || media.from === media.to) return url ?? null;
+  return url.startsWith(`${media.from}/`) ? media.to + url.slice(media.from.length) : url;
+}
+
 function steps(row) {
   const cancelled = Boolean(row.cancelled);
   const step = row.step ?? 0;
@@ -41,9 +47,10 @@ function steps(row) {
 
 /**
  * @param {object} row       orders table row
- * @param {{ payment?: object, branch?: object|null }} extra  payments row; branch from the branch service
+ * @param {{ payment?: object, branch?: object|null, media?: { from: string, to: string } }} extra
+ *   payments row; branch from the branch service; media = where saved photo links are served from
  */
-export function presentOrder(row, { payment = null, branch = null } = {}) {
+export function presentOrder(row, { payment = null, branch = null, media = null } = {}) {
   const cancelled = Boolean(row.cancelled);
   const step = row.step ?? 0;
   const statusId = cancelled ? 'cancelled' : STEPS[step][0];
@@ -52,7 +59,7 @@ export function presentOrder(row, { payment = null, branch = null } = {}) {
     number: `KR-${row.rof_order_number}`,
     status: { id: statusId, label: STATUS_LABEL[cancelled ? 'cancelled' : step], step, cancelled },
     steps: steps(row),
-    items: (row.lines || []).map((l) => ({ productId: l.productId, name: l.name, qty: l.qty, price: l.price, image: l.image ?? null })),
+    items: (row.lines || []).map((l) => ({ productId: l.productId, name: l.name, qty: l.qty, price: l.price, image: rebase(l.image, media) })),
     subtotal: row.subtotal,
     discount: row.discount,
     deliveryFee: row.delivery_fee,

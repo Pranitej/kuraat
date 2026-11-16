@@ -44,7 +44,7 @@ export async function createTestContext({ configOverrides = {}, withRof = false,
     mockRof = createMockRofHarness({ now: () => clock.now(), ...(rofData ? { data: rofData } : {}) });
     rofServer = await mockRof.listen();
     const { email, password } = mockRof.store.data.credentials;
-    config = { ...config, rof: { ...config.rof, baseUrl: rofServer.baseUrl, email, password, timeoutMs: rofTimeoutMs } };
+    config = { ...config, rof: { ...config.rof, baseUrl: rofServer.baseUrl, mediaBaseUrl: rofServer.baseUrl, email, password, timeoutMs: rofTimeoutMs } };
     rof = createRofClient({ ...config.rof, now: () => clock.now().getTime() });
   }
 

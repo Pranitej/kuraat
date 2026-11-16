@@ -28,6 +28,12 @@ describe('loadConfig', () => {
     expect(loadConfig({ ...valid, ROF_BASE_URL: 'https://rofuat.rsof.com.sa/' }).rof.baseUrl).toBe('https://rofuat.rsof.com.sa');
   });
 
+  test('photo links use ROF_BASE_URL unless ROF_MEDIA_BASE_URL is set (phones on the LAN in development)', () => {
+    expect(loadConfig(valid).rof.mediaBaseUrl).toBe('http://localhost:8080');
+    expect(loadConfig({ ...valid, ROF_MEDIA_BASE_URL: 'http://192.168.1.10:8080/' }).rof.mediaBaseUrl).toBe('http://192.168.1.10:8080');
+    expect(() => loadConfig({ ...valid, ROF_MEDIA_BASE_URL: 'not a url' })).toThrow(/ROF_MEDIA_BASE_URL/);
+  });
+
   test('parses booleans from text', () => {
     const c = loadConfig({ ...valid, ROF_INVENTORY_CHECK: 'true', PRICES_INCLUDE_VAT: 'false' });
     expect(c.rof.inventoryCheck).toBe(true);

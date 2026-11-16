@@ -61,6 +61,7 @@ Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | — | 32+ random characters each; different per environment |
 | `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated web origins |
 | `ROF_BASE_URL` | `http://localhost:8080` | **The switch**: fake ROF locally, `https://rofuat.rsof.com.sa` for UAT |
+| `ROF_MEDIA_BASE_URL` | (= `ROF_BASE_URL`) | Base for product photo links the apps load. Set to the laptop's Wi-Fi address (e.g. `http://192.168.1.10:8080`) to test the mobile app on a phone; leave empty in UAT/production |
 | `ROF_EMAIL`, `ROF_PASSWORD` | fake ROF login | The ROF service user (not tied to a branch) |
 | `ROF_INVENTORY_CHECK` | `false` | `true` only if the service user has `Inventory.Read` |
 | `ROF_TIMEOUT_MS` | `10000` | Per ROF call |

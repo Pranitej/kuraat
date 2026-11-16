@@ -30,11 +30,13 @@ async function refundFor(trx, payment, now) {
 export function createOrdersService(ctx) {
   const findRow = (userId, id) => ctx.db('orders').where({ user_id: userId, id }).first();
   const paymentFor = (orderId) => ctx.db('payments').where({ order_id: orderId }).first();
+  // Photo links saved in orders point at ROF_BASE_URL; the apps load them from the media base.
+  const media = { from: ctx.config.rof.baseUrl, to: ctx.config.rof.mediaBaseUrl };
 
   async function present(row) {
     const payment = await paymentFor(row.id);
     const branch = row.branch_id ? await ctx.branches.getBranch(row.branch_id).catch(() => null) : null;
-    return presentOrder(row, { payment, branch });
+    return presentOrder(row, { payment, branch, media });
   }
 
   /** Re-reads ROF unless the row was synced less than maxAgeMs ago. Never throws for ROF errors. */
@@ -133,7 +135,7 @@ export function createOrdersService(ctx) {
         return true;
       });
       const payments = shown.length ? await ctx.db('payments').whereIn('order_id', shown.map((r) => r.id)) : [];
-      return shown.map((r) => presentOrder(r, { payment: payments.find((p) => p.order_id === r.id) }));
+      return shown.map((r) => presentOrder(r, { payment: payments.find((p) => p.order_id === r.id), media }));
     },
 
     async get(userId, id) {

@@ -34,7 +34,7 @@ export default function PaymentPage() {
   const toast = useToast();
   const isDesktop = useIsDesktop();
   const cart = useCart();
-  const { addresses, defaultAddress } = useAddresses();
+  const { addresses, defaultAddress, loaded: addressesLoaded } = useAddresses();
   const { placeOrder } = useOrders();
   const checkout = useCheckout();
   const address = addresses.find((a) => a.id === checkout.addressId) || defaultAddress;
@@ -53,6 +53,8 @@ export default function PaymentPage() {
   const [errors, setErrors] = useState({});
   const [processing, setProcessing] = useState(false);
 
+  // After a reload the cart and addresses are still on their way from the server: wait for them.
+  if (!processing && ((!cart.items.length && cart.status === 'loading') || !addressesLoaded)) return <div className="min-h-[60dvh]" aria-busy="true" />;
   if (!cart.items.length && !processing) return <Navigate to={ROUTES.cart} replace />;
   if (!address && !processing) return <Navigate to={ROUTES.delivery} replace />;
 

@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { session } from '@/lib/storage.js';
+import { useAuth } from '@/context/AuthContext.jsx';
 import { withIdempotencyKey } from '@/services/checkoutService.js';
 
 /**
@@ -25,6 +26,13 @@ export function CheckoutProvider({ children }) {
 
   /** Fresh draft after an order (keeps what `keep` says, e.g. the last order and method). */
   const reset = useCallback((keep = {}) => write({ ...EMPTY, ...keep }), [write]);
+
+  // Signed out (or the session expired): drop the draft so the next account starts clean.
+  const { user, status } = useAuth();
+  const signedOut = status === 'ready' && !user;
+  useEffect(() => {
+    if (signedOut) write({ ...EMPTY });
+  }, [signedOut, write]);
 
   /** The key for this checkout's "Pay" attempts (created on first use). */
   const ensureIdempotencyKey = useCallback(() => {

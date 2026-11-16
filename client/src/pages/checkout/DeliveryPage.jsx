@@ -22,7 +22,7 @@ export default function DeliveryPage() {
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
   const { user } = useAuth();
-  const { items, totals, promo } = useCart();
+  const { items, totals, promo, status: cartStatus } = useCart();
   const { addresses, defaultAddress } = useAddresses();
   const checkout = useCheckout();
 
@@ -39,6 +39,8 @@ export default function DeliveryPage() {
     if (!phoneTouched && selected?.phone) setPhone(selected.phone);
   }, [selected, phoneTouched]);
 
+  // After a reload the cart is still on its way from the server: wait instead of bouncing to the cart.
+  if (!items.length && cartStatus === 'loading') return <div className="min-h-[60dvh]" aria-busy="true" />;
   if (!items.length) return <Navigate to={ROUTES.cart} replace />;
 
   const select = (id) => {

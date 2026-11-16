@@ -15,3 +15,4 @@ export * from './delivery.js';
 export * from './orders.js';
 export * from './address.js';
 export * from './demo.js';
+export * from './legacyDemo.js';

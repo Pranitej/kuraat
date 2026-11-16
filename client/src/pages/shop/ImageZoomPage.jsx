@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { Minimize2, Share2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { IconButton } from '@/components/ui';
-import { productGallery } from '@/assets/images.js';
-import { getProduct } from '@/domain';
+import { useCatalog } from '@/context/CatalogContext.jsx';
 import { ROUTES } from '@/config/routes.js';
 import { useToast } from '@/context/ToastContext.jsx';
 import { useDocumentTitle, useGoBack, useLockBodyScroll } from '@/hooks';
@@ -16,14 +15,15 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 /** 11 · Image zoom — pinch / wheel / slider / buttons, double-tap, drag to pan, thumbnails. */
 export default function ImageZoomPage() {
   const { productId } = useParams();
-  const product = getProduct(productId);
+  const catalog = useCatalog();
+  const product = catalog.getProduct(productId);
   const [params, setParams] = useSearchParams();
   const goBack = useGoBack(product ? ROUTES.product(product.id) : ROUTES.home);
   const toast = useToast();
   useDocumentTitle(product ? `${product.name} photos` : 'Photos');
   useLockBodyScroll(true);
 
-  const images = product ? productGallery(product) : [];
+  const images = product ? product.images : [];
   const index = clamp(Number(params.get('i')) || 0, 0, Math.max(0, images.length - 1));
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -82,6 +82,7 @@ export default function ImageZoomPage() {
     return () => el.removeEventListener('wheel', onWheel);
   }, [clampOffset]);
 
+  if (!product && catalog.status === 'loading') return <div className="fixed inset-0 z-50 bg-viewer" aria-busy="true" />;
   if (!product) return <Navigate to={ROUTES.home} replace />;
 
   const onPointerDown = (e) => {

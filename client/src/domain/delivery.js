@@ -4,8 +4,8 @@
  * client-side stand-in for that rule so the demo behaves consistently on every screen.
  */
 
-import { BRANCHES, getBranch } from './branches.js';
-import { getProduct } from './catalog.js';
+import { BRANCHES, getBranch, getProduct } from './legacyDemo.js';
+
 import { roundedDistance } from './geo.js';
 
 /** How much further than the nearest branch a fallback branch may be (km). */

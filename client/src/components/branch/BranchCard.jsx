@@ -2,12 +2,12 @@ import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, Navigation, Phone, Store } from 'lucide-react';
 import { Button, Tag } from '@/components/ui';
-import { directionsUrl, formatDistance, formatHours, isOpenNow, telUrl } from '@/domain';
+import { directionsUrl, formatDistance, formatHours, telUrl } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
 
 function OpenLine({ branch, distanceKm, showDistance }) {
-  const open = isOpenNow(branch.hours);
+  const open = branch.openNow; // from the server, in Saudi time
   return (
     <p className="flex items-center gap-1.5 text-small">
       <Clock size={16} strokeWidth={1.8} className="shrink-0 text-ink" aria-hidden />

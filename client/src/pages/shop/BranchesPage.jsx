@@ -6,7 +6,8 @@ import { Chip, ChipRow, EmptyState, IconButton } from '@/components/ui';
 import MapIllustration from '@/components/branch/MapIllustration.jsx';
 import { BranchListCard } from '@/components/branch/BranchCard.jsx';
 import { useAddresses } from '@/context/AddressContext.jsx';
-import { branchesByDistance } from '@/domain';
+import { useBranches } from '@/context/BranchContext.jsx';
+import { mapPins, withDistances } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 
@@ -17,18 +18,19 @@ const CITY_FILTERS = ['All', 'Al Khobar', 'Dammam', 'Riyadh', 'Dhahran', 'Al Ahs
 export default function BranchesPage() {
   useDocumentTitle('Our branches');
   const { defaultAddress } = useAddresses();
+  const { branches } = useBranches();
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('All');
   const [selected, setSelected] = useState(params.get('branch'));
   const cardRefs = useRef({});
 
-  const all = useMemo(() => branchesByDistance(defaultAddress?.location), [defaultAddress]);
-  const nearestId = all[0]?.id;
+  const all = useMemo(() => withDistances(branches, defaultAddress?.location), [branches, defaultAddress]);
+  const nearestId = defaultAddress ? all[0]?.id : null;
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     return all.filter(
-      (b) => (city === 'All' || b.city === city) && (!q || [b.name, b.city, b.area, b.address].join(' ').toLowerCase().includes(q)),
+      (b) => (city === 'All' || b.city === city) && (!q || [b.displayName, b.city, b.address].join(' ').toLowerCase().includes(q)),
     );
   }, [all, city, query]);
 
@@ -53,7 +55,9 @@ export default function BranchesPage() {
     setParams({ branch: id }, { replace: true });
   };
 
-  const pins = list.map((b) => ({ id: b.id, x: b.map.x, y: b.map.y, label: b.name }));
+  // Pins keep their place by distance rank while the list is filtered.
+  const visible = new Set(list.map((b) => b.id));
+  const pins = mapPins(all).filter((pin) => visible.has(pin.id));
 
   return (
     <div className="pb-10">

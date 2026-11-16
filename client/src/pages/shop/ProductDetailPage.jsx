@@ -1,15 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ChevronLeft, Maximize, PackageSearch, ShoppingBag, ZoomIn } from 'lucide-react';
-import { Button, Card, EmptyState, IconButton, QuantityStepper, Tag } from '@/components/ui';
+import { Button, Card, EmptyState, IconButton, QuantityStepper, Skeleton, Tag } from '@/components/ui';
 import BottomBar from '@/components/layout/BottomBar.jsx';
 import { BackButton } from '@/components/layout/ScreenHeader.jsx';
 import { FavoriteButton } from '@/components/shop/ProductCard.jsx';
 import DeliveryFromCard from '@/components/shop/DeliveryFromCard.jsx';
-import { productGallery } from '@/assets/images.js';
-import { deliveryWindow, formatSAR, formatWindow, getProduct } from '@/domain';
+import { deliveryWindow, formatSAR, formatWindow } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useCart } from '@/context/CartContext.jsx';
+import { useCatalog } from '@/context/CatalogContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
 import { useDeliveryBranch } from '@/hooks/useDeliveryBranch.js';
 import { useDocumentTitle, useGoBack, useIsDesktop, useScrollY } from '@/hooks';
@@ -45,7 +45,8 @@ function Thumbs({ images, active, onSelect, className, size = 'sm' }) {
 /** 09/10 · Product detail (+ expanded description) */
 export default function ProductDetailPage() {
   const { productId } = useParams();
-  const product = getProduct(productId);
+  const catalog = useCatalog();
+  const product = catalog.getProduct(productId);
   useDocumentTitle(product?.name || 'Product');
   const navigate = useNavigate();
   const goBack = useGoBack(ROUTES.home);
@@ -58,7 +59,19 @@ export default function ProductDetailPage() {
   const isDesktop = useIsDesktop();
   const swipe = useRef(null);
   const delivery = useDeliveryBranch(product ? [product.id] : []);
-  const images = useMemo(() => (product ? productGallery(product) : []), [product]);
+  const images = useMemo(() => product?.images || [], [product]);
+
+  if (!product && catalog.status === 'loading') {
+    return (
+      <div className="lg:mx-auto lg:max-w-app lg:px-8 lg:pt-8" aria-busy="true">
+        <Skeleton className="h-[372px] md:h-[460px] lg:h-[520px] lg:rounded-2xl" />
+        <div className="mx-auto max-w-column space-y-3 px-5 pt-6">
+          <Skeleton className="h-7 w-2/3 rounded" />
+          <Skeleton className="h-4 w-1/2 rounded" />
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -164,20 +177,18 @@ export default function ProductDetailPage() {
               <h1 className="text-h1 text-ink lg:text-[32px] lg:leading-10">{product.name}</h1>
               <p className="shrink-0 text-[22px] font-bold leading-[30px] text-maroon lg:text-[28px] lg:leading-10">{formatSAR(product.price, { decimals: 0 })}</p>
             </div>
-            <p className="mt-1 text-body text-muted">{product.subtitle}</p>
+            {product.subtitle && <p className="mt-1 text-body text-muted">{product.subtitle}</p>}
 
-            <div className="mt-4 grid grid-cols-3 gap-2.5">
-              {[
-                ['Weight', product.weight],
-                ['Pieces', product.pieces],
-                ['Dimensions', product.dimensions],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-md border border-line-subtle bg-white px-3.5 py-2.5">
-                  <p className="text-label font-normal text-muted">{label}</p>
-                  <p className="mt-0.5 text-[15px] font-bold leading-5 text-ink min-[380px]:whitespace-nowrap">{value}</p>
-                </div>
-              ))}
-            </div>
+            {product.highlights.length > 0 && (
+              <div className={cn('mt-4 grid gap-2.5', ['grid-cols-1', 'grid-cols-2', 'grid-cols-3'][Math.min(product.highlights.length, 3) - 1])}>
+                {product.highlights.map(({ label, value }) => (
+                  <div key={label} className="rounded-md border border-line-subtle bg-white px-3.5 py-2.5">
+                    <p className="text-label font-normal text-muted">{label}</p>
+                    <p className="mt-0.5 text-[15px] font-bold leading-5 text-ink min-[380px]:whitespace-nowrap">{value}</p>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {delivery && (
               <DeliveryFromCard
@@ -216,39 +227,39 @@ export default function ProductDetailPage() {
             </section>
 
             <div className={cn(!expanded && 'hidden lg:block')}>
-              <section className="mt-6" aria-labelledby="details-title">
-                <h2 id="details-title" className="text-h3 text-ink">
-                  Product details
-                </h2>
-                <Card className="mt-3 px-4 py-1.5">
-                  <dl>
-                    {[
-                      ['Net weight', product.weight],
-                      ['Dimensions (L × W × H)', product.dimensions],
-                      ['Pieces', product.piecesDetail],
-                      ['Shelf life', product.shelfLife],
-                      ['Storage', product.storage],
-                    ].map(([label, value]) => (
-                      <div key={label} className="flex items-baseline justify-between gap-4 py-2">
-                        <dt className="text-body text-muted">{label}</dt>
-                        <dd className="text-right text-[15px] font-semibold text-ink">{value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </Card>
-              </section>
+              {product.details.length > 0 && (
+                <section className="mt-6" aria-labelledby="details-title">
+                  <h2 id="details-title" className="text-h3 text-ink">
+                    Product details
+                  </h2>
+                  <Card className="mt-3 px-4 py-1.5">
+                    <dl>
+                      {product.details.map(({ key, label, value }) => (
+                        <div key={key} className="flex items-baseline justify-between gap-4 py-2">
+                          <dt className="text-body text-muted">{label}</dt>
+                          <dd className="text-right text-[15px] font-semibold text-ink">{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </Card>
+                </section>
+              )}
 
-              <section className="mt-6" aria-labelledby="ingredients-title">
-                <h2 id="ingredients-title" className="text-h3 text-ink">
-                  Ingredients &amp; allergens
-                </h2>
-                <p className="mt-2 text-body-lg text-copy">{product.ingredients}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {product.allergens.map((a) => (
-                    <Tag key={a}>{a}</Tag>
-                  ))}
-                </div>
-              </section>
+              {(product.ingredients || product.allergens.length > 0) && (
+                <section className="mt-6" aria-labelledby="ingredients-title">
+                  <h2 id="ingredients-title" className="text-h3 text-ink">
+                    Ingredients &amp; allergens
+                  </h2>
+                  {product.ingredients && <p className="mt-2 text-body-lg text-copy">{product.ingredients}</p>}
+                  {product.allergens.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {product.allergens.map((a) => (
+                        <Tag key={a}>{a}</Tag>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
 
               {delivery && <DeliveryFromCard className="mt-6 lg:hidden" branch={delivery.branch} />}
             </div>

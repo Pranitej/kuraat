@@ -3,7 +3,7 @@ import { Bell, ChevronRight, ListFilter, Mail, MapPin, Phone, Search, ShoppingBa
 import { Avatar, Button, Chip, IconButton, Logo, MaroonPanel, Sheet, Tag } from '@/components/ui';
 import { CountBadge, UnreadDot } from '@/components/layout/AppBar.jsx';
 import { productImage } from '@/assets/images.js';
-import { CATEGORIES, HEAD_OFFICE, SORT_OPTIONS, formatDistance, mapsUrl, telUrl } from '@/domain';
+import { HEAD_OFFICE, SORT_OPTIONS, formatDistance, mapsUrl, telUrl } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
 import { useScrollY } from '@/hooks';
@@ -66,7 +66,7 @@ export function SearchBar({ value, onChange, onOpenFilters, filtersActive }) {
 }
 
 /** Sort + category sheet opened from the filter button (derived from chip styling). */
-export function FilterSheet({ open, onClose, category, sort, onApply }) {
+export function FilterSheet({ open, onClose, categories = [], category, sort, onApply }) {
   return (
     <Sheet
       open={open}
@@ -93,7 +93,7 @@ export function FilterSheet({ open, onClose, category, sort, onApply }) {
       </div>
       <h3 className="mt-6 text-label text-maroon">Category</h3>
       <div className="mt-2.5 flex flex-wrap gap-2.5 pb-2">
-        {CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <Chip key={c.id} active={category === c.id} onClick={() => onApply({ category: c.id, sort })}>
             {c.label}
           </Chip>

@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Heart, Plus } from 'lucide-react';
-import { productImage } from '@/assets/images.js';
-import { formatSAR, productMeta } from '@/domain';
+import { formatSAR } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useCart } from '@/context/CartContext.jsx';
 import { useFavorites } from '@/context/FavoritesContext.jsx';
@@ -59,18 +58,19 @@ export default function ProductCard({ product, className, style }) {
       )}
     >
       <div className="relative aspect-[167/158] overflow-hidden bg-sand">
-        <img
-          src={productImage(product.images[0])}
-          alt={product.name}
-          loading="lazy"
-          className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          style={{ objectPosition: product.cardFocus }}
-        />
+        {product.images[0] && (
+          <img
+            src={product.images[0]}
+            alt={product.name}
+            loading="lazy"
+            className="size-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
+        )}
         <FavoriteButton productId={product.id} productName={product.name} className="absolute right-2 top-2" />
       </div>
       <div className="flex flex-1 flex-col px-3.5 pb-3 pt-3.5">
         <h3 className="line-clamp-2 text-[15px] font-semibold leading-5 text-ink lg:text-[16px]">{product.name}</h3>
-        <p className="mt-0.5 text-label font-normal text-muted">{productMeta(product)}</p>
+        {product.meta && <p className="mt-0.5 text-label font-normal text-muted">{product.meta}</p>}
         <div className="mt-auto flex items-center justify-between gap-2 pt-3">
           <span className="text-[16px] font-bold text-maroon">{formatSAR(product.price, { decimals: 0 })}</span>
           <button

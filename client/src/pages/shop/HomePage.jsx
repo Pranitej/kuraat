@@ -1,16 +1,17 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronRight, SearchX } from 'lucide-react';
+import { ChevronRight, CloudOff, SearchX } from 'lucide-react';
 import { Chip, ChipRow, EmptyState, SectionTitle } from '@/components/ui';
-import ProductCard from '@/components/shop/ProductCard.jsx';
+import ProductCard, { ProductCardSkeleton } from '@/components/shop/ProductCard.jsx';
 import { BranchTeaserCard } from '@/components/branch/BranchCard.jsx';
 import { CartFab, ContactSection, FilterSheet, HomeHeader, NearestBranchStrip, PromoBanner, SearchBar } from '@/components/shop/HomeSections.jsx';
 import { useAuth } from '@/context/AuthContext.jsx';
+import { useBranches } from '@/context/BranchContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
+import { useCatalog } from '@/context/CatalogContext.jsx';
 import { useNotifications } from '@/context/NotificationContext.jsx';
 import { useAddresses } from '@/context/AddressContext.jsx';
-import { useDeliveryBranch } from '@/hooks/useDeliveryBranch.js';
-import { CATEGORIES, PRODUCTS, branchesByDistance, filterProducts } from '@/domain';
+import { areaLabel, categoryChips, filterProducts, withDistances } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
 
@@ -21,7 +22,8 @@ export default function HomePage() {
   const { count } = useCart();
   const { unreadCount } = useNotifications();
   const { defaultAddress } = useAddresses();
-  const delivery = useDeliveryBranch([]);
+  const catalog = useCatalog();
+  const { branches: allBranches } = useBranches();
   const [params, setParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const sweetsRef = useRef(null);
@@ -41,8 +43,12 @@ export default function HomePage() {
     setParams(next, { replace });
   };
 
-  const products = useMemo(() => filterProducts(PRODUCTS, { query, category, sort }), [query, category, sort]);
-  const branches = useMemo(() => branchesByDistance(defaultAddress?.location), [defaultAddress]);
+  const chips = useMemo(() => categoryChips(catalog.categories), [catalog.categories]);
+  const products = useMemo(() => filterProducts(catalog.products, { query, category, sort }), [catalog.products, query, category, sort]);
+  const branches = useMemo(() => withDistances(allBranches, defaultAddress?.location), [allBranches, defaultAddress]);
+  const delivery = branches[0] && defaultAddress ? { branch: branches[0], distanceKm: branches[0].distanceKm, area: areaLabel(defaultAddress) } : null;
+  const loading = catalog.status === 'loading';
+  const failed = catalog.status === 'error';
 
   const scrollToSweets = () => sweetsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -91,7 +97,7 @@ export default function HomePage() {
 
           <div className="mt-4 flex items-center gap-4">
             <ChipRow className="flex-1">
-              {CATEGORIES.map((c) => (
+              {chips.map((c) => (
                 <Chip key={c.id} active={category === c.id} onClick={() => setFilters({ category: c.id })}>
                   {c.label}
                 </Chip>
@@ -112,7 +118,22 @@ export default function HomePage() {
             </p>
           )}
 
-          {products.length ? (
+          {loading ? (
+            <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 lg:mt-6 lg:gap-6" aria-busy="true" aria-label="Loading sweets">
+              {[0, 1, 2, 3].map((i) => (
+                <ProductCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : failed ? (
+            <EmptyState
+              compact
+              icon={CloudOff}
+              title="We can't reach the store right now"
+              message={catalog.error?.message || 'Please try again in a moment.'}
+              actionLabel="Try again"
+              onAction={catalog.refresh}
+            />
+          ) : products.length ? (
             <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 lg:mt-6 lg:gap-6">
               {products.map((p, i) => (
                 <ProductCard key={p.id} product={p} className="animate-fade-up" style={{ animationDelay: `${i * 40}ms` }} />
@@ -154,6 +175,7 @@ export default function HomePage() {
       <FilterSheet
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
+        categories={chips}
         category={category}
         sort={sort}
         onApply={(f) => setFilters(f)}

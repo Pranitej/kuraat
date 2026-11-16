@@ -1,94 +1,13 @@
 /**
- * Branch directory (demo data from PDF screen 25). Coordinates are placeholders chosen so that
- * distances from the demo "Home" address match the PDF (2.4, 6.8, 14.2, 128, 392, 1,285 km).
- * `map` positions (0–100 %) place pins on the stylised map illustration.
+ * Branch helpers for the server's delivery branches (server/README.md → Shop: GET /branches gives
+ * id, name, address, city, phone, location, hours and openNow in Saudi time).
  */
-
-export const BRANCHES = [
-  {
-    id: 'khobar-corniche',
-    name: 'Al Khobar · Corniche',
-    displayName: 'Kuraat · Al Khobar Corniche',
-    shortName: 'Al Khobar · Corniche',
-    city: 'Al Khobar',
-    area: 'Corniche',
-    address: 'Prince Faisal bin Fahd Rd, Al Khobar 31952',
-    phone: '+966 13 555 0110',
-    hours: { open: 10, close: 24 },
-    location: { lat: 26.30696, lng: 50.21868 },
-    map: { x: 43, y: 38 },
-  },
-  {
-    id: 'dhahran-king-abdulaziz',
-    name: 'Dhahran · King Abdulaziz Rd',
-    displayName: 'Kuraat · Dhahran · King Abdulaziz Rd',
-    shortName: 'Dhahran · King Abdulaziz',
-    city: 'Dhahran',
-    area: 'King Abdulaziz Rd',
-    address: 'King Abdulaziz Rd, Dhahran 34247',
-    phone: '+966 13 555 0120',
-    hours: { open: 10, close: 24 },
-    location: { lat: 26.31796, lng: 50.14941 },
-    map: { x: 60, y: 30 },
-  },
-  {
-    id: 'dammam-faisaliyah',
-    name: 'Dammam · Al Faisaliyah',
-    displayName: 'Kuraat · Dammam Al Faisaliyah',
-    shortName: 'Dammam · Al Faisaliyah',
-    city: 'Dammam',
-    area: 'Al Faisaliyah',
-    address: 'Prince Mohammed bin Fahd Rd, Dammam 32245',
-    phone: '+966 13 555 0130',
-    hours: { open: 10, close: 24 },
-    location: { lat: 26.39798, lng: 50.13722 },
-    map: { x: 17, y: 25 },
-  },
-  {
-    id: 'alahsa-hofuf',
-    name: 'Al Ahsa · Hofuf',
-    displayName: 'Kuraat · Al Ahsa Hofuf',
-    shortName: 'Al Ahsa · Hofuf',
-    city: 'Al Ahsa',
-    area: 'Hofuf',
-    address: 'King Abdullah Rd, Hofuf 36362',
-    phone: '+966 13 555 0140',
-    hours: { open: 10, close: 24 },
-    location: { lat: 25.30838, lng: 49.53596 },
-    map: { x: 72, y: 60 },
-  },
-  {
-    id: 'riyadh-olaya',
-    name: 'Riyadh · Olaya',
-    displayName: 'Kuraat · Riyadh Olaya',
-    shortName: 'Riyadh · Olaya',
-    city: 'Riyadh',
-    area: 'Olaya',
-    address: 'Olaya St, Al Olaya, Riyadh 12611',
-    phone: '+966 11 555 0150',
-    hours: { open: 10, close: 24 },
-    location: { lat: 24.71282, lng: 46.71363 },
-    map: { x: 86, y: 18 },
-  },
-  {
-    id: 'jeddah-rawdah',
-    name: 'Jeddah · Al Rawdah',
-    displayName: 'Kuraat · Jeddah Al Rawdah',
-    shortName: 'Jeddah · Al Rawdah',
-    city: 'Jeddah',
-    area: 'Al Rawdah',
-    address: 'Prince Sultan Rd, Al Rawdah, Jeddah 23434',
-    phone: '+966 12 555 0160',
-    hours: { open: 10, close: 24 },
-    location: { lat: 21.37088, lng: 38.76694 },
-    map: { x: 30, y: 72 },
-  },
-];
+import { roundedDistance } from './geo.js';
 
 /** City list used by branch filters and the address form. */
 export const CITIES = ['Al Khobar', 'Dhahran', 'Dammam', 'Al Ahsa', 'Riyadh', 'Jeddah'];
 
-/** Approximate city centres for addresses entered manually. */
+/** Approximate city centres for addresses entered without a map pin. */
 export const CITY_CENTRES = {
   'Al Khobar': { lat: 26.293, lng: 50.21 },
   Dhahran: { lat: 26.31, lng: 50.14 },
@@ -106,11 +25,43 @@ export const HEAD_OFFICE = {
   location: { lat: 26.30696, lng: 50.21868 },
 };
 
-export function getBranch(id) {
-  return BRANCHES.find((b) => b.id === id) || null;
+const BRAND_PREFIX = /^kuraat\s*·\s*/i;
+
+/**
+ * Server branch → what the screens use: `displayName` is the full name ("Kuraat · Al Khobar
+ * Corniche"), `name`/`shortName` drop the brand for cards and the cart line.
+ */
+export function toBranchView(branch) {
+  const short = String(branch.name || '').replace(BRAND_PREFIX, '').trim() || branch.name;
+  return { ...branch, displayName: branch.name, name: short, shortName: short };
 }
 
-/** "Open · 10 AM – 12 AM" */
+/** Nearest first, each with `distanceKm` from `location` (kept in order, null distances, without one). */
+export function withDistances(branches, location) {
+  const list = branches.map((b) => ({ ...b, distanceKm: location && b.location ? roundedDistance(location, b.location) : null }));
+  return location ? list.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity)) : list;
+}
+
+/** Pin positions (0–100 %) on the drawn map, as in the PDF — the nearest branch gets the first. */
+export const MAP_SLOTS = [
+  { x: 43, y: 38 },
+  { x: 60, y: 30 },
+  { x: 17, y: 25 },
+  { x: 72, y: 60 },
+  { x: 86, y: 18 },
+  { x: 30, y: 72 },
+];
+
+/** Pins for the drawn map, by rank; past the six slots they repeat, shifted a little. */
+export function mapPins(branches) {
+  return branches.map((b, i) => {
+    const slot = MAP_SLOTS[i % MAP_SLOTS.length];
+    const shift = Math.floor(i / MAP_SLOTS.length) * 4;
+    return { id: b.id, x: slot.x + shift, y: slot.y + shift, label: b.name };
+  });
+}
+
+/** "10 AM – 12 AM" */
 export function formatHours(hours) {
   const fmt = (h) => {
     const hh = h % 24;
@@ -119,11 +70,6 @@ export function formatHours(hours) {
     return `${h12} ${suffix}`;
   };
   return `${fmt(hours.open)} – ${fmt(hours.close)}`;
-}
-
-export function isOpenNow(hours, now = new Date()) {
-  const h = now.getHours() + now.getMinutes() / 60;
-  return h >= hours.open && h < hours.close;
 }
 
 export function mapsUrl(location, label = '') {

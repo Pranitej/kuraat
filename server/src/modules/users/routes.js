@@ -93,5 +93,52 @@ export function meRoutes(ctx) {
     },
   );
 
+  /**
+   * Delete account (App Store 5.1.1(v), Google Play): needs a verified `delete-account` WhatsApp
+   * code. Personal data goes; placed orders stay (RSOF and the branch keep them) without the
+   * delivery phone and address — only the city remains. Refused while an order is on its way.
+   */
+  router.delete('/', validate({ body: z.object({ verificationToken: z.string().optional() }) }), async (req, res) => {
+    const user = await currentUser(req);
+    const token = req.body?.verificationToken;
+    const challenge = token ? await verifiedChallenge(ctx, token, { purpose: 'delete-account', userId: user.id }) : null;
+    if (!challenge) throw badRequest('unverified', 'Confirm with the WhatsApp code we sent you first.');
+
+    const ongoing = await ctx.db('orders')
+      .where({ user_id: user.id, cancelled: false })
+      .andWhere((q) => q.whereNull('step').orWhere('step', '<', 3))
+      .first('id');
+    if (ongoing) {
+      throw conflict('order_in_progress', 'You have an order on its way. You can delete your account once it is delivered or cancelled.');
+    }
+
+    const now = ctx.clock.now();
+    await ctx.db.transaction(async (trx) => {
+      for (const table of ['addresses', 'carts', 'favorites', 'saved_cards', 'notifications', 'refresh_tokens']) {
+        await trx(table).where({ user_id: user.id }).delete();
+      }
+      const orders = await trx('orders').where({ user_id: user.id }).select('id', 'address');
+      for (const order of orders) {
+        const address = typeof order.address === 'string' ? JSON.parse(order.address) : order.address;
+        await trx('orders')
+          .where({ id: order.id })
+          .update({ address: JSON.stringify({ city: address?.city ?? '' }), delivery_phone: '', updated_at: now });
+      }
+      await trx('payments').where({ user_id: user.id }).update({ upi_id: null, updated_at: now });
+      await trx('users').where({ id: user.id }).update({
+        phone: null,
+        name: 'Deleted customer',
+        email: null,
+        gender: null,
+        avatar: null,
+        password_hash: null,
+        deleted_at: now,
+        updated_at: now,
+      });
+      await markConsumed(ctx, challenge.id, trx);
+    });
+    res.status(204).end();
+  });
+
   return router;
 }

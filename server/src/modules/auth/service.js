@@ -14,8 +14,9 @@ export const toPublicUser = (row) => ({
   createdAt: new Date(row.created_at).toISOString(),
 });
 
-export const findUserByPhone = (db, phone) => db('users').where({ phone }).first();
-export const findUserById = (db, id) => db('users').where({ id }).first();
+/** Deleted accounts (anonymous rows kept only for their orders) are never found. */
+export const findUserByPhone = (db, phone) => db('users').where({ phone }).whereNull('deleted_at').first();
+export const findUserById = (db, id) => db('users').where({ id }).whereNull('deleted_at').first();
 
 /**
  * Creates the account from the sign-up form: user, default Home address (with the map pin's

@@ -55,10 +55,21 @@ export function authRoutes(ctx) {
     '/otp/request',
     optionalAuth(ctx),
     validate({
-      body: z.object({ phone: phoneSchema, purpose: z.enum(['signup', 'signin', 'reset', 'change-phone']), payload: z.unknown().optional() }),
+      body: z.object({
+        phone: phoneSchema,
+        purpose: z.enum(['signup', 'signin', 'reset', 'change-phone', 'delete-account']),
+        payload: z.unknown().optional(),
+      }),
     }),
     async (req, res) => {
       const { phone, purpose } = req.body;
+      if (purpose === 'delete-account') {
+        // The signed-in customer confirms deleting their own account — only their own number.
+        const user = req.userId ? await findUserById(ctx.db, req.userId) : null;
+        if (!user) throw unauthorized();
+        if (user.phone !== phone) throw badRequest('wrong_phone', 'Use the mobile number of this account.', 'phone');
+        return res.json(await createChallenge(ctx, { phone, purpose, payload: null, userId: user.id }));
+      }
       const existing = await findUserByPhone(ctx.db, phone);
       let payload = null;
       if (purpose === 'signup') {
@@ -108,6 +119,10 @@ export function authRoutes(ctx) {
           if (!req.userId || req.userId !== challenge.user_id) throw unauthorized();
           await markVerified(ctx, challenge.id);
           return res.json({ next: 'account', verificationToken: challenge.id });
+        case 'delete-account':
+          if (!req.userId || req.userId !== challenge.user_id) throw unauthorized();
+          await markVerified(ctx, challenge.id);
+          return res.json({ next: 'delete-account', verificationToken: challenge.id });
         default:
           throw expiredSession();
       }

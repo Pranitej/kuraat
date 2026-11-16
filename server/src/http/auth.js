@@ -7,16 +7,27 @@ const bearer = (req) => {
   return header.startsWith('Bearer ') ? header.slice(7).trim() : null;
 };
 
-/** Signed-in only: sets req.userId or answers 401 { code: 'unauthorized' }. */
-export const requireAuth = (ctx) => (req, res, next) => {
+/**
+ * The token's user id — unless that account was deleted after the token was issued (access tokens
+ * are stateless, so one lookup by primary key stops a deleted account's token at once).
+ */
+async function activeUserId(ctx, req) {
   const userId = verifyAccessToken(ctx, bearer(req));
+  if (!userId) return null;
+  const row = await ctx.db('users').where({ id: userId }).whereNull('deleted_at').first('id');
+  return row ? userId : null;
+}
+
+/** Signed-in only: sets req.userId or answers 401 { code: 'unauthorized' }. */
+export const requireAuth = (ctx) => async (req, res, next) => {
+  const userId = await activeUserId(ctx, req);
   if (!userId) return next(unauthorized());
   req.userId = userId;
   return next();
 };
 
-/** Sets req.userId when a valid token is present; never rejects. */
-export const optionalAuth = (ctx) => (req, res, next) => {
-  req.userId = verifyAccessToken(ctx, bearer(req)) || null;
+/** Sets req.userId when a valid token of an active account is present; never rejects. */
+export const optionalAuth = (ctx) => async (req, res, next) => {
+  req.userId = await activeUserId(ctx, req);
   next();
 };

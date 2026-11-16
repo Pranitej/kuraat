@@ -1,72 +1,72 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as api from '@/services/addressService.js';
-import { getDb } from '@/services/db.js';
 import { useAuth } from './AuthContext.jsx';
 
 const AddressContext = createContext(null);
 
+/** The customer's saved addresses (server). `loaded` turns true after the first answer. */
 export function AddressProvider({ children }) {
   const { user } = useAuth();
   const userId = user?.id;
-  // Initialise synchronously from the local store to avoid a flash; then refresh via the service.
-  const [addresses, setAddresses] = useState(() => (userId ? getDb().addresses?.[userId] || [] : []));
+  const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!userId) return setAddresses([]);
+    if (!userId) {
+      setAddresses([]);
+      return;
+    }
     setLoading(true);
     try {
-      setAddresses(await api.listAddresses(userId));
+      setAddresses(await api.listAddresses());
+      setLoaded(true);
     } finally {
       setLoading(false);
     }
-    return undefined;
   }, [userId]);
 
   useEffect(() => {
-    setAddresses(userId ? getDb().addresses?.[userId] || [] : []);
-    refresh();
-  }, [userId, refresh]);
+    setAddresses([]);
+    setLoaded(false);
+    refresh().catch(() => setLoaded(true));
+  }, [refresh]);
 
   const create = useCallback(
     async (input) => {
-      const created = await api.createAddress(userId, input);
+      const created = await api.createAddress(input);
       await refresh();
       return created;
     },
-    [userId, refresh],
+    [refresh],
   );
 
   const update = useCallback(
     async (id, input) => {
-      const updated = await api.updateAddress(userId, id, input);
+      const updated = await api.updateAddress(id, input);
       await refresh();
       return updated;
     },
-    [userId, refresh],
+    [refresh],
   );
 
   const remove = useCallback(
     async (id) => {
-      const removed = await api.deleteAddress(userId, id);
+      await api.deleteAddress(id);
       await refresh();
-      return removed;
     },
-    [userId, refresh],
+    [refresh],
   );
 
-  const setDefault = useCallback(
-    async (id) => {
-      await api.setDefaultAddress(userId, id);
-      await refresh();
-    },
-    [userId, refresh],
-  );
+  const setDefault = useCallback(async (id) => {
+    setAddresses(await api.setDefaultAddress(id));
+  }, []);
 
   const value = useMemo(
     () => ({
       addresses,
       loading,
+      loaded,
       refresh,
       create,
       update,
@@ -75,7 +75,7 @@ export function AddressProvider({ children }) {
       defaultAddress: addresses.find((a) => a.isDefault) || addresses[0] || null,
       getById: (id) => addresses.find((a) => a.id === id) || null,
     }),
-    [addresses, loading, refresh, create, update, remove, setDefault],
+    [addresses, loading, loaded, refresh, create, update, remove, setDefault],
   );
 
   return <AddressContext.Provider value={value}>{children}</AddressContext.Provider>;

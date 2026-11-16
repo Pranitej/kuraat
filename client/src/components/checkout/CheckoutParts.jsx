@@ -2,8 +2,7 @@ import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, Store, Trash2 } from 'lucide-react';
 import { Card, IconButton, QuantityStepper, SummaryRow } from '@/components/ui';
-import { productImage } from '@/assets/images.js';
-import { formatSAR, productMeta } from '@/domain';
+import { formatSAR, lineWarning } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
 import { useIsDesktop } from '@/hooks';
@@ -38,31 +37,50 @@ export function CheckoutSteps({ current }) {
   );
 }
 
-/** Cart line (PDF screen 12). */
+/** Cart line (PDF screen 12). Server warnings (price, stock) show under the name in hot pink. */
 export function CartItemCard({ line, branchName, onQty, onRemove }) {
   const { product, qty, lineTotal } = line;
+  const name = product?.name ?? 'This product';
+  const warning = lineWarning(line);
   return (
     <Card className="relative flex gap-3 p-3.5">
-      <Link to={ROUTES.product(product.id)} className="size-[88px] shrink-0 overflow-hidden rounded-sm bg-sand" tabIndex={-1} aria-hidden>
-        <img src={productImage(product.images[0])} alt="" className="size-full object-cover" style={{ objectPosition: product.cardFocus }} />
-      </Link>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Link to={ROUTES.product(product.id)} className="pr-8 text-[16px] font-bold leading-[21px] text-ink hover:underline">
-          {product.name}
+      {product ? (
+        <Link to={ROUTES.product(product.id)} className="size-[88px] shrink-0 overflow-hidden rounded-sm bg-sand" tabIndex={-1} aria-hidden>
+          {product.image && <img src={product.image} alt="" className="size-full object-cover" />}
         </Link>
-        <p className="text-label font-normal text-muted">{productMeta(product)}</p>
-        {branchName && (
+      ) : (
+        <span className="size-[88px] shrink-0 rounded-sm bg-sand" aria-hidden />
+      )}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {product ? (
+          <Link to={ROUTES.product(product.id)} className="pr-8 text-[16px] font-bold leading-[21px] text-ink hover:underline">
+            {name}
+          </Link>
+        ) : (
+          <p className="pr-8 text-[16px] font-bold leading-[21px] text-ink">{name}</p>
+        )}
+        {product?.meta && <p className="text-label font-normal text-muted">{product.meta}</p>}
+        {branchName && line.available && (
           <p className="mt-1 flex min-w-0 items-center gap-1.5 text-label text-maroon">
             <Store size={15} strokeWidth={1.9} className="shrink-0" aria-hidden />
             <span className="truncate">From {branchName}</span>
           </p>
         )}
+        {warning && (
+          <p role="status" className="mt-1 text-label font-semibold text-hotpink">
+            {warning}
+          </p>
+        )}
         <div className="mt-2 flex items-center justify-between gap-2">
-          <QuantityStepper value={qty} onChange={onQty} onMinReached={onRemove} label={`Quantity of ${product.name}`} />
+          {line.available ? (
+            <QuantityStepper value={qty} onChange={onQty} onMinReached={onRemove} max={line.maxQuantity || 20} label={`Quantity of ${name}`} />
+          ) : (
+            <span />
+          )}
           <span className="tabular whitespace-nowrap text-[16px] font-bold text-ink">{formatSAR(lineTotal)}</span>
         </div>
       </div>
-      <IconButton icon={Trash2} label={`Remove ${product.name}`} variant="plain" size="sm" iconSize={19} className="absolute right-2 top-2" onClick={onRemove} />
+      <IconButton icon={Trash2} label={`Remove ${name}`} variant="plain" size="sm" iconSize={19} className="absolute right-2 top-2" onClick={onRemove} />
     </Card>
   );
 }

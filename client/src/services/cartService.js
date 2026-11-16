@@ -1,30 +1,12 @@
-/**
- * Cart + favourites persistence. These are synchronous on purpose: the cart is a device-local
- * draft until checkout (like the mobile app), so every tap updates instantly.
- */
+/** Cart and favourites on the server (server/README.md → Cart & checkout, Favourites). */
+import { apiRequest } from './api.js';
 
-import { getDb, updateDb, userBucket } from './db.js';
+/** The cart priced from RSOF's current prices and stock: { items, promo, totals }. */
+export const getCart = () => apiRequest('/cart');
 
-const EMPTY = { items: [], promoCode: null };
+/** Stores the cart the customer now sees and returns it priced. */
+export const putCart = ({ items, promoCode }) =>
+  apiRequest('/cart', { method: 'PUT', body: { items: items.map(({ productId, qty }) => ({ productId, qty })), promoCode: promoCode ?? null } });
 
-export function readCart(userId) {
-  return getDb().carts?.[userId] || EMPTY;
-}
-
-export function writeCart(userId, cart) {
-  updateDb((db) => {
-    if (!db.carts) db.carts = {};
-    db.carts[userId] = cart;
-  });
-}
-
-export function readFavorites(userId) {
-  return getDb().favorites?.[userId] || [];
-}
-
-export function writeFavorites(userId, ids) {
-  updateDb((db) => {
-    const list = userBucket(db, 'favorites', userId);
-    list.splice(0, list.length, ...ids);
-  });
-}
+export const getFavorites = async () => (await apiRequest('/favorites')).productIds;
+export const putFavorites = async (productIds) => (await apiRequest('/favorites', { method: 'PUT', body: { productIds } })).productIds;

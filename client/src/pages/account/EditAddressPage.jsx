@@ -13,9 +13,15 @@ import { ADDRESS_LABELS, CITIES, CURRENT_LOCATION, validateMobile, validateRequi
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 
-/** 24 · Edit address (also "Add address"). */
+/** 24 · Edit address (also "Add address"). Waits for the saved addresses before filling the form. */
 export default function EditAddressPage() {
   const { addressId } = useParams();
+  const { loaded } = useAddresses();
+  if (addressId && !loaded) return <div className="min-h-[60dvh]" aria-busy="true" />;
+  return <AddressForm key={addressId || 'new'} addressId={addressId} />;
+}
+
+function AddressForm({ addressId }) {
   const isNew = !addressId;
   useDocumentTitle(isNew ? 'Add address' : 'Edit address');
   const navigate = useNavigate();
@@ -84,9 +90,15 @@ export default function EditAddressPage() {
 
   const doDelete = async () => {
     setDeleting(true);
-    await remove(existing.id);
-    toast.show(`${existing.label} address deleted`, { tone: 'info' });
-    navigate(ROUTES.addresses, { replace: true });
+    try {
+      await remove(existing.id);
+      toast.show(`${existing.label} address deleted`, { tone: 'info' });
+      navigate(ROUTES.addresses, { replace: true });
+    } catch (err) {
+      setDeleting(false);
+      setConfirmDelete(false);
+      toast.show(err.message, { tone: 'error' });
+    }
   };
 
   const onlyAddress = addresses.length <= 1 && !isNew;

@@ -1,124 +1,202 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { computeTotals, getProduct, findPromo } from '@/domain';
-import { readCart, writeCart } from '@/services/cartService.js';
-import { hasOrders } from '@/services/orderService.js';
-import { ApiError } from '@/services/request.js';
+import { cartLines, isCartBlocked } from '@/domain';
+import { getCart, putCart } from '@/services/cartService.js';
+import { createCartSync } from '@/services/cartSync.js';
+import { ApiError } from '@/services/api.js';
 import { useAuth } from './AuthContext.jsx';
+import { useCatalog } from './CatalogContext.jsx';
 
 const CartContext = createContext(null);
-const EMPTY = { items: [], promoCode: null };
 const MAX_QTY = 20;
+const EMPTY_TOTALS = { count: 0, subtotal: 0, discount: 0, delivery: 0, total: 0, vat: 0 };
+const toItems = (priced) => priced.items.map((l) => ({ productId: l.productId, qty: l.qty }));
+/** Warnings worth keeping on screen after the cart has been re-saved with the new values. */
+const NOTICES = ['qty_reduced', 'price_changed'];
 
+/**
+ * The cart lives on the server, which prices it from RSOF. Taps change the local items at once and
+ * are saved in the background (cartSync); totals, promo and warnings come from the server's last
+ * answer (`syncing` while a save is on its way).
+ */
 export function CartProvider({ children }) {
   const { user } = useAuth();
   const userId = user?.id;
-  const [cart, setCart] = useState(() => (userId ? readCart(userId) : EMPTY));
-  const loadedFor = useRef(userId);
-  const cartRef = useRef(cart);
-  cartRef.current = cart;
+  const { getProduct } = useCatalog();
+  const [items, setItems] = useState([]);
+  const [promoCode, setPromoCode] = useState(null);
+  const [priced, setPriced] = useState(null);
+  const [notices, setNotices] = useState({});
+  const [status, setStatus] = useState('idle');
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState(null);
+  const itemsRef = useRef(items);
+  const promoRef = useRef(promoCode);
 
-  // Reload the cart when the signed-in user changes
-  useEffect(() => {
-    if (loadedFor.current !== userId) {
-      loadedFor.current = userId;
-      setCart(userId ? readCart(userId) : EMPTY);
+  const syncRef = useRef(null);
+  if (!syncRef.current) {
+    syncRef.current = createCartSync({
+      put: putCart,
+      onResult: (answer) => {
+        const next = toItems(answer); // the server may have capped a quantity at the stock
+        itemsRef.current = next;
+        setItems(next);
+        setPriced(answer);
+        setSyncing(false);
+      },
+      onError: (e) => {
+        setError(e);
+        setSyncing(false);
+      },
+    });
+  }
+  const sync = syncRef.current;
+
+  const load = useCallback(async () => {
+    sync.cancel();
+    setSyncing(false);
+    if (!userId) {
+      itemsRef.current = [];
+      promoRef.current = null;
+      setItems([]);
+      setPromoCode(null);
+      setPriced(null);
+      setNotices({});
+      setStatus('idle');
+      return;
     }
-  }, [userId]);
+    setStatus((s) => (s === 'ready' ? s : 'loading'));
+    setError(null);
+    try {
+      const answer = await getCart();
+      const next = toItems(answer);
+      const code = answer.promo?.valid ? answer.promo.code : null;
+      itemsRef.current = next;
+      promoRef.current = code;
+      setItems(next);
+      setPromoCode(code);
+      setPriced(answer);
+      setStatus('ready');
+      const changed = answer.items.filter((l) => NOTICES.includes(l.warning));
+      setNotices(Object.fromEntries(changed.map((l) => [l.productId, l.warning])));
+      // Save the adjusted cart so checkout accepts it; the notices stay until the next change.
+      if (changed.length) {
+        setSyncing(true);
+        sync.schedule({ items: next, promoCode: code });
+      }
+    } catch (e) {
+      setError(e);
+      setStatus('error');
+    }
+  }, [userId, sync]);
 
-  const update = useCallback(
-    (fn) => {
-      setCart((prev) => {
-        const next = fn(prev);
-        if (userId) writeCart(userId, next);
-        return next;
-      });
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const commit = useCallback(
+    (nextItems, nextPromo = promoRef.current) => {
+      itemsRef.current = nextItems;
+      promoRef.current = nextPromo;
+      setItems(nextItems);
+      setPromoCode(nextPromo);
+      setNotices({});
+      setError(null);
+      setSyncing(true);
+      sync.schedule({ items: nextItems, promoCode: nextPromo });
     },
-    [userId],
+    [sync],
   );
 
-  /** Re-read from storage (e.g. after an order empties the cart server-side). */
-  const reload = useCallback(() => setCart(userId ? readCart(userId) : EMPTY), [userId]);
-
   const add = useCallback(
-    (productId, qty = 1) =>
-      update((prev) => {
-        const existing = prev.items.find((i) => i.productId === productId);
-        const items = existing
-          ? prev.items.map((i) => (i.productId === productId ? { ...i, qty: Math.min(MAX_QTY, i.qty + qty) } : i))
-          : [...prev.items, { productId, qty: Math.min(MAX_QTY, qty) }];
-        return { ...prev, items };
-      }),
-    [update],
+    (productId, qty = 1) => {
+      const prev = itemsRef.current;
+      const existing = prev.find((i) => i.productId === productId);
+      commit(
+        existing
+          ? prev.map((i) => (i.productId === productId ? { ...i, qty: Math.min(MAX_QTY, i.qty + qty) } : i))
+          : [...prev, { productId, qty: Math.min(MAX_QTY, qty) }],
+      );
+    },
+    [commit],
   );
 
   const setQty = useCallback(
-    (productId, qty) =>
-      update((prev) => ({
-        ...prev,
-        items: prev.items.map((i) => (i.productId === productId ? { ...i, qty: Math.max(1, Math.min(MAX_QTY, qty)) } : i)),
-      })),
-    [update],
+    (productId, qty) => commit(itemsRef.current.map((i) => (i.productId === productId ? { ...i, qty: Math.max(1, Math.min(MAX_QTY, qty)) } : i))),
+    [commit],
   );
 
   const remove = useCallback(
     (productId) => {
-      const index = cartRef.current.items.findIndex((i) => i.productId === productId);
-      const removed = index >= 0 ? { item: cartRef.current.items[index], index } : null;
-      update((prev) => {
-        const items = prev.items.filter((i) => i.productId !== productId);
-        return { ...prev, items, promoCode: items.length ? prev.promoCode : null };
-      });
-      return removed;
+      const prev = itemsRef.current;
+      const index = prev.findIndex((i) => i.productId === productId);
+      if (index < 0) return null;
+      const next = prev.filter((i) => i.productId !== productId);
+      commit(next, next.length ? promoRef.current : null);
+      return { item: prev[index], index };
     },
-    [update],
+    [commit],
   );
 
   const restore = useCallback(
-    ({ item, index }) =>
-      update((prev) => {
-        if (prev.items.some((i) => i.productId === item.productId)) return prev;
-        const items = [...prev.items];
-        items.splice(Math.min(index, items.length), 0, item);
-        return { ...prev, items };
-      }),
-    [update],
+    ({ item, index }) => {
+      const prev = itemsRef.current;
+      if (prev.some((i) => i.productId === item.productId)) return;
+      const next = [...prev];
+      next.splice(Math.min(index, next.length), 0, item);
+      commit(next);
+    },
+    [commit],
   );
 
+  /** Saves the cart with the code; an invalid code is refused with the server's reason. */
   const applyPromo = useCallback(
     async (code) => {
-      await new Promise((r) => setTimeout(r, 500 + Math.random() * 300));
-      const promo = findPromo(code);
-      if (!promo) throw new ApiError('This promo code is not valid.', { field: 'promo' });
-      if (promo.firstOrderOnly && userId && hasOrders(userId)) {
-        throw new ApiError('This code is for your first order only.', { field: 'promo' });
+      await sync.flush().catch(() => {});
+      const answer = await putCart({ items: itemsRef.current, promoCode: code });
+      setPriced(answer);
+      if (!answer.promo?.valid) {
+        promoRef.current = null;
+        setPromoCode(null);
+        throw new ApiError(answer.promo?.error || "This code isn't valid.", { code: 'invalid_promo', field: 'promo' });
       }
-      update((prev) => ({ ...prev, promoCode: promo.code }));
-      return promo;
+      promoRef.current = answer.promo.code;
+      setPromoCode(answer.promo.code);
+      return answer.promo;
     },
-    [update, userId],
+    [sync],
   );
 
-  const removePromo = useCallback(() => update((prev) => ({ ...prev, promoCode: null })), [update]);
+  const removePromo = useCallback(() => commit(itemsRef.current, null), [commit]);
+
+  /** Waits for pending saves (before leaving the cart, before paying). Rejects if a save fails. */
+  const flush = useCallback(() => sync.flush(), [sync]);
 
   const value = useMemo(() => {
-    const promo = findPromo(cart.promoCode);
-    const totals = computeTotals(cart.items, getProduct, promo);
+    const lines = cartLines(items, priced?.items || [], getProduct).map((l) => ({ ...l, warning: l.warning || notices[l.productId] || null }));
+    const count = items.reduce((s, i) => s + i.qty, 0);
     return {
-      items: cart.items,
-      promo,
-      totals,
-      count: totals.count,
-      quantityOf: (productId) => cart.items.find((i) => i.productId === productId)?.qty || 0,
+      items,
+      lines,
+      totals: priced?.totals || EMPTY_TOTALS,
+      promo: priced?.promo?.valid && promoCode ? priced.promo : null,
+      count,
+      status,
+      syncing,
+      error,
+      blocked: isCartBlocked(lines),
+      quantityOf: (productId) => items.find((i) => i.productId === productId)?.qty || 0,
       add,
       setQty,
       remove,
       restore,
       applyPromo,
       removePromo,
-      reload,
-      raw: cart,
+      reload: load,
+      flush,
+      // Kept for the payment screen until it places orders through the server.
+      raw: { items, promoCode },
     };
-  }, [cart, add, setQty, remove, restore, applyPromo, removePromo, reload]);
+  }, [items, priced, promoCode, notices, getProduct, status, syncing, error, add, setQty, remove, restore, applyPromo, removePromo, load, flush]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

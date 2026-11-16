@@ -11,6 +11,7 @@ export * from './password.js';
 export * from './pricing.js';
 export * from './branches.js';
 export * from './catalog.js';
+export * from './cart.js';
 export * from './delivery.js';
 export * from './orders.js';
 export * from './address.js';

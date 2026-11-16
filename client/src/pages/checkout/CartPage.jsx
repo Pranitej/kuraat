@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, ShoppingBag, Store, Tag as TagIcon, X } from 'lucide-react';
+import { ChevronRight, CloudOff, ShoppingBag, Store, Tag as TagIcon, X } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import BottomBar from '@/components/layout/BottomBar.jsx';
-import { Button, EmptyState, InfoBanner, Tag, inputBase, inputShell } from '@/components/ui';
+import { Button, EmptyState, InfoBanner, Skeleton, Tag, inputBase, inputShell } from '@/components/ui';
 import { CartItemCard, CheckoutLayout, CheckoutSteps, OrderSummary } from '@/components/checkout/CheckoutParts.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
@@ -24,16 +24,30 @@ export default function CartPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const isDesktop = useIsDesktop();
-  const { totals, promo, setQty, remove, restore, applyPromo, removePromo, items } = useCart();
+  const { lines, count, totals, promo, setQty, remove, restore, applyPromo, removePromo, items, status, error, syncing, blocked, flush, reload } = useCart();
   const delivery = useDeliveryBranch(items.map((i) => i.productId));
   const [code, setCode] = useState('');
   const [promoError, setPromoError] = useState('');
   const [applying, setApplying] = useState(false);
-  const lineCount = totals.lines.length;
+  const [leaving, setLeaving] = useState(false);
+  const lineCount = lines.length;
 
   const removeLine = (line) => {
     const removed = remove(line.productId);
-    if (removed) toast.show(`${line.product.name} removed`, { tone: 'info', action: { label: 'Undo', onClick: () => restore(removed) } });
+    if (removed) toast.show(`${line.product?.name ?? 'Item'} removed`, { tone: 'info', action: { label: 'Undo', onClick: () => restore(removed) } });
+  };
+
+  // Leave only once the server has the cart as shown (it prices and checks it again at payment).
+  const continueToDelivery = async () => {
+    setLeaving(true);
+    try {
+      await flush();
+      navigate(ROUTES.delivery);
+    } catch (err) {
+      toast.show(err.message, { tone: 'error' });
+    } finally {
+      setLeaving(false);
+    }
   };
 
   const apply = async (e) => {
@@ -56,8 +70,30 @@ export default function CartPage() {
   };
 
   const header = (
-    <ScreenHeader title="My cart" right={totals.count > 0 ? <Tag className="h-8 px-3 text-[13px]">{totals.count} {totals.count === 1 ? 'item' : 'items'}</Tag> : null} />
+    <ScreenHeader title="My cart" right={count > 0 ? <Tag className="h-8 px-3 text-[13px]">{count} {count === 1 ? 'item' : 'items'}</Tag> : null} />
   );
+
+  if (!lineCount && status === 'loading') {
+    return (
+      <div className="mx-auto max-w-column lg:max-w-[1080px] lg:px-8">
+        {header}
+        <div className="flex flex-col gap-3 px-5 lg:px-0" aria-busy="true">
+          {[0, 1].map((i) => (
+            <Skeleton key={i} className="h-[116px] rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!lineCount && status === 'error') {
+    return (
+      <div className="mx-auto max-w-column lg:max-w-[1080px] lg:px-8">
+        {header}
+        <EmptyState icon={CloudOff} title="We can't reach the store right now" message={error?.message} actionLabel="Try again" onAction={reload} />
+      </div>
+    );
+  }
 
   if (!lineCount) {
     return (
@@ -76,10 +112,11 @@ export default function CartPage() {
 
   const [before, after] = delivery ? availabilityText(lineCount, delivery) : ['', ''];
   const cta = (
-    <Button block rightIcon={ChevronRight} onClick={() => navigate(ROUTES.delivery)}>
+    <Button block rightIcon={ChevronRight} disabled={blocked} loading={leaving} onClick={continueToDelivery}>
       Continue to delivery
     </Button>
   );
+  const summaryClass = cn('transition-opacity', syncing && 'opacity-60');
 
   const promoBlock = (
     <div>
@@ -130,13 +167,13 @@ export default function CartPage() {
       aside={
         <div className="flex flex-col gap-4">
           {promoBlock}
-          <OrderSummary totals={totals} promo={promo} />
+          <OrderSummary totals={totals} promo={promo} className={summaryClass} />
           {cta}
         </div>
       }
     >
       <div className="flex flex-col gap-3">
-        {totals.lines.map((line) => (
+        {lines.map((line) => (
           <CartItemCard
             key={line.productId}
             line={line}
@@ -150,7 +187,7 @@ export default function CartPage() {
       {!isDesktop && (
         <div className="mt-4 flex flex-col gap-3">
           {promoBlock}
-          <OrderSummary totals={totals} promo={promo} />
+          <OrderSummary totals={totals} promo={promo} className={summaryClass} />
         </div>
       )}
 

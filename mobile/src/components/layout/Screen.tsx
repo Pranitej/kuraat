@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { createContext, useContext, type ReactNode, type Ref } from 'react';
-import { StyleSheet, View, type RefreshControlProps, type ScrollView, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type RefreshControlProps, type ScrollViewInstance, type StyleProp, type ViewStyle } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Animated, { useAnimatedScrollHandler, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +28,9 @@ type Props = {
   background?: string;
   contentStyle?: StyleProp<ViewStyle>;
   refreshControl?: React.ReactElement<RefreshControlProps>;
-  scrollRef?: Ref<ScrollView>;
+  scrollRef?: Ref<ScrollViewInstance>;
+  /** Floating elements over the content (e.g. the cart button), positioned by the caller. */
+  overlay?: ReactNode;
 };
 
 /**
@@ -48,6 +50,7 @@ export function Screen({
   contentStyle,
   refreshControl,
   scrollRef,
+  overlay,
 }: Props) {
   const insets = useSafeAreaInsets();
   const scrollY = useSharedValue(0);
@@ -100,6 +103,7 @@ export function Screen({
         {header}
         {body}
         {bottomBar}
+        {overlay}
       </View>
     </ScrollYContext.Provider>
   );

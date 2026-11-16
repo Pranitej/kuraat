@@ -10,7 +10,7 @@ import { ChevronLeft, Maximize, PackageSearch, ShoppingBag, ZoomIn } from '@/com
 import { DeliveryFromCard } from '@/components/shop/DeliveryFromCard';
 import { FavoriteButton } from '@/components/shop/ProductCard';
 import { Button, Card, EmptyState, IconButton, Skeleton, Stepper, Tag, Text, TextLink } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
@@ -215,7 +215,13 @@ export default function ProductDetailScreen() {
               accessibilityRole="imagebutton"
               accessibilityLabel={`${product.name} — photo ${index + 1} of ${images.length}. Opens the photo viewer`}
             >
-              <Image testID={`hero-photo-${index}`} source={{ uri: src }} style={{ width, height: heroHeight }} contentFit="cover" transition={150} />
+              <Image
+                testID={`hero-photo-${index}`}
+                source={{ uri: src }}
+                style={{ width, height: heroHeight }}
+                contentFit="cover"
+                transition={150}
+              />
             </Pressable>
           )}
         />

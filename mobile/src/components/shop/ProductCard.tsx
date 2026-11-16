@@ -4,7 +4,7 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Heart, Plus } from '@/components/icons';
 import { Skeleton, Text } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useCart } from '@/context/CartContext';
 import { useFavorites } from '@/context/FavoritesContext';
 import { useToast } from '@/context/ToastContext';

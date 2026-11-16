@@ -6,7 +6,7 @@ import { OrderTimeline, StatusTag, branchLabel, type StatusView, type TimelineRo
 import { Screen, ScreenHeader } from '@/components/layout';
 import { Navigation, PackageSearch, PackageX, Phone, Store } from '@/components/icons';
 import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Text, WhatsAppIcon } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useOrder, useOrders } from '@/context/OrderContext';
 import { useToast } from '@/context/ToastContext';
 import { directionsUrl, formatAddress, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';

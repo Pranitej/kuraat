@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { Screen } from '@/components/layout';
 import { SearchX } from '@/components/icons';
 import { EmptyState } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 
 /** Unknown link (e.g. an old deep link): same copy as the web's NotFoundPage. */
 export default function NotFoundScreen() {

@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 10,
     borderRadius: radii.pill,
-    alignSelf: 'flex-start',
+    // No alignSelf: the row a tag sits in decides its vertical position (e.g. centred pills).
   },
   tagLight: { backgroundColor: colors.sand },
   tagDark: { backgroundColor: colors.maroon },

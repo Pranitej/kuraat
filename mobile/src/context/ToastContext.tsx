@@ -22,6 +22,7 @@ const ICONS = { success: CircleCheck, info: Info, error: TriangleAlert };
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [barHeight, setBarHeight] = useState(0);
+  const [multiline, setMultiline] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const insets = useContext(SafeAreaInsetsContext);
 
@@ -33,6 +34,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const show = useCallback((message: string, { tone = 'success', action = null, duration = 2800 }: ToastOptions = {}) => {
     if (timer.current) clearTimeout(timer.current);
     const id = Date.now();
+    setMultiline(false);
     setToast({ id, message, tone, action });
     timer.current = setTimeout(() => setToast((t) => (t && t.id === id ? null : t)), action ? duration + 1800 : duration);
   }, []);
@@ -57,10 +59,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 styles.toast,
                 { backgroundColor: toast.tone === 'error' ? colors.hotpink : colors.ink },
                 toast.action ? styles.withAction : null,
+                // A message that wraps on a narrow phone turns the pill into a rounded card, so the
+                // action button never sits against a half-circle end.
+                multiline ? styles.multiline : null,
               ]}
             >
               <Icon size={18} color={toast.tone === 'error' ? colors.white : colors.pink} strokeWidth={2} />
-              <Text variant="small" weight={600} color="white" style={styles.message}>
+              <Text
+                variant="small"
+                weight={600}
+                color="white"
+                style={[styles.message, toast.action ? styles.messageWithAction : null]}
+                onTextLayout={(e) => setMultiline(e.nativeEvent.lines.length > 1)}
+              >
                 {toast.message}
               </Text>
               {toast.action ? (
@@ -74,7 +85,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                   hitSlop={8}
                   style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
                 >
-                  <Text variant="small" weight={700} color="white">
+                  <Text variant="small" weight={700} color="white" numberOfLines={1}>
                     {toast.action.label}
                   </Text>
                 </Pressable>
@@ -109,8 +120,18 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     ...shadows.dialog,
   },
-  withAction: { paddingRight: 8 },
+  // With a button the toast spans the width (max 440): the message gets the room, the button its own.
+  withAction: { width: '100%', paddingRight: 8 },
+  multiline: { borderRadius: radii.xl, paddingRight: 12 },
   message: { flexShrink: 1 },
-  action: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: radii.pill, backgroundColor: 'rgba(255,255,255,0.15)' },
+  messageWithAction: { flex: 1 },
+  // Never squeezed by a long message: the label stays whole on one line.
+  action: {
+    flexShrink: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
   actionPressed: { backgroundColor: 'rgba(255,255,255,0.25)' },
 });

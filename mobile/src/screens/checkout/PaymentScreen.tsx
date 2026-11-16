@@ -7,7 +7,7 @@ import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
 import { Banknote, CreditCard, Lock, TriangleAlert, type LucideIcon } from '@/components/icons';
 import { DeliveryFromCard } from '@/components/shop/DeliveryFromCard';
 import { Button, Field, RadioDot, Text, Toggle } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useCart } from '@/context/CartContext';
 import { useCheckout } from '@/context/CheckoutContext';

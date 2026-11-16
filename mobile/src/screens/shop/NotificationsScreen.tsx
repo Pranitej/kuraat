@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen, ScreenHeader, useScreenScrollY } from '@/components/layout';
 import { BellOff, CreditCard, Gift, Lock, Package, PackageX, Tag, Truck, type LucideIcon } from '@/components/icons';
 import { EmptyState, Spinner, Text } from '@/components/ui';
-import { ROUTES, notificationTarget } from '@/config/routes.js';
+import { ROUTES, notificationTarget } from '@/lib/routes';
 import { useNotifications } from '@/context/NotificationContext';
 import { formatNotificationTime, isSameDay } from '@/domain';
 import { colors } from '@/theme/theme';

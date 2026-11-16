@@ -7,7 +7,7 @@ import { OrderCard } from '@/components/account/OrderParts';
 import { Screen, ScreenHeader, useScreenScrollY } from '@/components/layout';
 import { Package } from '@/components/icons';
 import { Chip, EmptyState, Skeleton } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useOrders } from '@/context/OrderContext';
 import { orderStatusView } from '@/domain';
 import { colors, radii } from '@/theme/theme';

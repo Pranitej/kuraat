@@ -6,7 +6,7 @@ import Animated, { FadeInUp, useAnimatedStyle, withTiming } from 'react-native-r
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CirclePattern, Logo, Text } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { colors, gradients } from '@/theme/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 

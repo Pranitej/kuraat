@@ -7,7 +7,7 @@ import { promoBannerPhoto } from '@/assets/images';
 import { useScreenScrollY } from '@/components/layout';
 import { Bell, ChevronRight, ListFilter, Mail, MapPin, Phone, Search, ShoppingBag, Store, X } from '@/components/icons';
 import { Avatar, BottomSheet, Button, Chip, IconButton, Logo, MaroonPanel, Tag, Text } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { HEAD_OFFICE, SORT_OPTIONS, formatDistance, mapsUrl, telUrl } from '@/domain';
 import { useOpenUrl } from '@/lib/linking';
 import { FONT_FAMILY, MAX_FONT_SCALE, colors, layout, radii, shadows } from '@/theme/theme';

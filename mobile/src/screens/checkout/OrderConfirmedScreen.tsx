@@ -7,7 +7,7 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, Clock, MapPin, Store } from '@/components/icons';
 import { Button, Card, Dialog, DialogLink, IconTile, MaroonPanel, Text } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useOrder } from '@/context/OrderContext';
 import { formatAddress, formatDistance, formatOrderDate, formatSAR, formatWindow } from '@/domain';
 import { useBackToHome } from '@/hooks';

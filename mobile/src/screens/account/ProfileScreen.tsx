@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BackButton } from '@/components/layout';
 import { ChevronRight, KeyRound, LogOut, MapPin, ReceiptText, User } from '@/components/icons';
 import { Avatar, Button, ConfirmDialog, IconTile, MaroonPanel, Text } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';

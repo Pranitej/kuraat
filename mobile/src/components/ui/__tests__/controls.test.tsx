@@ -91,3 +91,13 @@ describe('selection controls', () => {
     expect(onChange).toHaveBeenCalledWith(true);
   });
 });
+
+describe('Tag', () => {
+  test('lets its row centre it vertically (no alignSelf of its own)', async () => {
+    const { StyleSheet } = require('react-native');
+    const { Tag } = require('@/components/ui');
+    await render(<Tag tone="dark">2.4 km</Tag>);
+    const pill = screen.getByText('2.4 km').parent;
+    expect(StyleSheet.flatten(pill?.props.style).alignSelf).toBeUndefined();
+  });
+});

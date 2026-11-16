@@ -73,6 +73,19 @@ describe('Toast', () => {
     expect(screen.queryByText('Truffle Box · Classic removed')).toBeNull();
   });
 
+  test('the action button keeps its size and its label on one line', async () => {
+    const { StyleSheet } = require('react-native');
+    await render(
+      <ToastProvider>
+        <ToastButton withAction={() => {}} />
+      </ToastProvider>,
+    );
+    await fireEvent.press(screen.getByText('show'));
+    const action = screen.getByRole('button', { name: 'Undo' });
+    expect(StyleSheet.flatten(action.props.style).flexShrink).toBe(0);
+    expect(screen.getByText('Undo').props.numberOfLines).toBe(1);
+  });
+
   test('an action runs its handler and closes the toast', async () => {
     const undo = jest.fn();
     await render(

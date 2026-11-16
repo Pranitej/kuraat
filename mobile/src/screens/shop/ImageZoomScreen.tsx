@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Minimize2, Share2, X, ZoomIn, ZoomOut } from '@/components/icons';
 import { IconButton, Text } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useCatalog } from '@/context/CatalogContext';
 import { useToast } from '@/context/ToastContext';
 import { useGoBack } from '@/hooks';

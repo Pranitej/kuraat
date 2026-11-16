@@ -5,7 +5,7 @@ import { MapIllustration } from '@/components/branch/MapIllustration';
 import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
 import { LocateFixed, MapPin, Trash2 } from '@/components/icons';
 import { Button, Chip, ConfirmDialog, Field, FieldWrapper, PhoneField, SelectField, Spinner, Text, Toggle } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAddresses, type AddressInput } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCheckout } from '@/context/CheckoutContext';

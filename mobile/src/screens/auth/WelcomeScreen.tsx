@@ -7,7 +7,7 @@ import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { welcomeHero } from '@/assets/images';
 import { Button, Dialog, Logo, Text, TextLink } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { colors, layout, radii } from '@/theme/theme';
 
 /** Same copy as the web's Welcome page. */

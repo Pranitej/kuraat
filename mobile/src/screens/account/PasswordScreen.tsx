@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
 import { Info } from '@/components/icons';
 import { Button, InfoBanner, PasswordField, StrengthMeter, Text, TextLink, type PasswordEvaluation } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { evaluatePassword } from '@/domain';

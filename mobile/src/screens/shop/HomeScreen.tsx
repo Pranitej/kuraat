@@ -15,7 +15,7 @@ import {
 } from '@/components/shop/HomeSections';
 import { ProductCard, ProductCardSkeleton } from '@/components/shop/ProductCard';
 import { Chip, ChipRow, EmptyState, SectionTitle, Text, TextLink } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useBranches } from '@/context/BranchContext';
@@ -23,11 +23,11 @@ import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { useNotifications } from '@/context/NotificationContext';
 import { areaLabel, categoryChips, filterProducts, withDistances } from '@/domain';
+import { productGrid } from '@/lib/grid';
 import { colors, layout } from '@/theme/theme';
 import type { Branch, Product } from '@/types/api';
 
 const GUTTER = 20;
-const GAP = 16;
 
 type Filters = { q: string; category: string; sort: string };
 const DEFAULT_FILTERS: Filters = { q: '', category: 'all', sort: 'recommended' };
@@ -63,8 +63,7 @@ export default function HomeScreen() {
   const failed = catalog.status === 'error';
 
   const contentWidth = Math.min(width, layout.maxWidth) - GUTTER * 2;
-  const columns = contentWidth >= 560 ? 3 : 2;
-  const cardWidth = (contentWidth - GAP * (columns - 1)) / columns;
+  const { cardWidth, gap } = productGrid(contentWidth);
 
   const scrollToSweets = () => scroll.current?.scrollTo({ y: Math.max(0, sweetsY.current - 8), animated: true });
   const refresh = async () => {
@@ -77,6 +76,7 @@ export default function HomeScreen() {
     <Screen
       header={<HomeHeader user={user} unread={unreadCount} />}
       gutter={0}
+      padBottom={false}
       scrollRef={scroll}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.maroon} colors={[colors.maroon]} />}
       overlay={<CartFab count={count} />}
@@ -137,7 +137,7 @@ export default function HomeScreen() {
           ) : null}
 
           {loading ? (
-            <View style={styles.grid} accessibilityLabel="Loading sweets">
+            <View style={[styles.grid, { gap }]} accessibilityLabel="Loading sweets">
               {[0, 1, 2, 3].map((i) => (
                 <ProductCardSkeleton key={i} width={cardWidth} />
               ))}
@@ -156,7 +156,7 @@ export default function HomeScreen() {
               onAction={catalog.refresh}
             />
           ) : products.length ? (
-            <View style={styles.grid}>
+            <View style={[styles.grid, { gap }]}>
               {products.map((p) => (
                 <ProductCard key={p.id} product={p} width={cardWidth} />
               ))}
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   section: { paddingTop: 28 },
   chips: { marginTop: 16 },
   results: { marginTop: 16 },
-  grid: { marginTop: 16, flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
+  grid: { marginTop: 16, flexDirection: 'row', flexWrap: 'wrap' },
   branchesSection: { paddingTop: 32 },
   branchRow: { marginTop: 16, marginHorizontal: -GUTTER },
   branchRowContent: { paddingHorizontal: GUTTER, paddingBottom: 4, gap: 12 },

@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { Clock, Navigation, Phone, Store } from '@/components/icons';
 import { Button, Tag, Text } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { directionsUrl, formatDistance, formatHours, telUrl } from '@/domain';
 import { useOpenUrl } from '@/lib/linking';
 import { colors, radii, shadows } from '@/theme/theme';

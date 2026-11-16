@@ -17,7 +17,7 @@ import {
   inputShellStyle,
 } from '@/components/ui';
 import { GENDERS } from '@/config/options.js';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';

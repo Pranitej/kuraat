@@ -6,7 +6,7 @@ import { MapIllustration, type MapPin } from '@/components/branch/MapIllustratio
 import { Screen, ScreenHeader } from '@/components/layout';
 import { MapPinOff, Search, X } from '@/components/icons';
 import { Chip, ChipRow, EmptyState, IconButton } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useBranches } from '@/context/BranchContext';
 import { mapPins, withDistances } from '@/domain';

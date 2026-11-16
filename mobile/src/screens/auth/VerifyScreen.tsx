@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { AuthLayout } from '@/components/layout';
 import { KeyRound } from '@/components/icons';
 import { Button, OtpInput, Text, TextDivider, TextLink, WhatsAppIcon } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { firstName, formatPhone } from '@/domain';

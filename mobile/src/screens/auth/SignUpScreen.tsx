@@ -5,7 +5,7 @@ import { AuthLayout } from '@/components/layout';
 import { LocateFixed, MapPin, User } from '@/components/icons';
 import { Button, Field, FieldWrapper, LeadLink, PhoneField, Segmented, Spinner, Text, WhatsAppIcon } from '@/components/ui';
 import { GENDERS } from '@/config/options.js';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAuth } from '@/context/AuthContext';
 import { CURRENT_LOCATION, parseAddressText, validateAddressLine, validateMobile, validateName } from '@/domain';
 import { colors } from '@/theme/theme';

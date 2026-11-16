@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
 import { MapPin, Pencil, Plus, Store, Trash2 } from '@/components/icons';
 import { Button, Card, ConfirmDialog, EmptyState, IconTile, Skeleton, Tag, Text } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';

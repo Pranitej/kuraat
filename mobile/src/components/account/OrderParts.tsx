@@ -4,7 +4,7 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Check, ChevronRight, Store, X } from '@/components/icons';
 import { Card, Tag, Text, type TagTone } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { formatOrderDate, formatSAR, orderItemCount, orderStatusView } from '@/domain';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';

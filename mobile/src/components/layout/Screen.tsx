@@ -31,6 +31,11 @@ type Props = {
   scrollRef?: Ref<ScrollViewInstance>;
   /** Floating elements over the content (e.g. the cart button), positioned by the caller. */
   overlay?: ReactNode;
+  /**
+   * Space under the content for the home indicator (default). False when the content ends in a
+   * full-bleed panel that handles it itself (Home's maroon footer), so no cream strip shows below.
+   */
+  padBottom?: boolean;
 };
 
 /**
@@ -51,6 +56,7 @@ export function Screen({
   refreshControl,
   scrollRef,
   overlay,
+  padBottom: withBottomPadding = true,
 }: Props) {
   const insets = useSafeAreaInsets();
   const scrollY = useSharedValue(0);
@@ -59,7 +65,7 @@ export function Screen({
   });
 
   const padTop = !header && topInset ? insets.top : 0;
-  const padBottom = bottomBar ? 12 : insets.bottom + 24;
+  const padBottom = !withBottomPadding ? 0 : bottomBar ? 12 : insets.bottom + 24;
   const column = <View style={[styles.column, { paddingHorizontal: gutter }, contentStyle]}>{children}</View>;
 
   let body: ReactNode;
@@ -68,6 +74,7 @@ export function Screen({
   } else if (keyboard) {
     body = (
       <KeyboardAwareScrollView
+        testID="screen-scroll"
         ref={scrollRef as never}
         bottomOffset={24}
         keyboardShouldPersistTaps="handled"
@@ -84,6 +91,7 @@ export function Screen({
   } else {
     body = (
       <Animated.ScrollView
+        testID="screen-scroll"
         ref={scrollRef as never}
         onScroll={onScroll}
         scrollEventThrottle={16}

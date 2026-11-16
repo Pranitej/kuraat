@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AuthLayout } from '@/components/layout';
 import { Button, PasswordField, PasswordRules, StrengthMeter, Text, type PasswordEvaluation } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { evaluatePassword, firstName } from '@/domain';

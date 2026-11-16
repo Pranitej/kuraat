@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AuthLayout } from '@/components/layout';
 import { Button, LeadLink, PasswordField, PhoneField, Segmented, Text, TextDivider, TextLink, WhatsAppIcon } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { firstName, validateMobile } from '@/domain';

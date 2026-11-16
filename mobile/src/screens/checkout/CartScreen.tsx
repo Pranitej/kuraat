@@ -5,7 +5,7 @@ import { CartItemCard, CheckoutSteps, OrderSummary } from '@/components/checkout
 import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
 import { ChevronRight, CloudOff, ShoppingBag, Store, Tag as TagIcon, X } from '@/components/icons';
 import { Button, EmptyState, Field, IconButton, InfoBanner, Skeleton, Tag, Text } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useCart, type CartLine } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';

@@ -6,7 +6,7 @@ import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check } from '@/components/icons';
 import { Button, Card, CirclePattern, ProgressBar, Text, WhatsAppIcon } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useOrder } from '@/context/OrderContext';
 import { formatDateTime, formatSAR, paymentLabel } from '@/domain';
 import { useBackToHome } from '@/hooks';

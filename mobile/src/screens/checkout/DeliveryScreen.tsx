@@ -6,7 +6,7 @@ import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
 import { ChevronRight, Plus } from '@/components/icons';
 import { DeliveryFromCard } from '@/components/shop/DeliveryFromCard';
 import { Button, PhoneField, RadioDot, Tag, Text, TextLink } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
@@ -108,7 +108,7 @@ export default function DeliveryScreen() {
       ) : null}
 
       <Pressable
-        onPress={() => router.push(`${ROUTES.addressNew}?returnTo=${encodeURIComponent(ROUTES.delivery)}`)}
+        onPress={() => router.push({ pathname: '/addresses/new', params: { returnTo: ROUTES.delivery as string } })}
         accessibilityRole="button"
         accessibilityLabel="Add new address"
         style={({ pressed }) => [styles.add, pressed && styles.addPressed]}

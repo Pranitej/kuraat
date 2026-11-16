@@ -4,7 +4,7 @@ import { Fragment, memo, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Check, Store, Trash2 } from '@/components/icons';
 import { Card, IconButton, Stepper, SummaryRow, Text } from '@/components/ui';
-import { ROUTES } from '@/config/routes.js';
+import { ROUTES } from '@/lib/routes';
 import type { CartLine } from '@/context/CartContext';
 import { formatSAR, lineWarning } from '@/domain';
 import { colors, radii } from '@/theme/theme';

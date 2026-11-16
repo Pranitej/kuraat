@@ -67,3 +67,13 @@ describe('26 · Notifications', () => {
     expect(await screen.findByText('You are all caught up')).toBeTruthy();
   });
 });
+
+describe('07/08 · Home footer', () => {
+  test('nothing below the maroon Contact us footer (no extra bottom padding)', async () => {
+    const { StyleSheet } = require('react-native');
+    await renderScreen(<HomeScreen />);
+    await screen.findByText('Contact us');
+    const scroll = screen.getByTestId('screen-scroll');
+    expect(StyleSheet.flatten(scroll.props.contentContainerStyle).paddingBottom).toBe(0);
+  });
+});

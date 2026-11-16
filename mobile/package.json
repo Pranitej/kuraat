@@ -5,9 +5,9 @@
   "description": "kuraat â€” React Native (Expo) customer app for Android and iOS. Independent app: install, run and build from this folder.",
   "main": "expo-router/entry",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "start": "expo start --go",
+    "android": "expo start --go --android",
+    "ios": "expo start --go --ios",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -16,7 +16,9 @@
     "test:ui": "jest",
     "parity": "node scripts/check-parity.mjs",
     "doctor": "expo-doctor",
-    "export:check": "expo export --platform android --platform ios --output-dir .export-check"
+    "export:check": "expo export --platform android --platform ios --output-dir .export-check",
+    "start:dev-client": "expo start --dev-client",
+    "check": "npm run parity && npm run typecheck && npm run lint && npm test"
   },
   "dependencies": {
     "@expo-google-fonts/noto-sans-arabic": "^0.4.3",

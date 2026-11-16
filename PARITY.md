@@ -31,36 +31,36 @@ tokens) and `lib/env.js` (where the API is).
 
 ## Features
 
-✅ done · ⏳ in progress · — not applicable
+✅ done · — not applicable
 
 | # | Screen / feature | Web | Mobile | Note |
 |---|---|---|---|---|
-| 01 | Splash | ✅ | ⏳ | Mobile: native splash hands over to the animated one |
-| 02 | Welcome, Terms / Privacy dialogs | ✅ | ⏳ | |
-| 03 | Sign up | ✅ | ⏳ | |
-| 04 | Verify (WhatsApp code) — sign-up, sign-in, reset, phone change, delete account | ✅ | ⏳ | Mobile: code autofill from the keyboard |
-| 05 | Set password | ✅ | ⏳ | |
-| 06 | Sign in (password / WhatsApp code) | ✅ | ⏳ | |
-| 07–08 | Home, search, filter sheet, favourites, add to cart | ✅ | ⏳ | |
-| 09–10 | Product detail (gallery, details, allergens, delivered-from) | ✅ | ⏳ | |
-| 11 | Image zoom, share | ✅ | ⏳ | Web: Web Share / copy link · Mobile: native share sheet, pinch to zoom |
-| 12 | Cart (stepper, undo, promo, warnings) | ✅ | ⏳ | |
-| 13 | Delivery details (address, phone, delivering branch) | ✅ | ⏳ | |
-| 14 | Payment (card, UPI, cash) | ✅ | ⏳ | Simulated payments until the real gateway |
-| 15 | Payment successful | ✅ | ⏳ | |
-| 16 | Order confirmed + branch popup | ✅ | ⏳ | |
-| 17 | Profile, log out | ✅ | ⏳ | |
-| 18 | Account (name, phone change, email, gender, photo) | ✅ | ⏳ | Mobile: photo from the gallery |
-| 18 | Delete account (store requirement) | ✅ | ⏳ | Account screen → confirm → WhatsApp code |
-| 19 | Password (set / change / forgot) | ✅ | ⏳ | |
-| 20–21 | My orders (tabs, empty state) | ✅ | ⏳ | |
-| 22 | Order tracking (live status, cancel, delivery-code resend) | ✅ | ⏳ | Both refresh every 30 s while an order is on its way |
-| 23 | Saved addresses | ✅ | ⏳ | |
-| 24 | Add / edit address | ✅ | ⏳ | |
-| 25 | Our branches (search, cities, map, call, directions) | ✅ | ⏳ | |
-| 26 | Notifications (read, mark all read, open target) | ✅ | ⏳ | |
-| — | Session refresh, sign out on expiry | ✅ | ⏳ | |
-| — | Offline banner | — | ⏳ | Web shows the "can't reach kuraat" message per request |
+| 01 | Splash | ✅ | ✅ | Mobile: the native splash hands over to the animated one |
+| 02 | Welcome, Terms / Privacy dialogs | ✅ | ✅ | |
+| 03 | Sign up | ✅ | ✅ | |
+| 04 | Verify (WhatsApp code) — sign-up, sign-in, reset, phone change, delete account | ✅ | ✅ | Mobile: code autofill from the keyboard |
+| 05 | Set password | ✅ | ✅ | |
+| 06 | Sign in (password / WhatsApp code) | ✅ | ✅ | |
+| 07–08 | Home, search, filter sheet, favourites, add to cart | ✅ | ✅ | Web keeps filters in the URL; mobile in the screen |
+| 09–10 | Product detail (gallery, details, allergens, delivered-from) | ✅ | ✅ | |
+| 11 | Image zoom, share | ✅ | ✅ | Web: Web Share / copy link · Mobile: native share sheet, pinch to zoom |
+| 12 | Cart (stepper, undo, promo, warnings) | ✅ | ✅ | |
+| 13 | Delivery details (address, phone, delivering branch) | ✅ | ✅ | |
+| 14 | Payment (card, UPI, cash) | ✅ | ✅ | Simulated payments until the real gateway |
+| 15 | Payment successful | ✅ | ✅ | |
+| 16 | Order confirmed + branch popup | ✅ | ✅ | |
+| 17 | Profile, log out | ✅ | ✅ | |
+| 18 | Account (name, phone change, email, gender, photo) | ✅ | ✅ | Mobile: photo from the gallery |
+| 18 | Delete account (store requirement) | ✅ | ✅ | Account screen → confirm → WhatsApp code |
+| 19 | Password (set / change / forgot) | ✅ | ✅ | |
+| 20–21 | My orders (tabs, empty state) | ✅ | ✅ | |
+| 22 | Order tracking (live status, cancel, delivery-code resend) | ✅ | ✅ | Both refresh every 30 s while an order is on its way (mobile: while the app is in front, and on return) |
+| 23 | Saved addresses | ✅ | ✅ | |
+| 24 | Add / edit address | ✅ | ✅ | |
+| 25 | Our branches (search, cities, map, call, directions) | ✅ | ✅ | |
+| 26 | Notifications (read, mark all read, open target) | ✅ | ✅ | |
+| — | Session refresh, sign out on expiry | ✅ | ✅ | Web: tokens in local storage · Mobile: device keychain |
+| — | Offline banner | — | ✅ | Web shows the "can't reach kuraat" message per request |
 | — | Desktop / tablet layouts | ✅ | — | Mobile is phone-first; wide screens use a centred 640 pt column |
 
 ## Gaps

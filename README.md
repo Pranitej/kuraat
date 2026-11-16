@@ -8,7 +8,7 @@ assets and configuration, and is installed, built and deployed on its own — no
 ```
 kuraat/
 ├── client/            React web app (ReactJS + Tailwind CSS) — the mobile UI on the web
-├── mobile/            React Native app (next phase)
+├── mobile/            React Native app (Expo) for Android and iOS — native screens, same API
 ├── server/            Backend API (Node.js + MySQL) — talks to the RSOF order system (ROF)
 └── DESIGN_SYSTEM.md   UI/UX specification: tokens, components, 26 screens, flows, rules
 ```
@@ -20,7 +20,7 @@ the design and implementation-plan documents (`docs/`) and the test-credentials 
 |---|---|---|
 | `client/` | All 26 screens, running on the server API (no data in the browser); real map still to come | [client/README.md](client/README.md) |
 | `server/` | Built and tested against a local fake ROF; ready for RSOF UAT once the kuraat tenant and login exist | [server/README.md](server/README.md) |
-| `mobile/` | Not started (follows client approval) | [mobile/README.md](mobile/README.md) |
+| `mobile/` | All 26 screens native (Expo SDK 58), on the server API, sharing the web app's client logic; store builds wait for the company Expo/store accounts | [mobile/README.md](mobile/README.md) |
 
 ## Quick start
 
@@ -34,6 +34,11 @@ npm run dev           # terminal 2 — API on http://localhost:4000/api/v1
 
 # Web client (talks only to the API above)
 cd client && npm install && npm run dev      # http://localhost:5173
+
+# Mobile app on a phone with Expo Go (same Wi-Fi; see mobile/README.md)
+cd mobile && npm install && cp .env.example .env && npm start
 ```
+
+The web and mobile apps stay in sync by the rule in [PARITY.md](PARITY.md).
 
 Local URLs, test logins, cards and database access are listed in a local `TEST_CREDENTIALS.md` (not committed).

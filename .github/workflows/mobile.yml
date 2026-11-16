@@ -1,0 +1,62 @@
+# Mobile app checks, plus the web app's tests when the files it shares with mobile change.
+name: mobile
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - 'client/src/domain/**'
+      - 'client/src/services/**'
+      - 'client/src/theme/tokens.js'
+      - 'client/src/config/**'
+      - 'client/src/hooks/useDeliveryQuote.js'
+      - 'client/src/test/stubFetch.js'
+      - '.github/workflows/mobile.yml'
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - 'client/src/**'
+      - '.github/workflows/mobile.yml'
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - name: Shared files match the web app
+        run: npm run parity
+      - run: npm run typecheck
+      - run: npm run lint
+      - name: Tests (Vitest logic + Jest UI)
+        run: npm test
+      - name: Expo dependency and config health
+        run: npx expo-doctor
+
+  client-shared:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npm test

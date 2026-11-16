@@ -10,11 +10,11 @@ kuraat/
 ├── client/            React web app (ReactJS + Tailwind CSS) — the mobile UI on the web
 ├── mobile/            React Native app (next phase)
 ├── server/            Backend API (Node.js + MySQL) — talks to the RSOF order system (ROF)
-├── docs/              Designs and implementation plans
 └── DESIGN_SYSTEM.md   UI/UX specification: tokens, components, 26 screens, flows, rules
 ```
 
-The two source PDFs (the UI screens and RSOF's *Order Integration API Guide*) are kept locally, outside git.
+Kept locally, outside git: the two source PDFs (the UI screens and RSOF's *Order Integration API Guide*),
+the design and implementation-plan documents (`docs/`) and the test-credentials sheets (`TEST_CREDENTIALS.md`).
 
 | App | Status | Start here |
 |---|---|---|
@@ -35,4 +35,4 @@ npm run dev           # terminal 2 — API on http://localhost:4000/api/v1
 cd client && npm install && npm run dev      # http://localhost:5173
 ```
 
-Local URLs, test logins, cards and database access: [TEST_CREDENTIALS.md](TEST_CREDENTIALS.md).
+Local URLs, test logins, cards and database access are listed in a local `TEST_CREDENTIALS.md` (not committed).

@@ -1,5 +1,5 @@
 /**
- * Demo customer for local testing and UAT walkthroughs (client/TEST_CREDENTIALS.md).
+ * Demo customer for local testing and UAT walkthroughs (listed in the local TEST_CREDENTIALS.md).
  * Data from client/src/domain/demo.js (the PDF's Sara Al-Mutairi); coordinates are real
  * (OpenStreetMap lookups of King Fahd Rd · Al Rakah, Prince Turki St · Al Yarmouk, Al Faisaliyah).
  * Safe to run repeatedly: does nothing if the demo phone already exists.

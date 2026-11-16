@@ -10,8 +10,12 @@ coverage
 .env.*
 !.env.example
 
-# Source PDFs stay local (design + RSOF's internal API guide); see DESIGN_SYSTEM.md and docs/
+# Source PDFs stay local (design + RSOF's internal API guide); see DESIGN_SYSTEM.md
 /*.pdf
+
+# Kept locally, never published: design/plan documents and test-credential sheets
+/docs/
+TEST_CREDENTIALS.md
 
 # Tool scratch
 .playwright-mcp

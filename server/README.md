@@ -17,7 +17,7 @@ client / mobile  ──►  kuraat server (this app)  ──►  RSOF order syst
 | Payments (simulated in UAT), saved cards (brand + last 4 only) | Order status, timeline, cancel, delivery-code resend |
 | Notifications, delivery estimates, branch opening hours | |
 
-Design: [`docs/superpowers/specs/2026-11-15-rsof-uat-integration-design.md`](../docs/superpowers/specs/2026-11-15-rsof-uat-integration-design.md).
+Design: `docs/superpowers/specs/2026-11-15-rsof-uat-integration-design.md` (kept locally, outside git).
 ROF reference: *Order Integration API Guide – Mobile App Backend* (PDF, kept outside git).
 
 ## Run locally

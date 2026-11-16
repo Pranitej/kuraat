@@ -103,8 +103,8 @@ old refresh token signs the user out everywhere.
 Deleting an account (required by the App Store and Google Play): signed in, `POST /auth/otp/request` with
 `purpose: delete-account` and the account's own number (else 400 `wrong_phone`), verify the code (→ `{ next: 'delete-account',
 verificationToken }`), then `DELETE /me` → 204. Profile, addresses, cards, favourites, cart, notifications and sessions are
-deleted; placed orders stay for RSOF's records with only the city of the address. Refused with 409 `order_in_progress` while an
-order is on its way, 400 `unverified` without a fresh verified code. The number can sign up again afterwards.
+deleted; placed orders stay for RSOF's records with only the city of the address. Refused with 409 `order_in_progress` (already at the code request) while
+an order is on its way, 400 `unverified` without a fresh verified code. The number can sign up again afterwards.
 
 Placing an order: create a new `idempotencyKey` (UUID) when the payment screen opens and send the same key on every
 retry — the server then never creates a second ROF order. A declined card can be retried with the same key.

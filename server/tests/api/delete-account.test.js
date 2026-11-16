@@ -81,10 +81,18 @@ describe('delete account (store requirement)', () => {
     expect(again.user.id).not.toBe(me.user.id);
   });
 
-  test('an order still on its way blocks deletion with 409 order_in_progress', async () => {
+  test('an order still on its way: no code is sent (409 order_in_progress)', async () => {
     const me = await signInDemo(t);
     await placeTestOrder(t, me);
+    const res = await api('post', '/auth/otp/request', me.auth, { phone: me.user.phone, purpose: 'delete-account' });
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('order_in_progress');
+  });
+
+  test('an order placed after the code was verified still blocks deletion with 409', async () => {
+    const me = await signInDemo(t);
     const verificationToken = await verifiedDeletion(me);
+    await placeTestOrder(t, me);
     const res = await api('delete', '/me', me.auth, { verificationToken });
     expect(res.status).toBe(409);
     expect(res.body.code).toBe('order_in_progress');

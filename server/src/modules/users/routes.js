@@ -9,6 +9,7 @@ import { checkPassword, hashPassword, passwordProblems, weakPasswordMessage } fr
 import { phoneSchema } from '../auth/phone.js';
 import { findUserById, findUserByPhone, toPublicUser } from '../auth/service.js';
 import { notify, passwordNotification } from '../notifications/service.js';
+import { deleteAccount } from './deletion.js';
 
 /** Photos are resized in the app before upload; 300 KB of image ≈ 410 000 base64 characters. */
 const avatarSchema = z.union([
@@ -104,39 +105,7 @@ export function meRoutes(ctx) {
     const challenge = token ? await verifiedChallenge(ctx, token, { purpose: 'delete-account', userId: user.id }) : null;
     if (!challenge) throw badRequest('unverified', 'Confirm with the WhatsApp code we sent you first.');
 
-    const ongoing = await ctx.db('orders')
-      .where({ user_id: user.id, cancelled: false })
-      .andWhere((q) => q.whereNull('step').orWhere('step', '<', 3))
-      .first('id');
-    if (ongoing) {
-      throw conflict('order_in_progress', 'You have an order on its way. You can delete your account once it is delivered or cancelled.');
-    }
-
-    const now = ctx.clock.now();
-    await ctx.db.transaction(async (trx) => {
-      for (const table of ['addresses', 'carts', 'favorites', 'saved_cards', 'notifications', 'refresh_tokens']) {
-        await trx(table).where({ user_id: user.id }).delete();
-      }
-      const orders = await trx('orders').where({ user_id: user.id }).select('id', 'address');
-      for (const order of orders) {
-        const address = typeof order.address === 'string' ? JSON.parse(order.address) : order.address;
-        await trx('orders')
-          .where({ id: order.id })
-          .update({ address: JSON.stringify({ city: address?.city ?? '' }), delivery_phone: '', updated_at: now });
-      }
-      await trx('payments').where({ user_id: user.id }).update({ upi_id: null, updated_at: now });
-      await trx('users').where({ id: user.id }).update({
-        phone: null,
-        name: 'Deleted customer',
-        email: null,
-        gender: null,
-        avatar: null,
-        password_hash: null,
-        deleted_at: now,
-        updated_at: now,
-      });
-      await markConsumed(ctx, challenge.id, trx);
-    });
+    await deleteAccount(ctx, user.id, challenge.id);
     res.status(204).end();
   });
 

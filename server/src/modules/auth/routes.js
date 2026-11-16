@@ -14,6 +14,7 @@ import { notify, passwordNotification } from '../notifications/service.js';
 import { checkCode, createChallenge, expiredSession, markConsumed, markVerified, resendChallenge, verifiedChallenge } from './otp.js';
 import { checkPassword, hashPassword, passwordProblems, weakPasswordMessage } from './password.js';
 import { phoneSchema } from './phone.js';
+import { assertNoOrderInProgress } from '../users/deletion.js';
 import { createAccount, findUserById, findUserByPhone, toPublicUser } from './service.js';
 import { issueTokens, revokeRefresh, rotateRefresh } from './tokens.js';
 
@@ -68,6 +69,7 @@ export function authRoutes(ctx) {
         const user = req.userId ? await findUserById(ctx.db, req.userId) : null;
         if (!user) throw unauthorized();
         if (user.phone !== phone) throw badRequest('wrong_phone', 'Use the mobile number of this account.', 'phone');
+        await assertNoOrderInProgress(ctx.db, user.id); // say so before a code is sent
         return res.json(await createChallenge(ctx, { phone, purpose, payload: null, userId: user.id }));
       }
       const existing = await findUserByPhone(ctx.db, phone);

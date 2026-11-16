@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { Clock, Navigation, Phone, Store } from '@/components/icons';
 import { Button, Tag, Text } from '@/components/ui';
 import { ROUTES } from '@/config/routes.js';
@@ -62,15 +62,22 @@ export function BranchListCard({
   distanceKm,
   nearest,
   highlighted,
+  onLayout,
 }: {
   branch: Branch;
   distanceKm?: number | null;
   nearest?: boolean;
   highlighted?: boolean;
+  onLayout?: (e: LayoutChangeEvent) => void;
 }) {
   const openUrl = useOpenUrl();
   return (
-    <View style={[styles.list, highlighted ? [styles.highlighted, shadows.ring] : null]}>
+    <View
+      testID={`branch-${branch.id}`}
+      onLayout={onLayout}
+      accessibilityState={{ selected: Boolean(highlighted) }}
+      style={[styles.list, highlighted ? [styles.highlighted, shadows.ring] : null]}
+    >
       <View style={styles.listTop}>
         <Text weight={700} style={[styles.listName, styles.flex]}>
           {branch.name}

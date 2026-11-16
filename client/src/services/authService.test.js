@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { local, session } from '@/lib/storage.js';
+import { local, session, tokenStore } from '@/lib/storage.js';
+import { API_BASE_URL as ENV_BASE_URL } from '@/lib/env.js';
 import { stubFetch } from '@/test/stubFetch.js';
-import { getTokens, setTokens } from './api.js';
+import { API_BASE_URL, getTokens, setTokens } from './api.js';
 import {
   completeSignupWithPassword,
+  deleteAccount,
   getPendingOtp,
   requestOtp,
   resetPasswordWithOtp,
@@ -176,5 +178,46 @@ describe('session', () => {
     expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/auth\/signout$/), expect.objectContaining({ method: 'POST', body: JSON.stringify({ refreshToken: 'r1' }) }));
     expect(getTokens()).toBeNull();
     expect(session.read('checkout')).toBeNull();
+  });
+});
+
+describe('delete account (store requirement)', () => {
+  test('code for the own number → verify → DELETE /me with the token; session and drafts cleared', async () => {
+    setTokens(TOKENS);
+    session.write('checkout', { addressId: 'a1' });
+    const calls = stubFetch(({ path }) => {
+      if (path === '/auth/otp/request') return { body: challenge('delete-account') };
+      if (path === '/auth/otp/verify') return { body: { next: 'delete-account', verificationToken: 'c-delete-account' } };
+      if (path === '/me') return { status: 204 };
+      return { status: 404, body: { code: 'not_found', message: 'x' } };
+    });
+    await requestOtp('50 111 2233', 'delete-account');
+    expect(calls[0].body).toEqual({ phone: '501112233', purpose: 'delete-account' });
+    expect(await verifyOtp('123456')).toEqual({ next: 'delete-account' });
+
+    await deleteAccount();
+    expect(calls[2]).toMatchObject({ path: '/me', method: 'DELETE', body: { verificationToken: 'c-delete-account' } });
+    expect(getTokens()).toBeNull();
+    expect(getPendingOtp()).toBeNull();
+    expect(session.read('checkout')).toBeNull();
+  });
+
+  test('without a verified delete-account code nothing is sent', async () => {
+    const calls = stubFetch(() => ({ status: 204 }));
+    await expect(deleteAccount()).rejects.toMatchObject({ code: 'expired' });
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe('platform seams shared with the mobile app', () => {
+  test('the session tokens are read and written through tokenStore', () => {
+    setTokens(TOKENS);
+    expect(tokenStore.read()).toEqual({ accessToken: 'a1', refreshToken: 'r1' });
+    tokenStore.remove();
+    expect(getTokens()).toBeNull();
+  });
+
+  test('the API address comes from lib/env.js', () => {
+    expect(API_BASE_URL).toBe(ENV_BASE_URL);
   });
 });

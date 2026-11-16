@@ -1,7 +1,8 @@
 /**
  * Safe, namespaced key/value storage. Wraps localStorage/sessionStorage with JSON and
  * try/catch so private windows or blocked storage never break the app (falls back to memory).
- * In React Native this module is the only one that needs swapping (e.g. AsyncStorage/MMKV).
+ * Platform file: the mobile app has its own lib/storage.js with the same exports (local, session,
+ * tokenStore) so the shared services/ and domain/ files are identical in both apps.
  */
 
 const NAMESPACE = 'kuraat:v1:';
@@ -72,3 +73,12 @@ function make(kind) {
 
 export const local = make('local');
 export const session = make('session');
+
+const TOKENS_KEY = 'auth';
+
+/** The signed-in session's tokens (web: local storage; mobile: the device keychain). */
+export const tokenStore = {
+  read: () => local.read(TOKENS_KEY),
+  write: ({ accessToken, refreshToken }) => local.write(TOKENS_KEY, { accessToken, refreshToken }),
+  remove: () => local.remove(TOKENS_KEY),
+};

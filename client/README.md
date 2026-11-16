@@ -49,6 +49,7 @@ for unknown paths (SPA fallback), because the app uses client-side routes such a
 | Branch chosen by stock | Order **Truffle Box · Praline**: it is out of stock at Corniche, so the order ships from Dhahran. The cart and delivery screens say so in advance only when the server's `ROF_INVENTORY_CHECK` is on |
 | Move an order along | `cd server && npm run mock-rof:advance -- 20418` (next status) or `… 20418 OutForDelivery`; the tracking screen follows within 30 s |
 | Cancel an order | Possible until the branch starts preparing it (tracking screen → Cancel order) |
+| Delete the account | Account → Delete account → confirm → WhatsApp code 123456. Not possible while an order is on its way |
 | Start over | Stop the fake RSOF, delete `server/mock-rof/data/state.json`, start it again, then remove the demo customer from the `kuraat` database (or recreate the database) and run `npm run db:seed` |
 
 The demo customer starts with the PDF's cart (Truffle Box · Classic ×1, Butter Croissant Box ×2), three saved
@@ -102,10 +103,15 @@ client/
 Real map: the branch and address maps are still the drawn illustration (pins placed by distance rank); a real
 map (Leaflet + OpenStreetMap) and address search are the next step.
 
-## Notes for the React Native phase
+## Keeping the web and mobile apps in sync
 
-- Start the mobile theme from a copy of `src/theme/tokens.js` and `src/domain/`. Neither uses browser APIs.
-- `src/services/` works unchanged once `src/lib/storage.js` is swapped for AsyncStorage/MMKV.
-- Component names and props follow `DESIGN_SYSTEM.md` §E, so the RN primitives can mirror `src/components/ui/`.
+The mobile app (`../mobile`) shares this app's client logic as identical files: `src/domain/`, `src/services/`,
+`src/theme/tokens.js`, `src/config/routes.js`, `src/config/options.js`, `src/hooks/useDeliveryQuote.js` and
+`src/test/stubFetch.js`. Change them here, copy them to `mobile/src/`, and run `cd ../mobile && npm run parity`.
+The only platform files they import are `src/lib/storage.js` (including `tokenStore`) and `src/lib/env.js`; each app
+has its own. Every feature goes into both apps — see `../PARITY.md`.
+
+## Notes
+
 - The brand font in production is **Bahij TheSansArabic** (licensed). This build uses the PDF's stand-ins,
   Source Sans 3 and Noto Sans Arabic, self-hosted via `@fontsource`.

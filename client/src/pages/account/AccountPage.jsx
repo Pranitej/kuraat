@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Check, ChevronRight, Mail, MapPin, Pencil, Phone, User } from 'lucide-react';
+import { Check, ChevronRight, Mail, MapPin, Pencil, Phone, Trash2, User } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import BottomBar from '@/components/layout/BottomBar.jsx';
 import { Avatar, Button, ConfirmDialog, FieldWrapper, IconTile, SegmentedControl, Tag, TextField, inputBase, inputShell } from '@/components/ui';
@@ -50,6 +50,8 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [confirmPhone, setConfirmPhone] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [sendingDeleteCode, setSendingDeleteCode] = useState(false);
 
   const dirty = ['name', 'email', 'gender', 'avatar', 'phone'].some((k) => (form[k] || '') !== (initial[k] || ''));
   const phoneChanged = form.phone !== user.phone;
@@ -113,6 +115,21 @@ export default function AccountPage() {
       setErrors({ [err.field || 'form']: err.message });
     } finally {
       setSendingCode(false);
+    }
+  };
+
+  /** Delete account (App Store / Google Play requirement): confirmed with a WhatsApp code. */
+  const startDelete = async () => {
+    setSendingDeleteCode(true);
+    try {
+      await requestOtp(user.phone, 'delete-account');
+      setConfirmDelete(false);
+      navigate(ROUTES.verify);
+    } catch (err) {
+      setConfirmDelete(false);
+      setErrors({ form: err.message });
+    } finally {
+      setSendingDeleteCode(false);
     }
   };
 
@@ -190,6 +207,13 @@ export default function AccountPage() {
               <ChevronRight size={20} strokeWidth={1.8} className="shrink-0 text-ink" aria-hidden />
             </Link>
             {errors.form && <p className="text-label text-hotpink">{errors.form}</p>}
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="mx-auto inline-flex items-center gap-2 text-[15px] font-semibold text-maroon hover:underline"
+            >
+              <Trash2 size={18} strokeWidth={1.8} /> Delete account
+            </button>
           </div>
 
           <BottomBar>
@@ -209,6 +233,18 @@ export default function AccountPage() {
         title="Verify your new number"
         message={`We will send a 6-digit code on WhatsApp to ${formatPhone(form.phone)}.`}
         confirmLabel="Send code"
+      />
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={startDelete}
+        loading={sendingDeleteCode}
+        icon={Trash2}
+        title="Delete your account?"
+        message={`This removes your profile, saved addresses, cards and favourites. Past orders stay with the branch for its records. We will send a 6-digit code on WhatsApp to ${formatPhone(user.phone)} to confirm.`}
+        confirmLabel="Send code"
+        cancelLabel="Keep my account"
       />
     </div>
   );

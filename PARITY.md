@@ -1,0 +1,71 @@
+# kuraat — web and mobile parity
+
+The web app (`client/`) and the mobile app (`mobile/`) are two independent apps that must behave the same.
+This page is the rule and the record.
+
+## The rule
+
+1. **The server owns the business logic** — prices, VAT, promo codes, stock, the delivering branch, delivery slots,
+   payments, order status. Both apps only show what it answers.
+2. **Client logic is shared as identical files.** The files below exist in both apps with the same bytes. Change
+   them in `client/` first, copy them to `mobile/`, and run `cd mobile && npm run parity` (CI runs it too).
+   Never edit them only in `mobile/`.
+3. **Every feature lands in both apps** in the same piece of work. If that is not possible, add a line to
+   [Gaps](#gaps) with the reason, and remove it when the other app catches up.
+4. Platform differences are allowed only where a platform does the same job differently (see the Note column).
+
+### Shared files (`client/src/…` = `mobile/src/…`)
+
+| Area | Files |
+|---|---|
+| Display and form logic | `domain/*.js` and their tests |
+| Server API client | `services/*.js` and their tests (`api.js`, `authService.js`, `cartSync.js`, …) |
+| Design tokens | `theme/tokens.js` |
+| Routes and options | `config/routes.js`, `config/options.js` |
+| Delivery quote hook | `hooks/useDeliveryQuote.js` |
+| Test helper | `test/stubFetch.js` |
+
+The full list is `mobile/parity.json`. Each app has its own copy of the two platform files the shared code imports:
+`lib/storage.js` (web: localStorage / sessionStorage; mobile: device storage + the keychain for the login
+tokens) and `lib/env.js` (where the API is).
+
+## Features
+
+✅ done · ⏳ in progress · — not applicable
+
+| # | Screen / feature | Web | Mobile | Note |
+|---|---|---|---|---|
+| 01 | Splash | ✅ | ⏳ | Mobile: native splash hands over to the animated one |
+| 02 | Welcome, Terms / Privacy dialogs | ✅ | ⏳ | |
+| 03 | Sign up | ✅ | ⏳ | |
+| 04 | Verify (WhatsApp code) — sign-up, sign-in, reset, phone change, delete account | ✅ | ⏳ | Mobile: code autofill from the keyboard |
+| 05 | Set password | ✅ | ⏳ | |
+| 06 | Sign in (password / WhatsApp code) | ✅ | ⏳ | |
+| 07–08 | Home, search, filter sheet, favourites, add to cart | ✅ | ⏳ | |
+| 09–10 | Product detail (gallery, details, allergens, delivered-from) | ✅ | ⏳ | |
+| 11 | Image zoom, share | ✅ | ⏳ | Web: Web Share / copy link · Mobile: native share sheet, pinch to zoom |
+| 12 | Cart (stepper, undo, promo, warnings) | ✅ | ⏳ | |
+| 13 | Delivery details (address, phone, delivering branch) | ✅ | ⏳ | |
+| 14 | Payment (card, UPI, cash) | ✅ | ⏳ | Simulated payments until the real gateway |
+| 15 | Payment successful | ✅ | ⏳ | |
+| 16 | Order confirmed + branch popup | ✅ | ⏳ | |
+| 17 | Profile, log out | ✅ | ⏳ | |
+| 18 | Account (name, phone change, email, gender, photo) | ✅ | ⏳ | Mobile: photo from the gallery |
+| 18 | Delete account (store requirement) | ✅ | ⏳ | Account screen → confirm → WhatsApp code |
+| 19 | Password (set / change / forgot) | ✅ | ⏳ | |
+| 20–21 | My orders (tabs, empty state) | ✅ | ⏳ | |
+| 22 | Order tracking (live status, cancel, delivery-code resend) | ✅ | ⏳ | Both refresh every 30 s while an order is on its way |
+| 23 | Saved addresses | ✅ | ⏳ | |
+| 24 | Add / edit address | ✅ | ⏳ | |
+| 25 | Our branches (search, cities, map, call, directions) | ✅ | ⏳ | |
+| 26 | Notifications (read, mark all read, open target) | ✅ | ⏳ | |
+| — | Session refresh, sign out on expiry | ✅ | ⏳ | |
+| — | Offline banner | — | ⏳ | Web shows the "can't reach kuraat" message per request |
+| — | Desktop / tablet layouts | ✅ | — | Mobile is phone-first; wide screens use a centred 640 pt column |
+
+## Gaps
+
+- **Real map, GPS and address search** — not in either app yet; both use the drawn map and the fixed demo
+  "current location". Planned for both together.
+- **Push notifications** — not in either app; the in-app notification list works in both.
+- **Product detail refresh** — both apps keep a product's detail for the session (known minor, shared).

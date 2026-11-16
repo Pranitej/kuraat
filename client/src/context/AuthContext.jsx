@@ -62,6 +62,11 @@ export function AuthProvider({ children }) {
         await auth.signOut();
         setUser(null);
       },
+      /** After a verified `delete-account` code (store requirement): the account is gone, signed out. */
+      deleteAccount: async () => {
+        await auth.deleteAccount();
+        setUser(null);
+      },
     }),
     [user, status, withUser],
   );

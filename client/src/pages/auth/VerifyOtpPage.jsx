@@ -11,14 +11,14 @@ import { formatPhone, firstName } from '@/domain';
 import { OTP_RESEND_SECONDS } from '@/services/authService.js';
 import { useCountdown, useDocumentTitle } from '@/hooks';
 
-const ORIGIN = { signup: ROUTES.signUp, signin: ROUTES.signIn, reset: ROUTES.signIn, 'change-phone': ROUTES.account };
+const ORIGIN = { signup: ROUTES.signUp, signin: ROUTES.signIn, reset: ROUTES.signIn, 'change-phone': ROUTES.account, 'delete-account': ROUTES.account };
 
 /** 04 · WhatsApp OTP — "Verify your number" */
 export default function VerifyOtpPage() {
   useDocumentTitle('Verify your number');
   const navigate = useNavigate();
   const toast = useToast();
-  const { getPendingOtp, verifyOtp, resendOtp, updateProfile, user } = useAuth();
+  const { getPendingOtp, verifyOtp, resendOtp, updateProfile, deleteAccount, user } = useAuth();
   const { reload: reloadCart } = useCart();
   const [pending, setPending] = useState(() => getPendingOtp());
   const [code, setCode] = useState('');
@@ -48,6 +48,10 @@ export default function VerifyOtpPage() {
           await updateProfile({ phone: pending.phone });
           toast.show('Your mobile number has been updated');
           navigate(ROUTES.account, { replace: true });
+        } else if (result.next === 'delete-account') {
+          await deleteAccount();
+          toast.show('Your account has been deleted');
+          navigate(ROUTES.welcome, { replace: true });
         }
       } catch (err) {
         setError(err.message);
@@ -55,7 +59,7 @@ export default function VerifyOtpPage() {
         setVerifying(false);
       }
     },
-    [code, verifying, verifyOtp, pending, navigate, toast, updateProfile, reloadCart],
+    [code, verifying, verifyOtp, pending, navigate, toast, updateProfile, deleteAccount, reloadCart],
   );
 
   // Signed-in users coming from sign-in are redirected home by the verify flow; nothing else to guard.

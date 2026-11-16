@@ -33,12 +33,29 @@ export async function restoreSession() {
   }
 }
 
-export async function signOut() {
-  const tokens = getTokens();
-  if (tokens) await apiRequest('/auth/signout', { method: 'POST', body: { refreshToken: tokens.refreshToken } }).catch(() => null);
+function endLocalSession() {
   clearTokens();
   session.remove(OTP_KEY);
   session.remove('checkout');
+}
+
+export async function signOut() {
+  const tokens = getTokens();
+  if (tokens) await apiRequest('/auth/signout', { method: 'POST', body: { refreshToken: tokens.refreshToken } }).catch(() => null);
+  endLocalSession();
+}
+
+/**
+ * Deletes the account (App Store / Google Play requirement) after a verified `delete-account`
+ * WhatsApp code; the server keeps placed orders without personal details. Ends the session here.
+ */
+export async function deleteAccount() {
+  const pending = getPendingOtp();
+  if (pending?.purpose !== 'delete-account' || !pending.verificationToken) {
+    throw new ApiError('Confirm with the WhatsApp code we sent you first.', { code: 'expired' });
+  }
+  await apiRequest('/me', { method: 'DELETE', body: { verificationToken: pending.verificationToken } });
+  endLocalSession();
 }
 
 /* ---------------- WhatsApp code ---------------- */
@@ -64,7 +81,7 @@ function remember(view, extra) {
 }
 
 /**
- * @param {'signup'|'signin'|'reset'|'change-phone'} purpose
+ * @param {'signup'|'signin'|'reset'|'change-phone'|'delete-account'} purpose
  * @param {object} [form] the sign-up form (kept locally whole, sent without UI-only fields)
  */
 export async function requestOtp(phone, purpose, form = null) {
@@ -91,7 +108,8 @@ export async function resendOtp() {
 
 /**
  * Checks the code. Sign-up / sign-in → signed in: { next: 'home', user }. Reset → { next:
- * 'set-password' }, phone change → { next: 'account' } (the verification is kept for the next step).
+ * 'set-password' }, phone change → { next: 'account' }, delete account → { next: 'delete-account' }
+ * (the verification is kept for the next step).
  */
 export async function verifyOtp(code) {
   const pending = getPendingOtp();

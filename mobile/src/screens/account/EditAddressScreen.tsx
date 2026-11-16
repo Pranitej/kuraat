@@ -1,0 +1,296 @@
+import { Redirect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { MapIllustration } from '@/components/branch/MapIllustration';
+import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
+import { LocateFixed, MapPin, Trash2 } from '@/components/icons';
+import { Button, Chip, ConfirmDialog, Field, FieldWrapper, PhoneField, SelectField, Spinner, Text, Toggle } from '@/components/ui';
+import { ROUTES } from '@/config/routes.js';
+import { useAddresses, type AddressInput } from '@/context/AddressContext';
+import { useAuth } from '@/context/AuthContext';
+import { useCheckout } from '@/context/CheckoutContext';
+import { useToast } from '@/context/ToastContext';
+import { ADDRESS_LABELS, CITIES, CURRENT_LOCATION, validateMobile, validateRequired } from '@/domain';
+import { colors, radii, shadows } from '@/theme/theme';
+import type { AddressType, LatLng } from '@/types/api';
+
+type Form = {
+  type: AddressType;
+  label: string;
+  line: string;
+  district: string;
+  city: string;
+  landmark: string;
+  phone: string;
+  isDefault: boolean;
+  location: LatLng | null;
+};
+type Errors = Partial<Record<'label' | 'line' | 'district' | 'phone' | 'form', string>>;
+
+/** 24 · Edit address (also "Add address"). Waits for the saved addresses before filling the form. */
+export default function EditAddressScreen() {
+  const { addressId } = useLocalSearchParams<{ addressId?: string }>();
+  const { loaded } = useAddresses();
+  if (addressId && !loaded) return <Screen>{null}</Screen>;
+  return <AddressForm key={addressId || 'new'} addressId={addressId} />;
+}
+
+function AddressForm({ addressId }: { addressId?: string }) {
+  const isNew = !addressId;
+  const router = useRouter();
+  const params = useLocalSearchParams<{ returnTo?: string }>();
+  const returnTo = (params.returnTo || ROUTES.addresses) as Href;
+  const fromDelivery = params.returnTo === ROUTES.delivery;
+  const toast = useToast();
+  const { user } = useAuth();
+  const checkout = useCheckout();
+  const { addresses, getById, create, update, remove } = useAddresses();
+  const existing = isNew ? null : getById(addressId);
+
+  const [form, setForm] = useState<Form>(() => ({
+    type: existing?.type || 'home',
+    label: existing?.type === 'other' ? existing.label : '',
+    line: existing?.line || '',
+    district: existing?.district || '',
+    city: existing?.city || 'Al Khobar',
+    landmark: existing?.landmark || '',
+    phone: existing?.phone || user?.phone || '',
+    isDefault: existing ? existing.isDefault : addresses.length === 0,
+    location: existing?.location || null,
+  }));
+  const [errors, setErrors] = useState<Errors>({});
+  const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  if (!isNew && !existing) return <Redirect href={ROUTES.addresses} />;
+
+  // Back to where the form was opened from (Delivery or Saved addresses) without stacking a copy.
+  const leave = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace(returnTo);
+  };
+
+  const set =
+    <K extends keyof Form>(k: K) =>
+    (v: Form[K]) => {
+      // A typed change to the street, district or city drops the "current location" pin.
+      setForm((f) => ({ ...f, [k]: v, ...(k === 'line' || k === 'district' || k === 'city' ? { location: null } : {}) }));
+      setErrors((e) => ({ ...e, [k]: '' }));
+    };
+
+  const locate = async () => {
+    setLocating(true);
+    await new Promise((r) => setTimeout(r, 900));
+    setForm((f) => ({
+      ...f,
+      line: CURRENT_LOCATION.line,
+      district: CURRENT_LOCATION.district,
+      city: CURRENT_LOCATION.city,
+      location: CURRENT_LOCATION.location,
+    }));
+    setErrors({});
+    setLocating(false);
+    toast.show('Location found: Al Rakah, Al Khobar', { tone: 'info' });
+  };
+
+  const save = async () => {
+    const errs: Errors = {
+      label: form.type === 'other' ? validateRequired(form.label, 'Give this address a name') : '',
+      line: validateRequired(form.line, 'Enter the building and street'),
+      district: validateRequired(form.district, 'Enter the district'),
+      phone: validateMobile(form.phone),
+    };
+    setErrors(errs);
+    if (Object.values(errs).some(Boolean)) return;
+    setSaving(true);
+    try {
+      const payload = { ...form, location: form.location || undefined } as AddressInput;
+      const saved = isNew ? await create(payload) : await update(existing!.id, payload);
+      if (fromDelivery) checkout.patch({ addressId: saved.id });
+      toast.show(isNew ? 'Address added' : 'Address saved');
+      leave();
+    } catch (err) {
+      setErrors({ form: (err as Error).message });
+      setSaving(false);
+    }
+  };
+
+  const doDelete = async () => {
+    if (!existing) return;
+    setDeleting(true);
+    try {
+      await remove(existing.id);
+      toast.show(`${existing.label} address deleted`, { tone: 'info' });
+      leave();
+    } catch (err) {
+      setDeleting(false);
+      setConfirmDelete(false);
+      toast.show((err as Error).message, { tone: 'error' });
+    }
+  };
+
+  const onlyAddress = addresses.length <= 1 && !isNew;
+
+  return (
+    <Screen
+      header={<ScreenHeader title={isNew ? 'Add address' : 'Edit address'} backFallback={returnTo} />}
+      keyboard
+      bottomBar={
+        <BottomBar>
+          <Button block loading={saving} onPress={save}>
+            Save address
+          </Button>
+        </BottomBar>
+      }
+    >
+      <MapIllustration height={166} pins={[{ id: 'here', x: 49, y: 50, label: 'Address' }]} selectedId="here">
+        <Pressable
+          onPress={locate}
+          disabled={locating}
+          accessibilityRole="button"
+          accessibilityState={{ busy: locating }}
+          style={styles.locate}
+        >
+          {locating ? <Spinner size={18} /> : <LocateFixed size={18} color={colors.maroon} strokeWidth={1.8} />}
+          <Text weight={600} style={styles.locateText}>
+            {locating ? 'Locating…' : 'Use current location'}
+          </Text>
+        </Pressable>
+      </MapIllustration>
+
+      <View style={styles.form}>
+        <FieldWrapper label="Label" error={errors.label}>
+          <View style={styles.labels} accessibilityRole="radiogroup" accessibilityLabel="Address label">
+            {(ADDRESS_LABELS as { id: AddressType; label: string }[]).map((l) => (
+              <Chip key={l.id} active={form.type === l.id} onPress={() => set('type')(l.id)}>
+                {l.label}
+              </Chip>
+            ))}
+          </View>
+          {form.type === 'other' ? (
+            <Field
+              accessibilityLabel="Address name"
+              placeholder="e.g. Parents’ home"
+              value={form.label}
+              onChangeText={set('label')}
+              style={styles.otherName}
+            />
+          ) : null}
+        </FieldWrapper>
+
+        <Field
+          label="Address"
+          icon={MapPin}
+          value={form.line}
+          onChangeText={set('line')}
+          placeholder="Building, street"
+          autoComplete="address-line1"
+          textContentType="streetAddressLine1"
+          error={errors.line}
+        />
+
+        <View style={styles.row}>
+          <Field
+            label="District"
+            value={form.district}
+            onChangeText={set('district')}
+            placeholder="District"
+            error={errors.district}
+            style={styles.flex}
+          />
+          <SelectField label="City" options={CITIES as string[]} value={form.city} onChange={set('city')} style={styles.flex} />
+        </View>
+
+        <Field label="Landmark (optional)" value={form.landmark} onChangeText={set('landmark')} placeholder="Near Al Rakah Park" />
+
+        <PhoneField label="Phone for this address" value={form.phone} onChange={set('phone')} error={errors.phone} />
+
+        <View style={styles.toggleRow}>
+          <Text weight={700} style={[styles.flex, styles.toggleLabel]}>
+            Make this my default address
+          </Text>
+          <Toggle
+            value={form.isDefault}
+            onChange={set('isDefault')}
+            disabled={Boolean(existing?.isDefault && addresses.length <= 1)}
+            label="Make this my default address"
+          />
+        </View>
+
+        {!isNew ? (
+          <Pressable
+            onPress={() => setConfirmDelete(true)}
+            disabled={onlyAddress}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: onlyAddress }}
+            hitSlop={8}
+            style={[styles.delete, onlyAddress && styles.dim]}
+          >
+            <Trash2 size={18} color={colors.maroon} strokeWidth={1.8} />
+            <Text weight={600} color="maroon" style={styles.deleteText}>
+              Delete this address
+            </Text>
+          </Pressable>
+        ) : null}
+        {onlyAddress ? (
+          <Text variant="caption" color="muted" align="center" style={styles.onlyNote}>
+            Add another address before deleting your only one.
+          </Text>
+        ) : null}
+        {errors.form ? (
+          <Text variant="label" color="hotpink" accessibilityRole="alert">
+            {errors.form}
+          </Text>
+        ) : null}
+      </View>
+
+      {existing ? (
+        <ConfirmDialog
+          open={confirmDelete}
+          onClose={() => setConfirmDelete(false)}
+          onConfirm={doDelete}
+          loading={deleting}
+          icon={Trash2}
+          title={`Delete ${existing.label} address?`}
+          message={
+            existing.isDefault
+              ? 'This is your default address. Another saved address will become your default.'
+              : 'You can add it again at any time.'
+          }
+          confirmLabel="Delete address"
+          cancelLabel="Keep address"
+        />
+      ) : null}
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1, minWidth: 0 },
+  locate: {
+    position: 'absolute',
+    right: 12,
+    bottom: 12,
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    borderRadius: radii.pill,
+    backgroundColor: colors.white,
+    ...shadows.float,
+  },
+  locateText: { fontSize: 15 },
+  form: { marginTop: 20, gap: 20 },
+  labels: { flexDirection: 'row', gap: 10 },
+  otherName: { marginTop: 12 },
+  row: { flexDirection: 'row', gap: 12 },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  toggleLabel: { fontSize: 15 },
+  delete: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dim: { opacity: 0.4 },
+  deleteText: { fontSize: 15 },
+  onlyNote: { marginTop: -12 },
+});

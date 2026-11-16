@@ -18,7 +18,7 @@ the design and implementation-plan documents (`docs/`) and the test-credentials 
 
 | App | Status | Start here |
 |---|---|---|
-| `client/` | All 26 screens; still uses browser demo data — switching to the server is next | [client/README.md](client/README.md) |
+| `client/` | All 26 screens, running on the server API (no data in the browser); real map still to come | [client/README.md](client/README.md) |
 | `server/` | Built and tested against a local fake ROF; ready for RSOF UAT once the kuraat tenant and login exist | [server/README.md](server/README.md) |
 | `mobile/` | Not started (follows client approval) | [mobile/README.md](mobile/README.md) |
 
@@ -27,11 +27,12 @@ the design and implementation-plan documents (`docs/`) and the test-credentials 
 ```bash
 # Backend (see server/README.md for details)
 cd server && npm install && cp .env.example .env
-docker compose up -d && npm run db:migrate && npm run db:seed
+docker compose up -d && npm run db:migrate
 npm run mock-rof      # terminal 1 — fake RSOF order system
+npm run db:seed       # demo customer + PDF past orders and cart (needs the fake RSOF running)
 npm run dev           # terminal 2 — API on http://localhost:4000/api/v1
 
-# Web client
+# Web client (talks only to the API above)
 cd client && npm install && npm run dev      # http://localhost:5173
 ```
 

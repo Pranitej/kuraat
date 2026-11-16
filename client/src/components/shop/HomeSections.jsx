@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Bell, ChevronRight, ListFilter, Mail, MapPin, Phone, Search, ShoppingBag, Store, X } from 'lucide-react';
 import { Avatar, Button, Chip, IconButton, Logo, MaroonPanel, Sheet, Tag } from '@/components/ui';
 import { CountBadge, UnreadDot } from '@/components/layout/AppBar.jsx';
-import { productImage } from '@/assets/images.js';
+import { promoBannerPhoto } from '@/assets/images.js';
 import { HEAD_OFFICE, SORT_OPTIONS, formatDistance, mapsUrl, telUrl } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
@@ -135,7 +135,7 @@ export function PromoBanner({ onShop, className }) {
         </Button>
       </div>
       <div className="size-[108px] shrink-0 overflow-hidden rounded-full border-[3px] border-cream/90 lg:size-[180px]">
-        <img src={productImage('truffle-box-classic-2')} alt="" className="size-full object-cover" />
+        <img src={promoBannerPhoto} alt="" className="size-full object-cover" />
       </div>
     </MaroonPanel>
   );

@@ -30,10 +30,12 @@ npm install
 cp .env.example .env          # defaults work for local development
 docker compose up -d          # MySQL 8.4 on localhost:3307 (databases kuraat + kuraat_test)
 npm run db:migrate            # create tables
-npm run db:seed               # demo customer 50 123 4821 / Kuraat@2026
 npm run mock-rof              # fake ROF on http://localhost:8080   (terminal 1)
+npm run db:seed               # demo customer 50 123 4821 / Kuraat@2026 + PDF cart and past orders
 npm run dev                   # API on http://localhost:4000/api/v1 (terminal 2)
 ```
+
+The web app (`../client`) runs on top of this API; see its README for the demo guide.
 
 Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test`, then point `DATABASE_URL` and
 `TEST_DATABASE_URL` in `.env` at them.
@@ -44,7 +46,7 @@ Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test
 |---|---|
 | `npm run dev` / `npm start` | API server (dev reloads on change). Also starts the order-status poller. |
 | `npm run db:migrate` | Applies new migrations (`migrations/index.js` lists them in order). |
-| `npm run db:seed` | Adds the demo customer if missing. |
+| `npm run db:seed` | Adds the demo customer if missing and, when the configured ROF has them, the PDF's demo extras once: the delivered orders KR-20377 / KR-20291, the PDF cart and notifications. Start the fake ROF first; against RSOF UAT the past orders are skipped (it says why). |
 | `npm run mock-rof` | Fake ROF on `MOCK_ROF_PORT` (8080). State is saved in `mock-rof/data/state.json`; delete it to start over. |
 | `npm run mock-rof:advance -- 20418 [Status]` | Plays branch staff: moves order KR-20418 to the next status (or the one given, e.g. `Canceled`). |
 | `npm run rof:check [-- --write]` | Contract check against the configured ROF (see *Switching to UAT*). |
@@ -91,6 +93,10 @@ All bodies are JSON. Signed-in routes need `Authorization: Bearer <accessToken>`
 | Orders | `POST /orders` `{ addressId, deliveryPhone, payment, idempotencyKey }` · `GET /orders?tab=ongoing·delivered·all` · `GET /orders/:id` · `POST /orders/:id/cancel` · `POST /orders/:id/resend-code` |
 | Notifications | `GET /notifications` · `POST /notifications/:id/read` · `POST /notifications/read-all` |
 
+Products: `{ id, name, description[], price, categoryId, categoryName, images[], inStock, maxQuantity, meta,
+subtitle, badge, featured, highlights[{label,value}], ingredients, allergens[], details[{key,label,value}] }`.
+`details` is filled only by `GET /products/:id` — RSOF sends custom-field definitions per product, not in lists.
+
 Tokens: access token 15 minutes; refresh token 30 days, **rotated on every refresh** (keep the new one). Re-using an
 old refresh token signs the user out everywhere.
 
@@ -109,7 +115,7 @@ Everything ROF-specific is in [`src/rof/`](src/rof):
 | `client.js` | One method per ROF endpoint (paths from the guide). Returns ROF's raw `data`. |
 | `tokenManager.js` | Service-user login, shared by concurrent calls, renewed 5 min before expiry, re-login once after a 401. |
 | `adapter.js` | ROF shapes → ours (and our order → ROF's create body). **The place to fix field differences.** |
-| `fields.js` | The product custom-field keys we give a special place (pieces, weight, subtitle, badge, featured). |
+| `fields.js` | The product custom-field keys we give a special place: the card line (pieces, weight), the three product-page tiles (weight, pieces, dimensions → `highlights`), `ingredients` and `allergens` (own section), subtitle, badge, featured. Every other field is a plain detail row. |
 | `status.js` | ROF status names → the app's 4 tracking steps + cancelled (guide §9.2). |
 | `schemas.js`, `check.js` | What we expect ROF to return, and the contract check that compares it. |
 

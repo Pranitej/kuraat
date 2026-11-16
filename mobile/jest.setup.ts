@@ -6,3 +6,7 @@ process.env.TZ = 'America/New_York';
 
 // Reanimated 4 in Jest: JS implementations via jest.resolver.js; animations advance with fake timers.
 setUpTests();
+
+// Keyboard-aware scroll views: the library's own Jest mock (plain ScrollView).
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factories cannot use imports
+jest.mock('react-native-keyboard-controller', () => require('react-native-keyboard-controller/jest'));

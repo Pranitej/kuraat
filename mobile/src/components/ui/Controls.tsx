@@ -182,9 +182,9 @@ export function Toggle({
 }) {
   const x = useSharedValue(value ? 22 : 2);
   useEffect(() => {
-    x.value = withTiming(value ? 22 : 2, { duration: 200 });
+    x.set(withTiming(value ? 22 : 2, { duration: 200 }));
   }, [value, x]);
-  const knob = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  const knob = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
   return (
     <Pressable
       onPress={() => onChange(!value)}
@@ -222,9 +222,9 @@ export function CheckCircle({ checked = true, size = 22 }: { checked?: boolean; 
 export function ProgressBar({ value, label }: { value: number; label?: string }) {
   const w = useSharedValue(value);
   useEffect(() => {
-    w.value = withTiming(value, { duration: motion.slow });
+    w.set(withTiming(value, { duration: motion.slow }));
   }, [value, w]);
-  const fill = useAnimatedStyle(() => ({ width: `${Math.max(0, Math.min(100, w.value))}%` }));
+  const fill = useAnimatedStyle(() => ({ width: `${Math.max(0, Math.min(100, w.get()))}%` }));
   return (
     <View
       style={styles.progress}

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, shadows } from '@/theme/theme';
 
-export type IconButtonVariant = 'surface' | 'glass' | 'overlay' | 'maroon' | 'viewer' | 'sand' | 'plain';
+export type IconButtonVariant = 'surface' | 'glass' | 'overlay' | 'maroon' | 'viewer' | 'sand' | 'plain' | 'plainLight';
 const SIZE = { xs: 32, sm: 36, md: 40, lg: 44, xl: 64 } as const;
 
 const VARIANT: Record<IconButtonVariant, { bg: string; pressed: string; fg: string; border?: string; float?: boolean }> = {
@@ -14,6 +14,8 @@ const VARIANT: Record<IconButtonVariant, { bg: string; pressed: string; fg: stri
   viewer: { bg: 'rgba(255,255,255,0.12)', pressed: 'rgba(255,255,255,0.2)', fg: colors.white, border: 'rgba(255,255,255,0.25)' },
   sand: { bg: colors.sand, pressed: '#EDD2C3', fg: colors.maroon },
   plain: { bg: 'transparent', pressed: 'rgba(120,18,50,0.06)', fg: colors.maroon },
+  /** On dark backgrounds (image viewer rail). */
+  plainLight: { bg: 'transparent', pressed: 'rgba(255,255,255,0.15)', fg: colors.white },
 };
 
 type Props = {

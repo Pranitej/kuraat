@@ -10,8 +10,11 @@ export function TextLink({
   weight = 700,
   size = 15,
   style,
+  role = 'link',
 }: {
   children: ReactNode;
+  /** 'button' for in-place actions (Read more, Mark all read); 'link' when it opens a screen. */
+  role?: 'link' | 'button';
   onPress: () => void;
   disabled?: boolean;
   weight?: 600 | 700;
@@ -24,7 +27,7 @@ export function TextLink({
       color="maroon"
       onPress={disabled ? undefined : onPress}
       suppressHighlighting
-      accessibilityRole="link"
+      accessibilityRole={role}
       accessibilityState={{ disabled }}
       style={[{ fontSize: size, lineHeight: size + 7 }, disabled && styles.disabled, style]}
     >

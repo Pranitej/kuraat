@@ -4,6 +4,7 @@
  */
 import { render, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProviders } from '@/context/AppProviders';
 import { ToastProvider } from '@/context/ToastContext';
@@ -101,11 +102,13 @@ export async function renderScreen(ui: ReactElement, { signedIn = true, server =
   else tokenStore.remove();
   const calls = fakeServer(server);
   const utils = await render(
-    <SafeAreaProvider initialMetrics={metrics}>
-      <ToastProvider>
-        <AppProviders>{ui}</AppProviders>
-      </ToastProvider>
-    </SafeAreaProvider>,
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider initialMetrics={metrics}>
+        <ToastProvider>
+          <AppProviders>{ui}</AppProviders>
+        </ToastProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>,
   );
   await waitFor(() => expect(calls.some((c) => c.path === '/me') || !signedIn).toBe(true));
   return { ...utils, calls };

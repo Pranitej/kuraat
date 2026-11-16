@@ -62,7 +62,8 @@ export function cartRoutes(ctx) {
     const promoCode = normalizePromoCode(req.body.promoCode);
     const priced = await priceForUser(ctx, req.userId, { items: [...merged].map(([productId, qty]) => ({ productId, qty })), promoCode });
     const stored = priced.items.map((l) => ({ productId: l.productId, qty: l.qty, lastPrice: l.product?.price ?? null }));
-    await saveCart(ctx.db, req.userId, { items: stored, promoCode }, ctx.clock.now());
+    // An invalid code is reported in this answer but not remembered, so the next read is clean.
+    await saveCart(ctx.db, req.userId, { items: stored, promoCode: priced.promo?.valid ? promoCode : null }, ctx.clock.now());
     res.json(priced);
   });
 

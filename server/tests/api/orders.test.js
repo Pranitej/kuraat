@@ -74,6 +74,21 @@ describe('order detail and tracking', () => {
   });
 });
 
+describe('payment receipt fields', () => {
+  test('a card order carries the transaction id and the payment time, in detail and list', async () => {
+    const order = await placeTestOrder(t, me);
+    expect(order.payment).toMatchObject({ method: 'card', brand: 'Visa', last4: '4242', paidAt: '2026-11-15T09:21:00.000Z' });
+    expect(order.payment.transactionId).toMatch(/^TXN-[0-9A-F]{8}$/);
+    const [listed] = (await api('get', '/orders')).body;
+    expect(listed.payment.transactionId).toBe(order.payment.transactionId);
+  });
+
+  test('cash on delivery has no transaction id and no payment time', async () => {
+    const order = await placeTestOrder(t, me, { payment: { method: 'cod' } });
+    expect(order.payment).toMatchObject({ method: 'cod', transactionId: null, paidAt: null });
+  });
+});
+
 describe('order list tabs', () => {
   test('ongoing excludes delivered and cancelled; delivered = step 3; all = everything, newest first', async () => {
     const delivered = await placeTestOrder(t, me);

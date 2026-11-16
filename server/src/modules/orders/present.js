@@ -60,7 +60,15 @@ export function presentOrder(row, { payment = null, branch = null } = {}) {
     total: row.total,
     promoCode: row.promo_code ?? null,
     payment: payment
-      ? { method: payment.method, brand: payment.brand ?? null, last4: payment.last4 ?? null, upiId: payment.upi_id ?? null }
+      ? {
+          method: payment.method,
+          brand: payment.brand ?? null,
+          last4: payment.last4 ?? null,
+          upiId: payment.upi_id ?? null,
+          transactionId: payment.transaction_id ?? null,
+          // Cash is paid at the door, so there is no payment time yet.
+          paidAt: payment.method === 'cod' ? null : iso(payment.created_at),
+        }
       : null,
     branch: branch ?? (row.branch_id ? { id: row.branch_id, name: row.branch_name } : null),
     distanceKm: row.distance_km ?? null,

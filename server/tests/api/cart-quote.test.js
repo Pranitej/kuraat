@@ -43,6 +43,19 @@ describe('cart', () => {
     expect((await api('get', '/cart')).body.promo.code).toBe('WELCOME15');
   });
 
+  test('an invalid promo code is reported but not kept in the stored cart', async () => {
+    const put = await api('put', '/cart', { ...pdfCart, promoCode: 'nope' });
+    expect(put.body.promo).toMatchObject({ code: 'NOPE', valid: false, error: "This code isn't valid." });
+    expect(put.body.totals.discount).toBe(0);
+    expect((await api('get', '/cart')).body.promo).toBeNull();
+  });
+
+  test('a valid code replaced by an invalid one leaves no code stored', async () => {
+    await api('put', '/cart', { ...pdfCart, promoCode: 'KURAAT10' });
+    await api('put', '/cart', { ...pdfCart, promoCode: 'NOPE' });
+    expect((await api('get', '/cart')).body.promo).toBeNull();
+  });
+
   test('a deactivated product shows as unavailable and leaves the totals', async () => {
     await api('put', '/cart', pdfCart);
     rofProduct('croissant').status = 'Inactive';

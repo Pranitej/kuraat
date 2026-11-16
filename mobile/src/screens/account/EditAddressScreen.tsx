@@ -154,7 +154,7 @@ function AddressForm({ addressId }: { addressId?: string }) {
           style={styles.locate}
         >
           {locating ? <Spinner size={18} /> : <LocateFixed size={18} color={colors.maroon} strokeWidth={1.8} />}
-          <Text weight={600} style={styles.locateText}>
+          <Text weight={600} style={styles.locateText} numberOfLines={1}>
             {locating ? 'Locating…' : 'Use current location'}
           </Text>
         </Pressable>

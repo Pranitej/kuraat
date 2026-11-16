@@ -243,7 +243,7 @@ export default function ProductDetailScreen() {
             style={styles.zoomPill}
           >
             <ZoomIn size={16} color={colors.maroon} strokeWidth={2} />
-            <Text variant="label" weight={600}>
+            <Text variant="label" weight={600} numberOfLines={1}>
               {active + 1} / {images.length} · Tap to zoom
             </Text>
           </Pressable>

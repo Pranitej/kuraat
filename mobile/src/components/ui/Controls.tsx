@@ -67,7 +67,9 @@ export function Chip({
       style={[styles.chip, active ? styles.chipOn : styles.chipOff]}
     >
       {Icon ? <Icon size={16} color={active ? colors.white : colors.maroon} strokeWidth={1.9} /> : null}
-      <Text variant="small" weight={600} color={active ? 'white' : 'maroon'}>
+      {/* One line: Android can draw a label a hair narrower than it measured it and would
+          wrap "Al Khobar" at the space, leaving "Al" and a gap inside the 36 pt pill. */}
+      <Text variant="small" weight={600} color={active ? 'white' : 'maroon'} numberOfLines={1}>
         {children}
       </Text>
     </Pressable>

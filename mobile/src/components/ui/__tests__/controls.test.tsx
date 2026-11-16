@@ -101,3 +101,11 @@ describe('Tag', () => {
     expect(StyleSheet.flatten(pill?.props.style).alignSelf).toBeUndefined();
   });
 });
+
+describe('Chip', () => {
+  test('a multi-word label stays on one line (Android must not wrap "Al Khobar" inside the pill)', async () => {
+    const { Chip } = require('@/components/ui');
+    await render(<Chip>Al Khobar</Chip>);
+    expect(screen.getByText('Al Khobar').props.numberOfLines).toBe(1);
+  });
+});

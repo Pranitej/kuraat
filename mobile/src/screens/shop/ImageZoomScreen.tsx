@@ -1,10 +1,10 @@
 import { Image } from 'expo-image';
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, Share, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 import { Minimize2, Share2, X, ZoomIn, ZoomOut } from '@/components/icons';
@@ -19,32 +19,78 @@ import { colors, radii } from '@/theme/theme';
 const MIN = 1;
 const MAX = 3;
 const STEP = 0.25;
+const KNOB = 20;
 const clamp = (v: number, a: number, b: number) => {
   'worklet';
   return Math.min(b, Math.max(a, v));
 };
 
-/** Zoom slider (100–300 %): drag or tap the track; adjustable for screen readers. */
-function ZoomSlider({ percent, onChange }: { percent: number; onChange: (scale: number) => void }) {
-  const [width, setWidth] = useState(0);
-  const fraction = (percent / 100 - MIN) / (MAX - MIN);
-  const drag = zoomSliderGesture(() => width, onChange);
+/**
+ * The zoom as a whole percentage for text (badge, screen reader). Only the component that shows
+ * it re-renders, and only when the whole number changes — never the whole viewer per frame.
+ */
+function useScalePercent(scale: SharedValue<number>): number {
+  const [percent, setPercent] = useState(() => Math.round(scale.get() * 100));
+  useAnimatedReaction(
+    () => Math.round(scale.get() * 100),
+    (now, before) => {
+      if (now !== before) scheduleOnRN(setPercent, now);
+    },
+  );
+  return percent;
+}
+
+/** "175%" badge. */
+function PercentBadge({ scale }: { scale: SharedValue<number> }) {
+  const percent = useScalePercent(scale);
+  return (
+    <View style={styles.badge}>
+      <Text variant="label" color="white" style={styles.tabular}>
+        {percent}%
+      </Text>
+    </View>
+  );
+}
+
+/** Zoom in / out / fit rail on the photo. */
+function ZoomRail({ scale, onStep, onFit }: { scale: SharedValue<number>; onStep: (delta: number) => void; onFit: () => void }) {
+  const percent = useScalePercent(scale);
+  return (
+    <View style={styles.rail}>
+      <IconButton icon={ZoomIn} label="Zoom in" variant="plainLight" onPress={() => onStep(STEP)} disabled={percent >= MAX * 100} />
+      <IconButton icon={ZoomOut} label="Zoom out" variant="plainLight" onPress={() => onStep(-STEP)} disabled={percent <= MIN * 100} />
+      <IconButton icon={Minimize2} label="Fit to screen" variant="plainLight" onPress={onFit} />
+    </View>
+  );
+}
+
+/**
+ * Zoom slider (100–300 %): the knob sits under the finger — drag and taps set the scale directly on
+ * the UI thread, and the knob and fill are drawn from it. Adjustable for screen readers.
+ */
+function ZoomSlider({ scale, apply, onStep }: { scale: SharedValue<number>; apply: (s: number) => void; onStep: (delta: number) => void }) {
+  const trackW = useSharedValue(0);
+  const percent = useScalePercent(scale);
+  const drag = useMemo(() => zoomSliderGesture(trackW, apply), [trackW, apply]);
+  const fill = useAnimatedStyle(() => ({ width: `${((scale.get() - MIN) / (MAX - MIN)) * 100}%` }));
+  const knob = useAnimatedStyle(() => ({ transform: [{ translateX: ((scale.get() - MIN) / (MAX - MIN)) * trackW.get() - KNOB / 2 }] }));
   return (
     <GestureDetector gesture={drag}>
       <View
-        onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+        onLayout={(e) => trackW.set(e.nativeEvent.layout.width)}
+        hitSlop={{ top: 10, bottom: 10 }}
         style={styles.slider}
         accessible
         accessibilityRole="adjustable"
         accessibilityLabel="Zoom level"
         accessibilityValue={{ min: MIN * 100, max: MAX * 100, now: percent, text: `${percent}%` }}
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-        onAccessibilityAction={(e) => onChange(percent / 100 + (e.nativeEvent.actionName === 'increment' ? STEP : -STEP))}
+        onAccessibilityAction={(e) => onStep(e.nativeEvent.actionName === 'increment' ? STEP : -STEP)}
       >
         <View style={styles.track}>
-          <View style={[styles.trackFill, { width: `${fraction * 100}%` }]} />
+          <Animated.View style={[styles.trackFill, fill]} />
         </View>
-        <View style={[styles.knob, { left: Math.max(0, fraction * width - 10) }]} />
+        <Animated.View style={[styles.knob, knob]} />
       </View>
     </GestureDetector>
   );
@@ -60,7 +106,6 @@ export default function ImageZoomScreen() {
   const insets = useSafeAreaInsets();
   const images = product?.images ?? [];
   const [index, setIndex] = useState(() => clamp(Number(params.i) || 0, 0, Math.max(0, images.length - 1)));
-  const [percent, setPercent] = useState(100);
 
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -71,31 +116,36 @@ export default function ImageZoomScreen() {
   const stageW = useSharedValue(0);
   const stageH = useSharedValue(0);
 
-  useAnimatedReaction(
-    () => Math.round(scale.get() * 100),
-    (now, before) => {
-      if (now !== before) scheduleOnRN(setPercent, now);
-    },
-  );
-
   const imageStyle = useAnimatedStyle(() => ({ transform: [{ translateX: tx.get() }, { translateY: ty.get() }, { scale: scale.get() }] }));
+
+  /** Slider drag (UI thread): set the scale at once and keep the zoomed photo inside the stage. */
+  const applyScale = useCallback(
+    (s: number) => {
+      'worklet';
+      const maxX = ((s - 1) * stageW.get()) / 2;
+      const maxY = ((s - 1) * stageH.get()) / 2;
+      scale.set(s);
+      tx.set(clamp(tx.get(), -maxX, maxX));
+      ty.set(clamp(ty.get(), -maxY, maxY));
+    },
+    [scale, tx, ty, stageW, stageH],
+  );
 
   const reset = useCallback(() => {
     scale.set(withTiming(1, { duration: 160 }));
     tx.set(withTiming(0, { duration: 160 }));
     ty.set(withTiming(0, { duration: 160 }));
-    setPercent(100);
   }, [scale, tx, ty]);
 
-  const zoomTo = useCallback(
-    (next: number) => {
-      const s = clamp(Math.round(next * 100) / 100, MIN, MAX);
+  /** Buttons: a short eased step from the current scale (clamped to 100–300 %). */
+  const zoomBy = useCallback(
+    (delta: number) => {
+      const s = clamp(Math.round((scale.get() + delta) * 100) / 100, MIN, MAX);
       const maxX = ((s - 1) * stageW.get()) / 2;
       const maxY = ((s - 1) * stageH.get()) / 2;
       scale.set(withTiming(s, { duration: 160 }));
       tx.set(withTiming(clamp(tx.get(), -maxX, maxX), { duration: 160 }));
       ty.set(withTiming(clamp(ty.get(), -maxY, maxY), { duration: 160 }));
-      setPercent(Math.round(s * 100));
     },
     [scale, tx, ty, stageW, stageH],
   );
@@ -197,39 +247,18 @@ export default function ImageZoomScreen() {
             />
           </Animated.View>
 
-          <View style={styles.rail}>
-            <IconButton
-              icon={ZoomIn}
-              label="Zoom in"
-              variant="plainLight"
-              onPress={() => zoomTo(percent / 100 + STEP)}
-              disabled={percent >= MAX * 100}
-            />
-            <IconButton
-              icon={ZoomOut}
-              label="Zoom out"
-              variant="plainLight"
-              onPress={() => zoomTo(percent / 100 - STEP)}
-              disabled={percent <= MIN * 100}
-            />
-            <IconButton icon={Minimize2} label="Fit to screen" variant="plainLight" onPress={reset} />
-          </View>
-
-          <View style={styles.badge}>
-            <Text variant="label" color="white" style={styles.tabular}>
-              {percent}%
-            </Text>
-          </View>
+          <ZoomRail scale={scale} onStep={zoomBy} onFit={reset} />
+          <PercentBadge scale={scale} />
         </View>
       </GestureDetector>
 
       <View style={[styles.bottom, { paddingBottom: Math.max(20, insets.bottom + 8) }]}>
         <View style={styles.sliderRow}>
-          <Pressable onPress={() => zoomTo(percent / 100 - STEP)} accessibilityRole="button" accessibilityLabel="Zoom out" hitSlop={10}>
+          <Pressable onPress={() => zoomBy(-STEP)} accessibilityRole="button" accessibilityLabel="Zoom out" hitSlop={10}>
             <ZoomOut size={20} color={colors.white80} strokeWidth={1.8} />
           </Pressable>
-          <ZoomSlider percent={percent} onChange={zoomTo} />
-          <Pressable onPress={() => zoomTo(percent / 100 + STEP)} accessibilityRole="button" accessibilityLabel="Zoom in" hitSlop={10}>
+          <ZoomSlider scale={scale} apply={applyScale} onStep={zoomBy} />
+          <Pressable onPress={() => zoomBy(STEP)} accessibilityRole="button" accessibilityLabel="Zoom in" hitSlop={10}>
             <ZoomIn size={20} color={colors.white80} strokeWidth={1.8} />
           </Pressable>
         </View>
@@ -287,7 +316,7 @@ const styles = StyleSheet.create({
   slider: { flex: 1, height: 28, justifyContent: 'center' },
   track: { height: 4, borderRadius: radii.pill, backgroundColor: 'rgba(255,255,255,0.25)', overflow: 'hidden' },
   trackFill: { height: '100%', backgroundColor: colors.white },
-  knob: { position: 'absolute', width: 20, height: 20, borderRadius: 10, backgroundColor: colors.white },
+  knob: { position: 'absolute', left: 0, width: KNOB, height: KNOB, borderRadius: KNOB / 2, backgroundColor: colors.white },
   thumbs: { marginTop: 20, flexDirection: 'row', justifyContent: 'center', gap: 12 },
   thumb: { width: 64, height: 64, borderRadius: radii.lg, borderWidth: 2, overflow: 'hidden' },
   thumbActive: { borderColor: colors.white, transform: [{ scale: 1.05 }] },

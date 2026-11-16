@@ -1,10 +1,1 @@
-// Placeholder until the Welcome screen (task 9).
-import { Text, View } from 'react-native';
-
-export default function Welcome() {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>Welcome</Text>
-    </View>
-  );
-}
+export { default } from '@/screens/auth/WelcomeScreen';

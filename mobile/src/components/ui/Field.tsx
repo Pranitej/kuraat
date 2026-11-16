@@ -161,7 +161,7 @@ export function PasswordField({ showIcon = true, ...props }: FieldProps & { show
   );
 }
 
-type PhoneProps = Omit<FieldProps, 'value' | 'onChangeText'> & { value: string; onChange: (digits: string) => void };
+type PhoneProps = Omit<FieldProps, 'value' | 'onChangeText' | 'onChange'> & { value: string; onChange: (digits: string) => void };
 
 /** "+966 ⌄" box + 9-digit Saudi mobile shown as "50 123 4821" (PDF screens 03, 06, 13). */
 export function PhoneField({

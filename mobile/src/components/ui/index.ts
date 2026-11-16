@@ -12,3 +12,4 @@ export { EmptyState, EmptyIllustration } from './EmptyState';
 export { Dialog, ConfirmDialog, DialogLink } from './Dialog';
 export { BottomSheet } from './BottomSheet';
 export { SelectField } from './SelectField';
+export { TextLink, LeadLink } from './TextLink';

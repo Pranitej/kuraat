@@ -4,7 +4,8 @@ import { createMockRof } from '../../mock-rof/app.js';
 import { createSeed } from '../../mock-rof/seed.js';
 import { createStore } from '../../mock-rof/store.js';
 
-export function createMockRofHarness({ now = () => new Date('2026-11-15T09:21:00Z'), data = createSeed() } = {}) {
+// Tests start with an empty order book unless they pass seed data with the demo orders.
+export function createMockRofHarness({ now = () => new Date('2026-11-15T09:21:00Z'), data = createSeed({ withDemoOrders: false }) } = {}) {
   const store = createStore({ data });
   const app = createMockRof({ store, now });
   let token = null;

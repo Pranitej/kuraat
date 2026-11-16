@@ -317,8 +317,95 @@ function initialStock() {
   return stock;
 }
 
-/** A fresh copy of the whole fake-ROF state. */
-export function createSeed() {
+/**
+ * The demo customer's two delivered orders from the PDF (screen 20: #KR-20377, #KR-20291).
+ * `npm run db:seed` links them to the demo customer in our database; payment details are ours
+ * (ROF holds no payments) and are used only by that seed.
+ */
+export const DEMO_ORDERS = [
+  {
+    id: 'd3000000-0000-4000-8000-000000020377',
+    orderNumber: 20377,
+    branchKey: 'corniche',
+    items: [
+      { key: 'cheesecake', quantity: 2 },
+      { key: 'cinnamon', quantity: 1 },
+    ],
+    daysAgo: 7,
+    at: [13, 5],
+    payment: { brand: 'Visa', last4: '4242', transactionId: 'TXN-61C0B7E2' },
+  },
+  {
+    id: 'd3000000-0000-4000-8000-000000020291',
+    orderNumber: 20291,
+    branchKey: 'dhahran',
+    items: [{ key: 'praline', quantity: 1 }],
+    daysAgo: 17,
+    at: [11, 40],
+    payment: { brand: 'Visa', last4: '4242', transactionId: 'TXN-3D9A40F7' },
+  },
+];
+
+/** Minutes after creation at which a delivered demo order reached each status. */
+const DEMO_TIMELINE = [
+  ['Created', 0, 'Order created'],
+  ['AssignedToBranch', 1, 'Assigned to branch'],
+  ['BranchAccepted', 3, 'Accepted by branch'],
+  ['Preparing', 4, 'Preparing'],
+  ['Prepared', 250, 'Prepared'],
+  ['AssignedToTechnician', 260, 'Assigned to rider'],
+  ['OutForDelivery', 265, 'Out for delivery'],
+  ['Delivered', 347, 'Delivered'],
+];
+
+const SAUDI_OFFSET_MS = 3 * 3600_000; // UTC+3 all year
+
+/** `hour:minute` Saudi time, `days` calendar days before `now` (also Saudi). */
+function saudiTimeDaysAgo(now, days, [hour, minute]) {
+  const saudiNow = new Date(now.getTime() + SAUDI_OFFSET_MS);
+  const day = Date.UTC(saudiNow.getUTCFullYear(), saudiNow.getUTCMonth(), saudiNow.getUTCDate() - days, hour, minute);
+  return new Date(day - SAUDI_OFFSET_MS);
+}
+
+function demoOrder(spec, now) {
+  const created = saudiTimeDaysAgo(now, spec.daysAgo, spec.at);
+  const at = (minutes) => new Date(created.getTime() + minutes * 60_000).toISOString();
+  const timeline = DEMO_TIMELINE.map(([statusTo, minutes, remarks], i) => ({
+    statusFrom: i === 0 ? null : DEMO_TIMELINE[i - 1][0],
+    statusTo,
+    remarks,
+    createdBy: 'mock',
+    createdOn: at(minutes),
+  }));
+  return {
+    id: spec.id,
+    orderNumber: spec.orderNumber,
+    status: 'Delivered',
+    customerName: 'Sara Al-Mutairi',
+    phoneNumber: '966501234821',
+    customerEmail: 'sara.m@example.com',
+    address: 'Building 14, King Fahd Rd, Al Rakah, Al Khobar 34445',
+    city: 'Al Khobar',
+    remarks: 'Near Al Rakah Park',
+    source: 'MobileApp',
+    fulfillmentType: 'Delivery',
+    items: spec.items.map((i) => ({ productId: PRODUCT_IDS[i.key], quantity: i.quantity })),
+    assignedToBranch: BRANCH_IDS[spec.branchKey],
+    reserved: false,
+    createdOn: created.toISOString(),
+    modifiedOn: timeline.at(-1).createdOn,
+    timeline,
+  };
+}
+
+/** The demo orders as stored by the fake ROF, dated relative to `now`. */
+export const demoOrders = (now = new Date()) => DEMO_ORDERS.map((spec) => demoOrder(spec, now));
+
+/**
+ * A fresh copy of the whole fake-ROF state. `withDemoOrders: false` gives an empty order book
+ * (the test harness uses it so order counts in tests mean only the orders a test placed).
+ */
+export function createSeed({ now = new Date(), withDemoOrders = true } = {}) {
   return structuredClone({
     tenantId: TENANT_ID,
     credentials: DEFAULT_CREDENTIALS,
@@ -326,7 +413,7 @@ export function createSeed() {
     products: PRODUCTS,
     branches: BRANCHES,
     stock: initialStock(),
-    orders: [],
+    orders: withDemoOrders ? demoOrders(now) : [],
     nextOrderNumber: 20418,
     /** Login timestamps within the last minute (rate limit) and the total number of logins. */
     loginLog: [],

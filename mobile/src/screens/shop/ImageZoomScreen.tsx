@@ -13,6 +13,7 @@ import { ROUTES } from '@/lib/routes';
 import { useCatalog } from '@/context/CatalogContext';
 import { useToast } from '@/context/ToastContext';
 import { useGoBack } from '@/hooks';
+import { zoomSliderGesture } from './zoomSlider';
 import { colors, radii } from '@/theme/theme';
 
 const MIN = 1;
@@ -27,11 +28,7 @@ const clamp = (v: number, a: number, b: number) => {
 function ZoomSlider({ percent, onChange }: { percent: number; onChange: (scale: number) => void }) {
   const [width, setWidth] = useState(0);
   const fraction = (percent / 100 - MIN) / (MAX - MIN);
-  const toScale = (x: number) => clamp(MIN + (x / Math.max(1, width)) * (MAX - MIN), MIN, MAX);
-  const drag = Gesture.Pan()
-    .minDistance(0)
-    .onBegin((e) => scheduleOnRN(onChange, toScale(e.x)))
-    .onUpdate((e) => scheduleOnRN(onChange, toScale(e.x)));
+  const drag = zoomSliderGesture(() => width, onChange);
   return (
     <GestureDetector gesture={drag}>
       <View

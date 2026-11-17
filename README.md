@@ -24,6 +24,25 @@ the design and implementation-plan documents (`docs/`) and the test-credentials 
 
 ## Quick start
 
+### One command (after the first-time setup below)
+
+```bash
+npm run dev            # from the repo root
+```
+
+Starts everything in order and waits for each step: MySQL in Docker (starting Docker Desktop if needed) →
+migrations → fake RSOF → demo data → API → web app → Expo. Anything already running is left alone, so it is
+safe to run again. On Windows each server gets its own tab in one "kuraat" Windows Terminal window (close a tab
+to stop that server); elsewhere, or with `--inline`, they run in the same terminal and Ctrl+C stops them.
+Options: `npm run dev -- --no-expo`, `--no-web`, `--inline`, `--help`; `npm run dev:dev-client` starts Expo for
+the EAS dev build instead of Expo Go. It also warns when the laptop's Wi-Fi IP no longer matches
+`mobile/.env` / `server/.env` (the phone could not reach the API).
+
+The root `package.json` only holds these scripts — no dependencies, no workspaces; the launcher is
+`scripts/dev.mjs`. Each app is still installed and run from its own folder.
+
+### First-time setup, or one app at a time
+
 ```bash
 # Backend (see server/README.md for details)
 cd server && npm install && cp .env.example .env

@@ -1,0 +1,9 @@
+{
+  "name": "kuraat-local",
+  "private": true,
+  "description": "Root launcher only — not an app. client/, mobile/ and server/ are installed and run on their own; this just starts them together.",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:dev-client": "node scripts/dev.mjs --dev-client"
+  }
+}

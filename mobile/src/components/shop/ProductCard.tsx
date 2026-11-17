@@ -17,13 +17,21 @@ import type { Product } from '@/types/api';
 export function FavoriteButton({ productId, productName, size = 34 }: { productId: string; productName: string; size?: number }) {
   const { isFavorite, toggle } = useFavorites();
   const toast = useToast();
+  const router = useRouter();
   const active = isFavorite(productId);
+  const notify = (added: boolean) =>
+    toast.show(added ? 'Saved to your favourites' : 'Removed from your favourites', {
+      tone: 'info',
+      duration: 1800,
+      action: added
+        ? { label: 'View', onPress: () => router.push(ROUTES.favorites) }
+        : { label: 'Undo', onPress: () => notify(toggle(productId)) },
+    });
   return (
     <Pressable
       onPress={() => {
-        const added = toggle(productId);
         tap();
-        toast.show(added ? 'Saved to your favourites' : 'Removed from your favourites', { tone: 'info', duration: 1800 });
+        notify(toggle(productId));
       }}
       accessibilityRole="button"
       accessibilityLabel={active ? `Remove ${productName} from favourites` : `Save ${productName} to favourites`}

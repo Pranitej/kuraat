@@ -10,7 +10,7 @@ import { useBranches } from '@/context/BranchContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { useCatalog } from '@/context/CatalogContext.jsx';
 import { useNotifications } from '@/context/NotificationContext.jsx';
-import { useAddresses } from '@/context/AddressContext.jsx';
+import { DeliverToBar, DeliverToSheet, useDeliveryAddress } from '@/components/shop/DeliverTo.jsx';
 import { areaLabel, categoryChips, filterProducts, withDistances } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
@@ -21,11 +21,12 @@ export default function HomePage() {
   const { user } = useAuth();
   const { count } = useCart();
   const { unreadCount } = useNotifications();
-  const { defaultAddress } = useAddresses();
+  const { address, addresses, loaded: addressesLoaded, choose } = useDeliveryAddress();
   const catalog = useCatalog();
   const { branches: allBranches } = useBranches();
   const [params, setParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [addressSheet, setAddressSheet] = useState(false);
   const sweetsRef = useRef(null);
   const isDesktop = useIsDesktop();
 
@@ -45,8 +46,8 @@ export default function HomePage() {
 
   const chips = useMemo(() => categoryChips(catalog.categories), [catalog.categories]);
   const products = useMemo(() => filterProducts(catalog.products, { query, category, sort }), [catalog.products, query, category, sort]);
-  const branches = useMemo(() => withDistances(allBranches, defaultAddress?.location), [allBranches, defaultAddress]);
-  const delivery = branches[0] && defaultAddress ? { branch: branches[0], distanceKm: branches[0].distanceKm, area: areaLabel(defaultAddress) } : null;
+  const branches = useMemo(() => withDistances(allBranches, address?.location), [allBranches, address]);
+  const delivery = branches[0] && address ? { branch: branches[0], distanceKm: branches[0].distanceKm, area: areaLabel(address) } : null;
   const loading = catalog.status === 'loading';
   const failed = catalog.status === 'error';
 
@@ -57,6 +58,7 @@ export default function HomePage() {
       {!isDesktop && <HomeHeader user={user} unread={unreadCount} />}
 
       <div className="mx-auto max-w-column px-5 lg:max-w-app lg:px-8">
+        <DeliverToBar address={address} loaded={addressesLoaded} onOpen={() => setAddressSheet(true)} className="mb-3 lg:mb-0 lg:mt-8" />
         {!isDesktop && (
           <SearchBar
             value={query}
@@ -66,7 +68,7 @@ export default function HomePage() {
           />
         )}
 
-        <div className="mt-3.5 flex flex-col gap-4 lg:mt-8 lg:grid lg:grid-cols-[1fr_360px] lg:items-stretch lg:gap-6">
+        <div className="mt-3.5 flex flex-col gap-4 lg:mt-5 lg:grid lg:grid-cols-[1fr_360px] lg:items-stretch lg:gap-6">
           <NearestBranchStrip delivery={delivery} className="lg:order-2 lg:h-full lg:flex-col lg:items-start lg:justify-center lg:gap-4 lg:p-7" />
           <PromoBanner
             className="lg:order-1"
@@ -179,6 +181,14 @@ export default function HomePage() {
         category={category}
         sort={sort}
         onApply={(f) => setFilters(f)}
+      />
+
+      <DeliverToSheet
+        open={addressSheet}
+        onClose={() => setAddressSheet(false)}
+        addresses={addresses}
+        selectedId={address?.id}
+        onChoose={(id) => choose(id, { makeDefault: true })}
       />
     </div>
   );

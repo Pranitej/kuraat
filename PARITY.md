@@ -42,6 +42,7 @@ tokens) and `lib/env.js` (where the API is).
 | 05 | Set password | ✅ | ✅ | |
 | 06 | Sign in (password / WhatsApp code) | ✅ | ✅ | |
 | 07–08 | Home, search, filter sheet, favourites, add to cart | ✅ | ✅ | Web keeps filters in the URL; mobile in the screen |
+| — | Home "Deliver to" (address sheet; drives nearest branch, checkout address, default) | ✅ | ✅ | Added after the PDF (17 Nov 2026) |
 | 09–10 | Product detail (gallery, details, allergens, delivered-from) | ✅ | ✅ | |
 | 11 | Image zoom, share | ✅ | ✅ | Web: Web Share / copy link · Mobile: native share sheet, pinch to zoom |
 | 12 | Cart (stepper, undo, promo, warnings) | ✅ | ✅ | |
@@ -50,6 +51,7 @@ tokens) and `lib/env.js` (where the API is).
 | 15 | Payment successful | ✅ | ✅ | |
 | 16 | Order confirmed + branch popup | ✅ | ✅ | |
 | 17 | Profile, log out | ✅ | ✅ | |
+| — | Favourites (list, un-heart + Undo, "no longer sold" clean-up, empty state) | ✅ | ✅ | Added after the PDF (17 Nov 2026). Web: also a heart in the desktop app bar |
 | 18 | Account (name, phone change, email, gender, photo) | ✅ | ✅ | Mobile: photo from the gallery |
 | 18 | Delete account (store requirement) | ✅ | ✅ | Account screen → confirm → WhatsApp code |
 | 19 | Password (set / change / forgot) | ✅ | ✅ | |

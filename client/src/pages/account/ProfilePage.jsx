@@ -1,22 +1,26 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, KeyRound, LogOut, MapPin, ReceiptText, User } from 'lucide-react';
+import { ChevronRight, Heart, KeyRound, LogOut, MapPin, ReceiptText, User } from 'lucide-react';
 import { BackButton } from '@/components/layout/ScreenHeader.jsx';
 import { Avatar, Button, ConfirmDialog, IconTile, MaroonPanel } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext.jsx';
 import { useAddresses } from '@/context/AddressContext.jsx';
+import { useFavorites } from '@/context/FavoritesContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
 import { formatPhone } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 
-/** 17 · Profile */
+const favoritesSubtitle = (n) => (n ? `${n} saved ${n === 1 ? 'sweet' : 'sweets'}` : 'Sweets you save with the heart');
+
+/** 17 · Profile (+ Favourites, added after the PDF) */
 export default function ProfilePage() {
   useDocumentTitle('Profile');
   const navigate = useNavigate();
   const toast = useToast();
   const { user, signOut } = useAuth();
   const { addresses } = useAddresses();
+  const { ids: favoriteIds } = useFavorites();
   const [confirm, setConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
@@ -24,6 +28,7 @@ export default function ProfilePage() {
     { to: ROUTES.account, icon: User, title: 'Account', subtitle: 'Name, phone number, gender' },
     { to: ROUTES.password, icon: KeyRound, title: 'Password', subtitle: 'Set or change your password' },
     { to: ROUTES.orders, icon: ReceiptText, title: 'Orders', subtitle: 'View your previous orders' },
+    { to: ROUTES.favorites, icon: Heart, title: 'Favourites', subtitle: favoritesSubtitle(favoriteIds.length) },
     { to: ROUTES.addresses, icon: MapPin, title: 'Saved addresses', subtitle: `${addresses.length} saved ${addresses.length === 1 ? 'address' : 'addresses'}` },
   ];
 

@@ -13,10 +13,10 @@ import {
   PromoBanner,
   SearchBar,
 } from '@/components/shop/HomeSections';
+import { DeliverToBar, DeliverToSheet, useDeliveryAddress } from '@/components/shop/DeliverTo';
 import { ProductCard, ProductCardSkeleton } from '@/components/shop/ProductCard';
 import { Chip, ChipRow, EmptyState, SectionTitle, Text, TextLink } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
-import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useBranches } from '@/context/BranchContext';
 import { useCart } from '@/context/CartContext';
@@ -38,11 +38,12 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { count } = useCart();
   const { unreadCount } = useNotifications();
-  const { defaultAddress } = useAddresses();
+  const { address, addresses, loaded: addressesLoaded, choose } = useDeliveryAddress();
   const catalog = useCatalog();
   const { branches: allBranches } = useBranches();
   const [filters, setFiltersState] = useState<Filters>(DEFAULT_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [addressSheet, setAddressSheet] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const scroll = useRef<ScrollViewInstance>(null);
   const sweetsY = useRef(0);
@@ -56,9 +57,9 @@ export default function HomeScreen() {
     () => filterProducts(catalog.products, { query, category, sort }) as Product[],
     [catalog.products, query, category, sort],
   );
-  const branches = useMemo(() => withDistances(allBranches, defaultAddress?.location) as Branch[], [allBranches, defaultAddress]);
+  const branches = useMemo(() => withDistances(allBranches, address?.location) as Branch[], [allBranches, address]);
   const delivery =
-    branches[0] && defaultAddress ? { branch: branches[0], distanceKm: branches[0].distanceKm, area: areaLabel(defaultAddress) } : null;
+    branches[0] && address ? { branch: branches[0], distanceKm: branches[0].distanceKm, area: areaLabel(address) } : null;
   const loading = catalog.status === 'loading';
   const failed = catalog.status === 'error';
 
@@ -82,6 +83,7 @@ export default function HomeScreen() {
       overlay={<CartFab count={count} />}
     >
       <View style={styles.gutter}>
+        <DeliverToBar address={address} loaded={addressesLoaded} onOpen={() => setAddressSheet(true)} style={styles.deliverTo} />
         <SearchBar
           value={query}
           onChange={(v) => setFilters({ q: v })}
@@ -206,12 +208,21 @@ export default function HomeScreen() {
         sort={sort}
         onApply={(f) => setFilters(f)}
       />
+
+      <DeliverToSheet
+        open={addressSheet}
+        onClose={() => setAddressSheet(false)}
+        addresses={addresses}
+        selectedId={address?.id}
+        onChoose={(id) => choose(id, { makeDefault: true })}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   gutter: { paddingHorizontal: GUTTER },
+  deliverTo: { marginBottom: 12 },
   top: { marginTop: 14, gap: 16 },
   section: { paddingTop: 28 },
   chips: { marginTop: 16 },

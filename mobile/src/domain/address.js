@@ -45,6 +45,21 @@ export function areaLabel(address) {
   return [address.district, address.city].filter(Boolean).join(', ');
 }
 
+/**
+ * The address we deliver to: the one chosen for this checkout (Home's "Deliver to" or the Delivery
+ * screen) while it still exists, otherwise the default, otherwise the first saved address.
+ */
+export function deliveryAddress(addresses, chosenId) {
+  const list = addresses || [];
+  return list.find((a) => a.id === chosenId) || list.find((a) => a.isDefault) || list[0] || null;
+}
+
+/** Home's "Deliver to" line: "Home · Al Rakah, Al Khobar". */
+export function deliverToLabel(address) {
+  if (!address) return '';
+  return [address.label, areaLabel(address)].filter(Boolean).join(' · ');
+}
+
 /** Geo point for an address typed by hand (no map pin): city centre + deterministic offset. */
 export function locateAddress({ line = '', district = '', city }) {
   const centre = CITY_CENTRES[city] || CITY_CENTRES['Al Khobar'];

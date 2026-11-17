@@ -40,7 +40,8 @@ function AddressForm({ addressId }: { addressId?: string }) {
   const router = useRouter();
   const params = useLocalSearchParams<{ returnTo?: string }>();
   const returnTo = (params.returnTo || ROUTES.addresses) as Href;
-  const fromDelivery = params.returnTo === ROUTES.delivery;
+  // Added from Delivery or Home's "Deliver to": deliver to the new address straight away.
+  const fromDelivery = params.returnTo === ROUTES.delivery || params.returnTo === ROUTES.home;
   const toast = useToast();
   const { user } = useAuth();
   const checkout = useCheckout();

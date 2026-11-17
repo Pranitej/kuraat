@@ -2,6 +2,7 @@
   "description": "Files shared byte-for-byte with ../client/src (see ../PARITY.md). Edit them in client/, copy here, run npm run parity.",
   "files": [
     "domain/address.js",
+    "domain/address.test.js",
     "domain/branches.js",
     "domain/branches.test.js",
     "domain/cart.js",

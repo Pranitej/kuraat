@@ -79,7 +79,8 @@ function AddressForm({ addressId }) {
     try {
       const payload = { ...form, location: form.location || undefined };
       const saved = isNew ? await create(payload) : await update(existing.id, payload);
-      if (returnTo === ROUTES.delivery) checkout.patch({ addressId: saved.id });
+      // Added from Delivery or Home's "Deliver to": deliver to the new address straight away.
+      if (returnTo === ROUTES.delivery || returnTo === ROUTES.home) checkout.patch({ addressId: saved.id });
       toast.show(isNew ? 'Address added' : 'Address saved');
       navigate(returnTo, { replace: true });
     } catch (err) {

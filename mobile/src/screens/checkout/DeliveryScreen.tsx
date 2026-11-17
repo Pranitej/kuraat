@@ -1,30 +1,30 @@
 import { Redirect, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { CheckoutSteps } from '@/components/checkout/CheckoutParts';
 import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
-import { ChevronRight, Plus } from '@/components/icons';
+import { ChevronRight } from '@/components/icons';
+import { AddAddressTile, AddressOption, useAddAddress } from '@/components/shop/DeliverTo';
 import { DeliveryFromCard } from '@/components/shop/DeliveryFromCard';
-import { Button, PhoneField, RadioDot, Tag, Text, TextLink } from '@/components/ui';
+import { Button, PhoneField, Text, TextLink } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useCheckout } from '@/context/CheckoutContext';
-import { formatAddress, formatPhone, validateMobile } from '@/domain';
+import { deliveryAddress, validateMobile } from '@/domain';
 import { useDeliveryQuote } from '@/hooks/quote';
-import { colors, radii } from '@/theme/theme';
+import type { Address } from '@/types/api';
 
 /** 13 · Delivery details */
 export default function DeliveryScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { items, status: cartStatus } = useCart();
-  const { addresses, defaultAddress } = useAddresses();
+  const { addresses } = useAddresses();
   const checkout = useCheckout();
-
-  const selectedId = addresses.some((a) => a.id === checkout.addressId) ? checkout.addressId : defaultAddress?.id;
-  const selected = addresses.find((a) => a.id === selectedId) || null;
+  const selected = deliveryAddress(addresses, checkout.addressId) as Address | null;
+  const addAddress = useAddAddress(ROUTES.delivery as string);
   const [typedPhone, setTypedPhone] = useState<string | null>(checkout.deliveryPhone || null);
   const [errors, setErrors] = useState<{ address?: string; phone?: string }>({});
   const productIds = useMemo(() => items.map((i) => i.productId), [items]);
@@ -71,35 +71,9 @@ export default function DeliveryScreen() {
       </View>
 
       <View accessibilityRole="radiogroup" accessibilityLabel="Delivery address" style={styles.addresses}>
-        {addresses.map((a) => {
-          const checked = a.id === selectedId;
-          return (
-            <Pressable
-              key={a.id}
-              onPress={() => select(a.id)}
-              accessibilityRole="radio"
-              accessibilityState={{ checked }}
-              accessibilityLabel={`${a.label}${a.isDefault ? ', default' : ''}. ${formatAddress(a)}`}
-              style={[styles.address, checked ? styles.addressChecked : null]}
-            >
-              <RadioDot checked={checked} />
-              <View style={styles.flex}>
-                <View style={styles.addressTitle}>
-                  <Text weight={700} style={styles.label}>
-                    {a.label}
-                  </Text>
-                  {a.isDefault ? <Tag tone="dark">Default</Tag> : null}
-                </View>
-                <Text color="copy" style={styles.addressLine}>
-                  {formatAddress(a)}
-                </Text>
-                <Text variant="label" weight={400} color="muted" style={styles.addressLine}>
-                  {a.contactName || user?.name} · {formatPhone(a.phone)}
-                </Text>
-              </View>
-            </Pressable>
-          );
-        })}
+        {addresses.map((a) => (
+          <AddressOption key={a.id} address={a} checked={a.id === selected?.id} onSelect={select} />
+        ))}
       </View>
       {errors.address ? (
         <Text variant="label" color="hotpink" style={styles.error}>
@@ -107,17 +81,7 @@ export default function DeliveryScreen() {
         </Text>
       ) : null}
 
-      <Pressable
-        onPress={() => router.push({ pathname: '/addresses/new', params: { returnTo: ROUTES.delivery as string } })}
-        accessibilityRole="button"
-        accessibilityLabel="Add new address"
-        style={({ pressed }) => [styles.add, pressed && styles.addPressed]}
-      >
-        <Plus size={20} color={colors.maroon} strokeWidth={2} />
-        <Text weight={700} color="maroon" style={styles.addText}>
-          Add new address
-        </Text>
-      </Pressable>
+      <AddAddressTile onPress={addAddress} style={styles.add} />
 
       <PhoneField
         label="Phone number for this delivery"
@@ -144,37 +108,10 @@ export default function DeliveryScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, minWidth: 0 },
   titleRow: { marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   addresses: { marginTop: 12, gap: 12 },
-  address: {
-    flexDirection: 'row',
-    gap: 14,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: colors.lineSubtle,
-    backgroundColor: colors.surface,
-    padding: 16,
-  },
-  addressChecked: { borderWidth: 1.5, borderColor: colors.maroon },
-  addressTitle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  label: { fontSize: 16, lineHeight: 22 },
-  addressLine: { marginTop: 4 },
   error: { marginTop: 8 },
-  add: {
-    marginTop: 12,
-    height: 54,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#D9C1B5',
-  },
-  addPressed: { backgroundColor: 'rgba(255,255,255,0.6)' },
-  addText: { fontSize: 16 },
+  add: { marginTop: 12 },
   phone: { marginTop: 24 },
   delivery: { marginTop: 20 },
 });

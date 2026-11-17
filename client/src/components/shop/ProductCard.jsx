@@ -11,8 +11,17 @@ import { cn } from '@/lib/cn.js';
 export function FavoriteButton({ productId, productName, className, size = 34 }) {
   const { isFavorite, toggle } = useFavorites();
   const toast = useToast();
+  const navigate = useNavigate();
   const active = isFavorite(productId);
   const [pop, setPop] = useState(0);
+  const notify = (added) =>
+    toast.show(added ? 'Saved to your favourites' : 'Removed from your favourites', {
+      tone: 'info',
+      duration: 1800,
+      action: added
+        ? { label: 'View', onClick: () => navigate(ROUTES.favorites) }
+        : { label: 'Undo', onClick: () => notify(toggle(productId)) },
+    });
   return (
     <button
       type="button"
@@ -21,9 +30,8 @@ export function FavoriteButton({ productId, productName, className, size = 34 })
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        const added = toggle(productId);
         setPop((p) => p + 1);
-        toast.show(added ? 'Saved to your favourites' : 'Removed from your favourites', { tone: 'info', duration: 1800 });
+        notify(toggle(productId));
       }}
       className={cn('grid place-items-center rounded-full bg-white/90 text-maroon backdrop-blur-sm transition hover:bg-white active:scale-90', className)}
       style={{ width: size, height: size }}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Bell, Search, ShoppingBag, X } from 'lucide-react';
+import { Bell, Heart, Search, ShoppingBag, X } from 'lucide-react';
 import { Avatar, IconButton, Logo } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
@@ -106,6 +106,7 @@ export default function AppBar() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <IconButton icon={Heart} label="Favourites" to={ROUTES.favorites} />
           <IconButton icon={Bell} label="Notifications" to={ROUTES.notifications} badge={<UnreadDot show={unreadCount > 0} />} />
           <IconButton icon={ShoppingBag} label={`Cart, ${count} items`} to={ROUTES.cart} badge={<CountBadge count={count} />} />
           <Link to={ROUTES.profile} aria-label="Profile" className="rounded-full transition hover:opacity-90">

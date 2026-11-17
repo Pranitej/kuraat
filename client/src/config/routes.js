@@ -20,6 +20,7 @@ export const ROUTES = {
   profile: '/profile',
   account: '/profile/account',
   password: '/profile/password',
+  favorites: '/favorites',
   orders: '/orders',
   order: (orderId) => `/orders/${orderId}`,
   addresses: '/addresses',

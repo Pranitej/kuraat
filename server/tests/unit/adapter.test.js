@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
+  provinceFor,
   absoluteUrl,
   toBranch,
   toCategory,
@@ -239,9 +240,12 @@ describe('order payload for POST /api/orders/manual (guide §7.1, spec §6.7 ste
       customerEmail: 'sara.m@example.com',
       address: 'Building 14, King Fahd Rd, Al Rakah, Al Khobar 34445',
       city: 'Al Khobar',
+      country: 'Saudi Arabia',
+      province: 'Eastern Province',
       remarks: 'Landmark: Near Al Rakah Park',
       source: 'MobileApp',
       fulfillmentType: 'Delivery',
+      orderType: 0,
       items: [
         { productId: 'p1', quantity: 1 },
         { productId: 'p2', quantity: 2 },
@@ -254,5 +258,45 @@ describe('order payload for POST /api/orders/manual (guide §7.1, spec §6.7 ste
     expect(payload.phoneNumber).toBe('966559876543');
     expect(payload.remarks).toBe('Account phone: +966 50 123 4821');
     expect(payload).not.toHaveProperty('customerEmail');
+  });
+
+  test('cash on delivery: the amount to collect goes into remarks (design 2026-11-18 §5.2)', () => {
+    const payload = toRofOrderPayload({ user, address, deliveryPhone: '501234821', items, payment: { method: 'cod' }, total: 328 });
+    expect(payload.remarks).toBe('Landmark: Near Al Rakah Park · Collect SAR 328.00 (cash on delivery)');
+  });
+
+  test('card: remarks say it is paid', () => {
+    const payload = toRofOrderPayload({ user, address: { ...address, landmark: '' }, deliveryPhone: '501234821', items, payment: { method: 'card' }, total: 328 });
+    expect(payload.remarks).toBe('Paid by card');
+  });
+
+  test('a city we cannot place in a province sends no province', () => {
+    const payload = toRofOrderPayload({ user, address: { ...address, city: 'Abha' }, deliveryPhone: '501234821', items });
+    expect(payload).not.toHaveProperty('province');
+    expect(payload.country).toBe('Saudi Arabia');
+  });
+});
+
+describe('provinceFor', () => {
+  test.each([
+    ['Riyadh', 'Riyadh Province'],
+    ['Jeddah', 'Makkah Province'],
+    ['Makkah', 'Makkah Province'],
+    ['Mecca', 'Makkah Province'],
+    ['Taif', 'Makkah Province'],
+    ['Dammam', 'Eastern Province'],
+    ['Al Khobar', 'Eastern Province'],
+    ['  al khobar ', 'Eastern Province'],
+    ['Khobar', 'Eastern Province'],
+    ['Dhahran', 'Eastern Province'],
+    ['Jubail', 'Eastern Province'],
+    ['Qatif', 'Eastern Province'],
+    ['Madinah', 'Madinah Province'],
+    ['Medina', 'Madinah Province'],
+    ['Abha', null],
+    ['', null],
+    [null, null],
+  ])('%s → %s', (city, province) => {
+    expect(provinceFor(city)).toBe(province);
   });
 });

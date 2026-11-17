@@ -84,7 +84,11 @@ export function createRofClient({ baseUrl, email, password, timeoutMs = 10000, n
     getBranch: (id) => data('GET', `/api/branches/${enc(id)}`),
     // §7 Order confirmed
     createOrder: (payload) => data('POST', '/api/orders/manual', { body: payload }),
+    // RSOF staff's manual assignment; our order flow no longer calls it (ROF assigns from the pin).
     assignBranch: (orderId, branchId) => data('PUT', `/api/orders/${enc(orderId)}/assign/branch`, { query: { BranchId: branchId } }),
+    /** The customer's pin (lead's collection) — ROF's auto-assignment picks the nearest branch with stock. */
+    shareOrderLocation: (orderId, { lat, lng }) =>
+      data('PUT', `/api/orders/${enc(orderId)}/location/shared`, { body: { latitude: lat, longitude: lng } }),
     // §9 Order detail and tracking
     getOrder: (orderId) => data('GET', `/api/orders/${enc(orderId)}`),
     getOrderTimeline: (orderId) => data('GET', `/api/orders/${enc(orderId)}/timeline`),

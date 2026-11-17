@@ -121,11 +121,38 @@ export function formatAddressLine(address) {
   return [address.line, address.district, cityLine].filter((v) => !isBlank(v)).join(', ');
 }
 
-/** Body for POST /api/orders/manual (guide §7.1; design spec §6.7 step 5). */
-export function toRofOrderPayload({ user, address, deliveryPhone, items }) {
+const PROVINCES = {
+  'Riyadh Province': ['riyadh'],
+  'Makkah Province': ['jeddah', 'makkah', 'mecca', 'taif'],
+  'Eastern Province': ['dammam', 'al khobar', 'khobar', 'dhahran', 'jubail', 'qatif'],
+  'Madinah Province': ['madinah', 'medina'],
+};
+
+/** ROF's create body takes a province (lead's collection); null for a city we cannot place. */
+export function provinceFor(city) {
+  const key = String(city ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!key) return null;
+  return Object.keys(PROVINCES).find((p) => PROVINCES[p].includes(key)) ?? null;
+}
+
+/** What the branch must collect, for ROF's remarks (ROF stores no payments). */
+function moneyRemark(payment, total) {
+  if (!payment) return null;
+  if (payment.method === 'cod') return `Collect SAR ${Number(total).toFixed(2)} (cash on delivery)`;
+  if (payment.method === 'card') return 'Paid by card';
+  return null;
+}
+
+/**
+ * Body for POST /api/orders/manual (guide §7.1; design 2026-11-18 §5.2). orderType 0 = a normal
+ * customer order (ItemOrder — RSOF's default, sent explicitly).
+ */
+export function toRofOrderPayload({ user, address, deliveryPhone, items, payment = null, total = null }) {
   const remarks = [];
   if (!isBlank(address.landmark)) remarks.push(`Landmark: ${address.landmark.trim()}`);
   if (deliveryPhone !== user.phone) remarks.push(`Account phone: +966 ${formatLocalPhone(user.phone)}`);
+  const money = moneyRemark(payment, total);
+  if (money) remarks.push(money);
   const payload = {
     customerName: user.name,
     // The delivery code and WhatsApp updates go to this number (guide §7.1).
@@ -133,12 +160,16 @@ export function toRofOrderPayload({ user, address, deliveryPhone, items }) {
     customerEmail: isBlank(user.email) ? undefined : user.email,
     address: formatAddressLine(address),
     city: address.city,
+    country: 'Saudi Arabia',
+    province: provinceFor(address.city) ?? undefined,
     remarks: remarks.length ? remarks.join(' · ') : null,
     source: 'MobileApp',
     fulfillmentType: 'Delivery',
+    orderType: 0,
     items: items.map((i) => ({ productId: i.productId, quantity: i.qty })),
   };
   if (payload.customerEmail === undefined) delete payload.customerEmail;
+  if (payload.province === undefined) delete payload.province;
   return payload;
 }
 

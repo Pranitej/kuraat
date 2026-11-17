@@ -3,6 +3,7 @@
  * and by `npm run mock-rof:advance`.
  */
 import { randomUUID } from 'node:crypto';
+import { distanceKm } from '../src/lib/geo.js';
 
 /** Status number ↔ name (guide §11). */
 export const STATUS_NAMES = [
@@ -95,6 +96,11 @@ export function registerOrderRoutes(app, { store, now, ok, fail, availableToSell
       remarks: b.remarks ?? null,
       source: b.source || 'Manual',
       fulfillmentType: b.fulfillmentType || 'Delivery',
+      orderType: b.orderType ?? 0,
+      country: b.country ?? null,
+      province: b.province ?? null,
+      latitude: null,
+      longitude: null,
       items: b.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       assignedToBranch: null,
       reserved: false,
@@ -143,6 +149,38 @@ export function registerOrderRoutes(app, { store, now, ok, fail, availableToSell
     setStatus(order, 'AssignedToBranch', 'Assigned to branch');
     store.save();
     return res.json(ok(null, 'Order assigned to branch'));
+  });
+
+  /* ---------- customer pin (lead's collection) + ROF auto-assignment ---------- */
+
+  // Real ROF assigns "the nearest branch with availability" once it has a location. The fake does
+  // the same: nearest active hub whose stock covers every item; none → left for staff.
+  app.put('/api/orders/:id/location/shared', (req, res) => {
+    if (app.locals.faults.locationReject) return res.json(fail(app.locals.faults.locationReject));
+    const order = findOrder(req.params.id);
+    if (!order) return res.json(fail('Order not found'));
+    if (COMPLETED.includes(order.status)) return res.json(fail('A completed or cancelled order cannot be changed'));
+    const lat = Number(req.body?.latitude);
+    const lng = Number(req.body?.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return res.json(fail('Latitude and longitude are required'));
+    order.latitude = lat;
+    order.longitude = lng;
+    setStatus(order, 'SharedLocationManually', 'Location shared by customer');
+    if (!order.assignedToBranch) {
+      const pin = { lat, lng };
+      const hubs = db.branches
+        .filter((b) => b.isActive && b.isHubBranch)
+        .sort((a, b) => distanceKm(pin, { lat: a.latitude, lng: a.longitude }) - distanceKm(pin, { lat: b.latitude, lng: b.longitude }));
+      const branch = hubs.find((h) => order.items.every((i) => (db.stock[i.productId]?.[h.id] ?? 0) >= i.quantity));
+      if (branch) {
+        for (const item of order.items) db.stock[item.productId][branch.id] -= item.quantity;
+        order.reserved = true;
+        order.assignedToBranch = branch.id;
+        setStatus(order, 'AssignedToBranch', 'Assigned to branch automatically');
+      }
+    }
+    store.save();
+    return res.json(ok({ status: order.status }, 'Location shared'));
   });
 
   /* ---------- read (guide §9.1, §9.2, §8 option B) ---------- */

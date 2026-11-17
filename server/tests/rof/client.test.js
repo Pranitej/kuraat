@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { PRODUCT_IDS } from '../../mock-rof/seed.js';
+import { BRANCH_IDS, PRODUCT_IDS } from '../../mock-rof/seed.js';
 import { createRofClient } from '../../src/rof/client.js';
 import { RofError } from '../../src/rof/errors.js';
 import { createMockRofHarness } from '../helpers/mockRof.js';
@@ -115,5 +115,32 @@ describe('ROF client — replies and failures', () => {
     await c.cancelOrder(created.id);
     expect((await c.getOrder(created.id)).status).toBe('Canceled');
     await expect(c.resendDeliveryOtp(created.id)).rejects.toMatchObject({ kind: 'rejected' });
+  });
+
+  test('shareOrderLocation: the fake ROF auto-assigns the nearest hub with stock', async () => {
+    const c = client();
+    const created = await c.createOrder({ customerName: 'Sara', phoneNumber: '966501234821', items: [{ productId: PRODUCT_IDS.classic, quantity: 1 }] });
+    await c.shareOrderLocation(created.id, { lat: 26.2874, lng: 50.2085 });
+    const order = await c.getOrder(created.id);
+    expect(order.status).toBe('AssignedToBranch');
+    expect(order.assignedToBranch).toBe(BRANCH_IDS.corniche);
+    expect((await c.getOrderTimeline(created.id)).map((r) => r.statusTo)).toEqual(['Created', 'SharedLocationManually', 'AssignedToBranch']);
+  });
+
+  test('shareOrderLocation: Praline is out of stock at Corniche, so Dhahran gets it', async () => {
+    const c = client();
+    const created = await c.createOrder({ customerName: 'Sara', phoneNumber: '966501234821', items: [{ productId: PRODUCT_IDS.praline, quantity: 1 }] });
+    await c.shareOrderLocation(created.id, { lat: 26.2874, lng: 50.2085 });
+    expect((await c.getOrder(created.id)).assignedToBranch).toBe(BRANCH_IDS.dhahran);
+  });
+
+  test('shareOrderLocation: no hub has the stock → left for staff (SharedLocationManually)', async () => {
+    const c = client();
+    const created = await c.createOrder({ customerName: 'Sara', phoneNumber: '966501234821', items: [{ productId: PRODUCT_IDS.classic, quantity: 50 }] });
+    for (const id of Object.values(BRANCH_IDS)) if (rof.store.data.stock[PRODUCT_IDS.classic][id] !== undefined) rof.store.data.stock[PRODUCT_IDS.classic][id] = 10;
+    await c.shareOrderLocation(created.id, { lat: 26.2874, lng: 50.2085 });
+    const order = await c.getOrder(created.id);
+    expect(order.status).toBe('SharedLocationManually');
+    expect(order.assignedToBranch ?? null).toBeNull();
   });
 });

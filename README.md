@@ -20,7 +20,7 @@ the design and implementation-plan documents (`docs/`) and the test-credentials 
 |---|---|---|
 | `client/` | All 26 screens, running on the server API (no data in the browser); real map still to come | [client/README.md](client/README.md) |
 | `server/` | Built and tested against a local fake ROF; ready for RSOF UAT once the kuraat tenant and login exist | [server/README.md](server/README.md) |
-| `mobile/` | All 26 screens native (Expo SDK 58), on the server API, sharing the web app's client logic; store builds wait for the company Expo/store accounts | [mobile/README.md](mobile/README.md) |
+| `mobile/` | All 26 screens native (Expo SDK 58), on the server API, sharing the web app's client logic; EAS project @pranitejrsof/kuraat; store builds wait for the Apple/Google store accounts | [mobile/README.md](mobile/README.md) |
 
 ## Quick start
 

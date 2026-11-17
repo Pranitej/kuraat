@@ -54,7 +54,7 @@ After changing `.env`, restart with `npx expo start --go --clear`.
 ```
 mobile/
 ├── app.config.ts            Variants (APP_VARIANT): development · preview · production — names, ids, API, OTA
-├── eas.json                 EAS build/submit profiles (used once the company Expo account is linked)
+├── eas.json                 EAS build/submit profiles (project @pranitejrsof/kuraat)
 ├── parity.json              Files that must equal ../client/src/* (checked by scripts/check-parity.mjs)
 ├── assets/                  App icon, Android adaptive icon, splash, brand images (scripts/make-icons.cjs)
 └── src/
@@ -105,11 +105,15 @@ every feature goes into both apps.
 
 ## Builds and release (EAS)
 
-Nothing has been built or linked to an Expo account yet. When the company Expo account is ready:
+The app is linked to the EAS project **@pranitejrsof/kuraat** (`owner` and `extra.eas.projectId` in `app.config.ts`;
+set `EAS_OWNER` / `EAS_PROJECT_ID` to point a build at another account's project). Check who the CLI is signed in as
+before building — the project only builds under that account.
 
 ```bash
-npx eas-cli@latest login                 # the company account
-npx eas-cli@latest init                  # creates the project; put the id in EAS_PROJECT_ID (env / EAS secrets)
+npx eas-cli@latest whoami                # must be pranitejrsof
+npx eas-cli@latest login --device        # sign in by approving a code in the browser (works without a password prompt)
+# development build (replaces Expo Go; loads JS from `npm run start:dev-client`, API from mobile/.env):
+npx eas-cli@latest build --profile development --platform android
 # internal Android test build (APK) against UAT:
 EXPO_PUBLIC_API_BASE_URL=https://<uat-api>/api/v1 npx eas-cli@latest build --profile preview --platform android
 # store builds:
@@ -129,7 +133,7 @@ binary it doesn't fit.
 
 ### Release checklist (outside the code)
 
-- [ ] Company Expo account; Apple Developer Program and Google Play Console accounts — decide the owner (RSOF or the
+- [x] Expo account (pranitejrsof, 2026-11-17). Apple Developer Program and Google Play Console accounts — decide the owner (RSOF or the
       brand) and confirm the final application id **before the first store upload** (it cannot change afterwards).
 - [ ] Hosted UAT and production API over HTTPS; RSOF UAT tenant + login (`../server/README.md` → Switching to UAT).
 - [ ] Real payment gateway (and its SDK or hosted page) instead of the simulated payments.

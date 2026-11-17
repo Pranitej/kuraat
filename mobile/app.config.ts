@@ -19,14 +19,19 @@ if (VARIANT !== 'development' && !API_BASE_URL.startsWith('https://')) {
   throw new Error(`EXPO_PUBLIC_API_BASE_URL must be an https:// URL for ${VARIANT} builds (got ${API_BASE_URL}).`);
 }
 
-/** Set once the company Expo account exists (`eas init` writes the id; pass it through the env). */
-const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID;
+/**
+ * EAS project @pranitejrsof/kuraat (created with `eas init`, 2026-11-17). The id is not a secret.
+ * EAS_PROJECT_ID / EAS_OWNER override both if the app moves to another Expo account later.
+ */
+const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID || 'e3508d94-a503-4b32-b38b-bdf0ed4e3682';
+const EAS_OWNER = process.env.EAS_OWNER || 'pranitejrsof';
 const MAROON = '#781232';
 const CREAM = '#FBF5EF';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: NAMES[VARIANT],
+  owner: EAS_OWNER,
   slug: 'kuraat',
   scheme: VARIANT === 'production' ? 'kuraat' : `kuraat-${VARIANT}`,
   version: '1.0.0',
@@ -35,7 +40,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: './assets/icon.png',
   backgroundColor: CREAM,
   runtimeVersion: { policy: 'fingerprint' },
-  ...(EAS_PROJECT_ID ? { updates: { url: `https://u.expo.dev/${EAS_PROJECT_ID}` } } : {}),
+  updates: { url: `https://u.expo.dev/${EAS_PROJECT_ID}` },
   ios: {
     bundleIdentifier: IDS[VARIANT],
     supportsTablet: false,
@@ -69,6 +74,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     variant: VARIANT,
     apiBaseUrl: API_BASE_URL,
     sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || null,
-    ...(EAS_PROJECT_ID ? { eas: { projectId: EAS_PROJECT_ID } } : {}),
+    eas: { projectId: EAS_PROJECT_ID },
   },
 });

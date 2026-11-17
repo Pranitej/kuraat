@@ -91,7 +91,7 @@ All bodies are JSON. Signed-in routes need `Authorization: Bearer <accessToken>`
 | Shop | `GET /categories` · `GET /products?categoryId&search` · `GET /products/:id` · `GET /branches` |
 | Favourites, cards | `GET/PUT /favorites` · `GET /cards` · `DELETE /cards/:id` |
 | Cart & checkout | `GET/PUT /cart` `{ items: [{ productId, qty }], promoCode? }` · `POST /checkout/quote` `{ addressId, productIds? }` |
-| Orders | `POST /orders` `{ addressId, deliveryPhone, payment, idempotencyKey }` · `GET /orders?tab=ongoing·delivered·all` · `GET /orders/:id` · `POST /orders/:id/cancel` · `POST /orders/:id/resend-code` |
+| Orders | `POST /orders` `{ addressId, deliveryPhone, payment, idempotencyKey }` · `GET /orders?tab=ongoing·delivered·all&refresh=true` · `GET /orders/:id?refresh=true` (`refresh=true` = re-read ROF now, at most once per 10 s per customer) · `POST /orders/:id/cancel` · `POST /orders/:id/resend-code` |
 | Notifications | `GET /notifications` · `POST /notifications/:id/read` · `POST /notifications/read-all` |
 
 Products: `{ id, name, description[], price, categoryId, categoryName, images[], inStock, maxQuantity, meta,
@@ -123,7 +123,7 @@ Everything ROF-specific is in [`src/rof/`](src/rof):
 | `tokenManager.js` | Service-user login, shared by concurrent calls, renewed 5 min before expiry, re-login once after a 401. |
 | `adapter.js` | ROF shapes → ours (and our order → ROF's create body). **The place to fix field differences.** |
 | `fields.js` | The product custom-field keys we give a special place: the card line (pieces, weight), the three product-page tiles (weight, pieces, dimensions → `highlights`), `ingredients` and `allergens` (own section), subtitle, badge, featured. Every other field is a plain detail row. |
-| `status.js` | ROF status names → the app's 4 tracking steps + cancelled (guide §9.2). |
+| `status.js` | The only status table: ROF status names **or codes** (0–19) → customer label, tracking step (delivery and pickup), filter group (`placed`, `attention`, `preparing`, `ready`, `on_the_way`, `completed`, `cancelled`), plus the cancel / resend-code rules. Order replies carry `status.{id, code, label, group, step, cancelled}`; customers never see ROF names. |
 | `schemas.js`, `check.js` | What we expect ROF to return, and the contract check that compares it. |
 
 ROF errors: `success:false` → `RofError('rejected')` with ROF's own message; timeouts, 5xx, unreachable →

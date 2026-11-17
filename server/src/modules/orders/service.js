@@ -57,7 +57,7 @@ export function createOrdersService(ctx) {
       return row;
     }
 
-    const step = stepOf(snapshot.status);
+    const step = stepOf(snapshot.status, row.fulfilment ?? 'delivery');
     if (step === null) ctx.logger.warn(`[orders] KR-${row.rof_order_number} has unknown ROF status ${snapshot.status}; keeping step ${row.step}`);
     const number = `KR-${row.rof_order_number}`;
     const link = { kind: 'order', id: row.id };
@@ -68,7 +68,7 @@ export function createOrdersService(ctx) {
       const current = await trx('orders').where({ id: row.id }).forUpdate().first();
       const cancelled = Boolean(current.cancelled) || step === 'cancelled';
       const numericStep = typeof step === 'number' ? step : current.step;
-      const times = { ...(current.step_times || {}), ...stepTimes(timeline) };
+      const times = { ...(current.step_times || {}), ...stepTimes(timeline, row.fulfilment ?? 'delivery') };
       const changes = {
         rof_status: snapshot.status,
         rof_status_at: snapshot.status !== current.rof_status ? now : current.rof_status_at,
@@ -110,6 +110,19 @@ export function createOrdersService(ctx) {
     });
   }
 
+  // The refresh button (design 2026-11-18 §5.4): a forced ROF re-read at most once per 10 s per
+  // customer; presses in between are answered from the usual cache.
+  const FORCE_EVERY_MS = 10_000;
+  const forcedAt = new Map();
+  function maxAge(userId, refreshAsked, usualMs) {
+    if (!refreshAsked) return usualMs;
+    const now = ctx.clock.now().getTime();
+    const last = forcedAt.get(userId);
+    if (last !== undefined && now - last < FORCE_EVERY_MS) return usualMs;
+    forcedAt.set(userId, now);
+    return 0;
+  }
+
   async function mine(userId, id) {
     const row = await findRow(userId, id);
     if (!row) throw notFound('not_found', 'We could not find this order.');
@@ -120,8 +133,12 @@ export function createOrdersService(ctx) {
     refresh,
     present,
 
-    /** tab: ongoing (not delivered, not cancelled) · delivered (step 3) · all. Newest first. */
-    async list(userId, tab = 'all') {
+    /**
+     * tab: ongoing (not delivered, not cancelled) · delivered (step 3) · all. Newest first.
+     * refresh: re-read ongoing orders from ROF now (throttled), not within the 30 s cache.
+     */
+    async list(userId, tab = 'all', { refresh: refreshAsked = false } = {}) {
+      const maxAgeMs = maxAge(userId, refreshAsked, 30_000);
       const rows = await ctx.db('orders')
         .where({ user_id: userId })
         .orderBy([
@@ -129,7 +146,7 @@ export function createOrdersService(ctx) {
           { column: 'id', order: 'desc' },
         ])
         .limit(100);
-      const fresh = await Promise.all(rows.map((r) => (!r.cancelled && (r.step ?? 0) < 3 ? refresh(r, { maxAgeMs: 30_000 }) : r)));
+      const fresh = await Promise.all(rows.map((r) => (!r.cancelled && (r.step ?? 0) < 3 ? refresh(r, { maxAgeMs }) : r)));
       const shown = fresh.filter((r) => {
         if (tab === 'ongoing') return !r.cancelled && (r.step ?? 0) < 3;
         if (tab === 'delivered') return !r.cancelled && r.step === 3;
@@ -139,8 +156,9 @@ export function createOrdersService(ctx) {
       return shown.map((r) => presentOrder(r, { payment: payments.find((p) => p.order_id === r.id), media }));
     },
 
-    async get(userId, id) {
-      return present(await refresh(await mine(userId, id), { maxAgeMs: 15_000 }));
+    async get(userId, id, { refresh: refreshAsked = false } = {}) {
+      const row = await mine(userId, id);
+      return present(await refresh(row, { maxAgeMs: maxAge(userId, refreshAsked, 15_000) }));
     },
 
     async cancel(userId, id) {

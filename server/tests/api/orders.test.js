@@ -26,7 +26,7 @@ describe('order detail and tracking', () => {
     await advance(t, order.number, 'Preparing');
     const res = await api('get', `/orders/${order.id}`);
     expect(res.status).toBe(200);
-    expect(res.body.status).toEqual({ id: 'preparing', label: 'Preparing', step: 1, cancelled: false });
+    expect(res.body.status).toEqual({ id: 'preparing', code: 'Preparing', label: 'Preparing', group: 'preparing', step: 1, cancelled: false });
     expect(res.body.steps).toEqual([
       { id: 'confirmed', title: 'Order confirmed', state: 'done', time: '2026-11-15T09:21:00.000Z', timeEnd: null, estimated: false },
       { id: 'preparing', title: 'Preparing at the branch', state: 'current', time: '2026-11-15T09:31:00.000Z', timeEnd: null, estimated: false },
@@ -105,6 +105,40 @@ describe('order list tabs', () => {
     expect(await ids('delivered')).toEqual([delivered.id]);
     expect(await ids('all')).toEqual([ongoing.id, cancelled.id, delivered.id]);
     expect(await ids()).toEqual([ongoing.id, cancelled.id, delivered.id]);
+  });
+});
+
+describe('refresh button (design 2026-11-18 §5.4)', () => {
+  const setRofStatus = (status) => {
+    t.mockRof.store.data.orders[0].status = status;
+  };
+  const listLabel = async (query = '') => (await api('get', `/orders${query}`)).body[0].status.label;
+
+  test('refresh=true re-reads ROF at once instead of using the 30 s cache', async () => {
+    await placeTestOrder(t, me);
+    expect(await listLabel()).toBe('Sent to branch');
+    setRofStatus('Preparing');
+    expect(await listLabel()).toBe('Sent to branch');
+    expect(await listLabel('?refresh=true')).toBe('Preparing');
+  });
+
+  test('refresh is throttled to once per 10 s per customer', async () => {
+    await placeTestOrder(t, me);
+    await listLabel();
+    setRofStatus('Preparing');
+    expect(await listLabel('?refresh=true')).toBe('Preparing');
+    setRofStatus('Prepared');
+    expect(await listLabel('?refresh=true')).toBe('Preparing');
+    t.clock.advance(10_000);
+    expect(await listLabel('?refresh=true')).toBe('Packed, waiting for a rider');
+  });
+
+  test('the order detail refreshes on demand too', async () => {
+    const order = await placeTestOrder(t, me);
+    await api('get', `/orders/${order.id}`);
+    setRofStatus('Preparing');
+    expect((await api('get', `/orders/${order.id}`)).body.status.label).toBe('Sent to branch');
+    expect((await api('get', `/orders/${order.id}?refresh=true`)).body.status.label).toBe('Preparing');
   });
 });
 

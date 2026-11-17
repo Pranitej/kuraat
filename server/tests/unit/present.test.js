@@ -21,6 +21,23 @@ const row = (lines) => ({
   created_at: '2026-11-16T09:21:00.000Z',
 });
 
+describe('order status for the apps (design 2026-11-18 §5.1)', () => {
+  test('a known ROF status gives its customer label, group and code', () => {
+    const order = presentOrder({ ...row([]), rof_status: 'AssignedToTechnician', step: 1 });
+    expect(order.status).toEqual({ id: 'preparing', code: 'AssignedToTechnician', label: 'Rider assigned', group: 'preparing', step: 1, cancelled: false });
+  });
+
+  test('an unknown ROF status falls back to the stored step', () => {
+    const order = presentOrder({ ...row([]), rof_status: 'TransferRequested', step: 1 });
+    expect(order.status).toMatchObject({ code: 'TransferRequested', label: 'Preparing', group: 'preparing', step: 1 });
+  });
+
+  test('a cancelled order reads Cancelled whatever ROF last said', () => {
+    const order = presentOrder({ ...row([]), rof_status: 'Preparing', step: 1, cancelled: 1 });
+    expect(order.status).toMatchObject({ id: 'cancelled', label: 'Cancelled', group: 'cancelled', cancelled: true });
+  });
+});
+
 describe('order photos', () => {
   const media = { from: 'http://localhost:8080', to: 'http://192.168.1.10:8080' };
 

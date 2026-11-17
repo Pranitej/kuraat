@@ -66,9 +66,6 @@ export const FALLBACK_BY_STEP = [
   { label: 'Delivered', group: 'completed' },
 ];
 
-/** @deprecated Old 4-step labels; removed once order replies use statusInfo labels. */
-export const STATUS_LABEL = { 0: 'Confirmed', 1: 'Preparing', 2: 'Out for delivery', 3: 'Delivered', cancelled: 'Cancelled' };
-
 const TERMINAL = new Set(['Delivered', 'DeliveredWithoutOtp', 'PickUpByCustomer', 'Canceled']);
 
 /**

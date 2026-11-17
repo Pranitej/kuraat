@@ -37,7 +37,7 @@ describe('placing an order', () => {
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
       number: 'KR-20418',
-      status: { id: 'confirmed', label: 'Confirmed', step: 0, cancelled: false },
+      status: { id: 'confirmed', code: 'AssignedToBranch', label: 'Sent to branch', group: 'placed', step: 0, cancelled: false },
       items: [
         { productId: PRODUCT_IDS.classic, name: 'Truffle Box · Classic', qty: 1, price: 185 },
         { productId: PRODUCT_IDS.croissant, name: 'Butter Croissant Box', qty: 2, price: 64 },

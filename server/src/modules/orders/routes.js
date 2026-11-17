@@ -37,12 +37,15 @@ export function orderRoutes(ctx) {
     res.status(created ? 201 : 200).json(order);
   });
 
-  router.get('/', validate({ query: z.object({ tab: z.enum(['ongoing', 'delivered', 'all']).default('all') }) }), async (req, res) => {
-    res.json(await ctx.orders.list(req.userId, req.validQuery.tab));
+  // ?refresh=true — the apps' refresh button: re-read ROF now (throttled in the service).
+  const refreshQuery = z.enum(['true', 'false']).optional();
+
+  router.get('/', validate({ query: z.object({ tab: z.enum(['ongoing', 'delivered', 'all']).default('all'), refresh: refreshQuery }) }), async (req, res) => {
+    res.json(await ctx.orders.list(req.userId, req.validQuery.tab, { refresh: req.validQuery.refresh === 'true' }));
   });
 
-  router.get('/:id', async (req, res) => {
-    res.json(await ctx.orders.get(req.userId, req.params.id));
+  router.get('/:id', validate({ query: z.object({ refresh: refreshQuery }) }), async (req, res) => {
+    res.json(await ctx.orders.get(req.userId, req.params.id, { refresh: req.validQuery.refresh === 'true' }));
   });
 
   router.post('/:id/cancel', async (req, res) => {

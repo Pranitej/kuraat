@@ -2,7 +2,7 @@
  * Order as the app sees it (design spec §6.5): our totals and payment + ROF's status and timeline,
  * folded into the four tracking steps of the design (+ a cancelled state).
  */
-import { STATUS_LABEL, canCancel, canResendCode } from '../../rof/status.js';
+import { FALLBACK_BY_STEP, canCancel, canResendCode, statusInfo } from '../../rof/status.js';
 
 const STEPS = [
   ['confirmed', 'Order confirmed'],
@@ -46,18 +46,30 @@ function steps(row) {
 }
 
 /**
+ * The status block the apps show and filter by: label + group from ROF's status (design 2026-11-18
+ * §5.1); for a status we do not know, from the last known step. ROF names never reach the screen.
+ */
+function presentStatus(row) {
+  const cancelled = Boolean(row.cancelled);
+  const step = row.step ?? 0;
+  const code = row.rof_status ?? null;
+  if (cancelled) return { id: 'cancelled', code, label: 'Cancelled', group: 'cancelled', step, cancelled };
+  const info = statusInfo(code, row.fulfilment ?? 'delivery');
+  const { label, group } = info && info.step !== 'cancelled' ? info : FALLBACK_BY_STEP[step];
+  return { id: STEPS[step][0], code, label, group, step, cancelled };
+}
+
+/**
  * @param {object} row       orders table row
  * @param {{ payment?: object, branch?: object|null, media?: { from: string, to: string } }} extra
  *   payments row; branch from the branch service; media = where saved photo links are served from
  */
 export function presentOrder(row, { payment = null, branch = null, media = null } = {}) {
   const cancelled = Boolean(row.cancelled);
-  const step = row.step ?? 0;
-  const statusId = cancelled ? 'cancelled' : STEPS[step][0];
   return {
     id: row.id,
     number: `KR-${row.rof_order_number}`,
-    status: { id: statusId, label: STATUS_LABEL[cancelled ? 'cancelled' : step], step, cancelled },
+    status: presentStatus(row),
     steps: steps(row),
     items: (row.lines || []).map((l) => ({ productId: l.productId, name: l.name, qty: l.qty, price: l.price, image: rebase(l.image, media) })),
     subtotal: row.subtotal,

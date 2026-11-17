@@ -24,6 +24,18 @@ export function categoryChips(categories = []) {
   return [{ id: 'all', label: 'All' }, ...categories.map((c) => ({ id: slugify(c.name), label: c.name }))];
 }
 
+/**
+ * Category pills (design 2026-11-18 §5.5): shown only when the loaded catalogue has products and
+ * every one of them has a category; then All + the categories in use, in the server's order.
+ * Otherwise no pills and no category filter at all.
+ */
+export function categoryFilter(products = [], categories = []) {
+  const named = (p) => typeof p.categoryName === 'string' && p.categoryName.trim() !== '';
+  if (!products.length || !products.every(named)) return { show: false, chips: [] };
+  const used = new Set(products.map((p) => p.categoryName.trim()));
+  return { show: true, chips: categoryChips(categories.filter((c) => used.has(c.name))) };
+}
+
 const searchText = (p) =>
   [p.name, p.categoryName, p.subtitle, ...(p.description || []), p.ingredients, ...(p.details || []).map((d) => d.value)]
     .filter(Boolean)

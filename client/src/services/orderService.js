@@ -4,8 +4,9 @@ import { apiRequest } from './api.js';
 
 const path = (id) => `/orders/${encodeURIComponent(id)}`;
 
-export const listOrders = () => apiRequest('/orders');
-export const getOrder = (id) => apiRequest(path(id));
+/** refresh: the refresh button — the server re-reads RSOF now (at most once per 10 s). */
+export const listOrders = ({ refresh = false } = {}) => apiRequest(refresh ? '/orders?refresh=true' : '/orders');
+export const getOrder = (id, { refresh = false } = {}) => apiRequest(refresh ? `${path(id)}?refresh=true` : path(id));
 
 /**
  * Pays (simulated in UAT) and places the order for the server cart. Same key → same order, so a

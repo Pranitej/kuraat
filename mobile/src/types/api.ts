@@ -118,7 +118,10 @@ export type Quote = {
   window: { start: string; end: string };
 };
 
-export type OrderStatus = { id: string; label: string; step: number; cancelled: boolean };
+/** Filter groups from the server's status table (server/src/rof/status.js). */
+export type OrderGroup = 'placed' | 'attention' | 'preparing' | 'ready' | 'on_the_way' | 'completed' | 'cancelled';
+
+export type OrderStatus = { id: string; code: string | null; label: string; group: OrderGroup; step: number; cancelled: boolean };
 
 export type Order = {
   id: string;

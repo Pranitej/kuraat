@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { categoryChips, filterProducts, slugify } from './catalog.js';
+import { categoryChips, categoryFilter, filterProducts, slugify } from './catalog.js';
 
 const product = (over) => ({
   id: over.name,
@@ -52,5 +52,37 @@ describe('filterProducts', () => {
     expect(names(filterProducts(PRODUCTS, { sort: 'price-desc' }))[0]).toBe('Truffle Box · Classic');
     expect(names(filterProducts(PRODUCTS, { sort: 'name' }))[0]).toBe('Burnt Chocolate Cheesecake');
     expect(names(filterProducts(PRODUCTS, { sort: 'recommended' }))).toEqual(names(PRODUCTS));
+  });
+});
+
+describe('categoryFilter (design 2026-11-18 §5.5)', () => {
+  const CATEGORIES = [
+    { id: 'c1', name: 'Truffles' },
+    { id: 'c2', name: 'Cakes' },
+  ];
+
+  test('every product has a category: All + the categories in use, in server order', () => {
+    const list = [product({ name: 'A', categoryName: 'Truffles' }), product({ name: 'B', categoryName: 'Truffles' })];
+    expect(categoryFilter(list, CATEGORIES)).toEqual({
+      show: true,
+      chips: [
+        { id: 'all', label: 'All' },
+        { id: 'truffles', label: 'Truffles' },
+      ],
+    });
+  });
+
+  test('one product without a category hides the pills', () => {
+    const list = [product({ name: 'A', categoryName: 'Truffles' }), product({ name: 'B', categoryName: null })];
+    expect(categoryFilter(list, CATEGORIES)).toEqual({ show: false, chips: [] });
+  });
+
+  test('a blank category name counts as none', () => {
+    expect(categoryFilter([product({ name: 'A', categoryName: '  ' })], CATEGORIES).show).toBe(false);
+  });
+
+  test('no products (yet) → no pills', () => {
+    expect(categoryFilter([], CATEGORIES)).toEqual({ show: false, chips: [] });
+    expect(categoryFilter(undefined, undefined)).toEqual({ show: false, chips: [] });
   });
 });

@@ -12,10 +12,36 @@ function dayPrefix(value, now) {
   return isSameDay(value, new Date(new Date(now).getTime() + DAY_MS)) ? 'Tomorrow, ' : `${formatDayMonth(value)}, `;
 }
 
-/** { id, label, step, cancelled, ongoing, tone } — tone for the status tag (dark · light · alert). */
+const GROUP_BY_STEP = ['placed', 'preparing', 'on_the_way', 'completed'];
+
+/**
+ * { id, label, group, step, cancelled, ongoing, tone } — tone for the status tag (dark · light ·
+ * alert). The server sends the label and filter group (server/src/rof/status.js); a copy kept from
+ * an older reply has no group, so it is worked out from the step.
+ */
 export function orderStatusView(order) {
   const { id, label, step = 0, cancelled = false } = order.status;
-  return { id, label, step, cancelled, ongoing: !cancelled && step < 3, tone: cancelled ? 'alert' : step >= 3 ? 'light' : 'dark' };
+  const group = order.status.group || (cancelled ? 'cancelled' : GROUP_BY_STEP[step] || 'placed');
+  const tone = cancelled || group === 'attention' ? 'alert' : step >= 3 ? 'light' : 'dark';
+  return { id, label, group, step, cancelled, ongoing: !cancelled && step < 3, tone };
+}
+
+/** The My orders status dropdown (design 2026-11-18 §5.4); ids are the server's filter groups. */
+export const ORDER_FILTERS = [
+  { id: 'all', label: 'All orders' },
+  { id: 'placed', label: 'Placed' },
+  { id: 'attention', label: 'Needs attention' },
+  { id: 'preparing', label: 'Preparing' },
+  { id: 'ready', label: 'Ready for pickup' },
+  { id: 'on_the_way', label: 'On the way' },
+  { id: 'completed', label: 'Completed' },
+  { id: 'cancelled', label: 'Cancelled' },
+];
+
+/** Orders shown for a dropdown choice ('all' or a filter group). */
+export function filterOrders(orders = [], filterId = 'all') {
+  if (filterId === 'all') return orders;
+  return orders.filter((o) => orderStatusView(o).group === filterId);
 }
 
 function stepTime(s, now) {

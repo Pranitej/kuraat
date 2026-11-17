@@ -1,6 +1,6 @@
 // Runs in America/New_York (vitest.config.js): every label must still be Saudi time.
 import { describe, expect, test } from 'vitest';
-import { orderItemCount, orderStatusView, orderTimelineView, paymentLabel } from './orders.js';
+import { ORDER_FILTERS, filterOrders, orderItemCount, orderStatusView, orderTimelineView, paymentLabel } from './orders.js';
 
 const NOW = new Date('2026-11-15T09:30:00Z'); // 12:30 in Saudi Arabia
 const step = (id, title, state, time, extra = {}) => ({ id, title, state, time, timeEnd: null, estimated: false, ...extra });
@@ -58,6 +58,42 @@ describe('orderStatusView', () => {
     expect(orderStatusView(preparing)).toMatchObject({ id: 'preparing', label: 'Preparing', ongoing: true, tone: 'dark' });
     expect(orderStatusView({ status: { id: 'delivered', label: 'Delivered', step: 3, cancelled: false } })).toMatchObject({ ongoing: false, tone: 'light' });
     expect(orderStatusView({ status: { id: 'cancelled', label: 'Cancelled', step: 0, cancelled: true } })).toMatchObject({ ongoing: false, tone: 'alert', cancelled: true });
+  });
+
+  test('the group comes from the server; an order needing attention reads as an alert', () => {
+    const order = { status: { id: 'confirmed', label: 'Being reviewed', group: 'attention', step: 0, cancelled: false } };
+    expect(orderStatusView(order)).toMatchObject({ group: 'attention', tone: 'alert', ongoing: true });
+  });
+
+  test('orderStatusView falls back to a group from step when the reply has none (older copy)', () => {
+    expect(orderStatusView({ status: { id: 'out_for_delivery', label: 'Out for delivery', step: 2, cancelled: false } }).group).toBe('on_the_way');
+    expect(orderStatusView({ status: { id: 'confirmed', label: 'Confirmed', step: 0, cancelled: false } }).group).toBe('placed');
+    expect(orderStatusView({ status: { id: 'cancelled', label: 'Cancelled', step: 1, cancelled: true } }).group).toBe('cancelled');
+  });
+});
+
+describe('order status filter (design 2026-11-18 §5.4)', () => {
+  const order = (id, group, step = 0) => ({ id, status: { id: 'x', label: 'x', group, step, cancelled: group === 'cancelled' } });
+  const ORDERS = [order('a', 'placed'), order('b', 'preparing', 1), order('c', 'completed', 3), order('d', 'cancelled'), order('e', 'ready', 2)];
+
+  test('the dropdown options, in order', () => {
+    expect(ORDER_FILTERS).toEqual([
+      { id: 'all', label: 'All orders' },
+      { id: 'placed', label: 'Placed' },
+      { id: 'attention', label: 'Needs attention' },
+      { id: 'preparing', label: 'Preparing' },
+      { id: 'ready', label: 'Ready for pickup' },
+      { id: 'on_the_way', label: 'On the way' },
+      { id: 'completed', label: 'Completed' },
+      { id: 'cancelled', label: 'Cancelled' },
+    ]);
+  });
+
+  test('all keeps every order; a group keeps only its orders', () => {
+    expect(filterOrders(ORDERS, 'all').map((o) => o.id)).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(filterOrders(ORDERS, 'completed').map((o) => o.id)).toEqual(['c']);
+    expect(filterOrders(ORDERS, 'ready').map((o) => o.id)).toEqual(['e']);
+    expect(filterOrders(ORDERS, 'on_the_way')).toEqual([]);
   });
 });
 

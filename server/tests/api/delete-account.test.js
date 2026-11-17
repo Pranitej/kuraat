@@ -53,6 +53,7 @@ describe('delete account (store requirement)', () => {
     await api('get', `/orders/${order.id}?refresh=true`, me.auth); // syncs the delivered status (placing already read ROF once)
     const userId = me.user.id;
 
+    await api('put', '/me/location', me.auth, { lat: 26.2874, lng: 50.2085 });
     const verificationToken = await verifiedDeletion(me);
     expect((await api('delete', '/me', me.auth, { verificationToken })).status).toBe(204);
 
@@ -61,6 +62,7 @@ describe('delete account (store requirement)', () => {
     }
     const user = await t.db('users').where({ id: userId }).first();
     expect(user).toMatchObject({ phone: null, name: 'Deleted customer', email: null, avatar: null, password_hash: null, gender: null });
+    expect([user.last_lat, user.last_lng, user.last_location_at]).toEqual([null, null, null]);
     expect(user.deleted_at).not.toBeNull();
 
     const orders = await t.db('orders').where({ user_id: userId });

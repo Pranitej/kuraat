@@ -103,3 +103,31 @@ describe('PUT /me/password', () => {
     expect((await t.db('notifications').where({ type: 'security' }))[0].title).toBe('Password set');
   });
 });
+
+describe('PUT /me/location (design 2026-11-18 §5.6)', () => {
+  test('saves the latest location; a newer one overwrites it', async () => {
+    const me = await signInDemo(t);
+    expect((await api('put', '/me/location', me.auth, { lat: 26.2874, lng: 50.2085 })).status).toBe(204);
+    t.clock.set('2026-11-15T09:26:00Z');
+    expect((await api('put', '/me/location', me.auth, { lat: 24.7136, lng: 46.6753 })).status).toBe(204);
+    const row = await t.db('users').where({ id: me.user.id }).first();
+    expect([Number(row.last_lat), Number(row.last_lng)]).toEqual([24.7136, 46.6753]);
+    expect(new Date(row.last_location_at).toISOString()).toBe('2026-11-15T09:26:00.000Z');
+  });
+
+  test.each([
+    [{ lat: '26', lng: 50 }, 'lat'],
+    [{ lat: 91, lng: 0 }, 'lat'],
+    [{ lat: 0, lng: -181 }, 'lng'],
+    [{ lng: 50 }, 'lat'],
+  ])('%j → 400 invalid on %s', async (body, field) => {
+    const me = await signInDemo(t);
+    const res = await api('put', '/me/location', me.auth, body);
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ code: 'invalid', field });
+  });
+
+  test('signed out → 401', async () => {
+    expect((await api('put', '/me/location', null, { lat: 1, lng: 1 })).status).toBe(401);
+  });
+});

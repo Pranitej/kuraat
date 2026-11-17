@@ -29,6 +29,11 @@ const profileSchema = z.object({
   verificationToken: z.string().optional(),
 });
 
+const locationSchema = z.object({
+  lat: z.number('Send the latitude as a number').min(-90, 'Latitude is out of range').max(90, 'Latitude is out of range'),
+  lng: z.number('Send the longitude as a number').min(-180, 'Longitude is out of range').max(180, 'Longitude is out of range'),
+});
+
 export function meRoutes(ctx) {
   const router = express.Router();
   router.use(requireAuth(ctx));
@@ -66,6 +71,14 @@ export function meRoutes(ctx) {
       if (challenge) await markConsumed(ctx, challenge.id, trx);
     });
     res.json(toPublicUser(await findUserById(ctx.db, user.id)));
+  });
+
+  // The apps send the device location once per session (design 2026-11-18 §5.6); only the latest is kept.
+  router.put('/location', validate({ body: locationSchema }), async (req, res) => {
+    const user = await currentUser(req);
+    const now = ctx.clock.now();
+    await ctx.db('users').where({ id: user.id }).update({ last_lat: req.body.lat, last_lng: req.body.lng, last_location_at: now, updated_at: now });
+    res.status(204).end();
   });
 
   router.put(

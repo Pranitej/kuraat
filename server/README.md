@@ -86,7 +86,7 @@ All bodies are JSON. Signed-in routes need `Authorization: Bearer <accessToken>`
 |---|---|
 | Health | `GET /health` |
 | Login | `POST /auth/otp/request` `{ phone, purpose: signup·signin·reset·change-phone·delete-account, payload? }` · `POST /auth/otp/resend` `{ challengeId }` · `POST /auth/otp/verify` `{ challengeId, code }` · `POST /auth/signup/password` · `POST /auth/signin` `{ phone, password }` · `POST /auth/password/reset` `{ verificationToken, newPassword }` · `POST /auth/refresh` `{ refreshToken }` · `POST /auth/signout` |
-| Profile | `GET /me` · `PATCH /me` `{ name?, email?, gender?, avatar?, phone? + verificationToken }` · `PUT /me/password` · `DELETE /me` `{ verificationToken }` |
+| Profile | `GET /me` · `PATCH /me` `{ name?, email?, gender?, avatar?, phone? + verificationToken }` · `PUT /me/password` · `PUT /me/location` `{ lat, lng }` → 204 (latest device location, sent once per app session; cleared on deletion) · `DELETE /me` `{ verificationToken }` |
 | Addresses | `GET /addresses` · `POST /addresses` · `PATCH /addresses/:id` · `DELETE /addresses/:id` · `POST /addresses/:id/default` |
 | Shop | `GET /categories` · `GET /products?categoryId&search` · `GET /products/:id` · `GET /branches` |
 | Favourites, cards | `GET/PUT /favorites` · `GET /cards` · `DELETE /cards/:id` |

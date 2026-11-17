@@ -40,6 +40,9 @@ export async function deleteAccount(ctx, userId, challengeId) {
       gender: null,
       avatar: null,
       password_hash: null,
+      last_lat: null,
+      last_lng: null,
+      last_location_at: null,
       deleted_at: now,
       updated_at: now,
     });

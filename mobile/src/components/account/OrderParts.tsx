@@ -7,7 +7,7 @@ import { Check, ChevronRight, RefreshCw, Store, X } from '@/components/icons';
 import { Card, IconButton, Tag, Text, type TagTone } from '@/components/ui';
 import { useToast } from '@/context/ToastContext';
 import { ROUTES } from '@/lib/routes';
-import { formatOrderDate, formatSAR, orderItemCount, orderStatusView } from '@/domain';
+import { PENDING_BRANCH, formatOrderDate, formatSAR, orderItemCount, orderStatusView } from '@/domain';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
 
@@ -135,6 +135,19 @@ export const OrderCard = memo(function OrderCard({ order, now }: { order: Order;
           </View>
           <ChevronRight size={20} color={colors.ink} strokeWidth={1.8} />
         </Pressable>
+      ) : !status.cancelled ? (
+        // ROF has not assigned a branch yet: the same sand row, not a link (design 2026-11-18 §5.2).
+        <View style={styles.branch} accessible accessibilityLabel={`${branchLabel(status)} ${PENDING_BRANCH.title}`}>
+          <Store size={20} color={colors.maroon} strokeWidth={1.8} />
+          <View style={styles.flex}>
+            <Text variant="label" weight={400} color="muted">
+              {branchLabel(status)}
+            </Text>
+            <Text weight={700} numberOfLines={1} style={styles.branchName}>
+              {PENDING_BRANCH.title}
+            </Text>
+          </View>
+        </View>
       ) : null}
     </Card>
   );

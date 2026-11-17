@@ -8,7 +8,7 @@ import { Check } from '@/components/icons';
 import { Button, Card, CirclePattern, ProgressBar, Text, WhatsAppIcon } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useOrder } from '@/context/OrderContext';
-import { formatDateTime, formatSAR, paymentLabel } from '@/domain';
+import { PENDING_BRANCH, formatDateTime, formatSAR, paymentLabel } from '@/domain';
 import { useBackToHome } from '@/hooks';
 import { colors, layout } from '@/theme/theme';
 
@@ -37,7 +37,6 @@ export default function PaymentSuccessScreen() {
   if (!order && loading) return <View style={styles.root} />;
   if (!order || !order.payment) return <Redirect href={ROUTES.orders} />;
   const cod = order.payment.method === 'cod';
-  const branchName = order.branch?.name || 'the branch';
 
   const rows: [string, string][] = cod
     ? [
@@ -97,7 +96,7 @@ export default function PaymentSuccessScreen() {
 
         <View style={styles.bottom}>
           <Text color="muted" align="center" accessibilityLiveRegion="polite">
-            {confirmed ? `Confirmed by ${branchName}` : 'Confirming your order with the branch…'}
+            {confirmed ? (order.branch ? `Confirmed by ${order.branch.name}` : PENDING_BRANCH.sent) : 'Confirming your order with the branch…'}
           </Text>
           <View style={styles.progress}>
             <ProgressBar value={progress} label="Confirming with the branch" />

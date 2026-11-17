@@ -9,7 +9,7 @@ import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Text,
 import { ROUTES } from '@/lib/routes';
 import { useOrder, useOrders } from '@/context/OrderContext';
 import { useToast } from '@/context/ToastContext';
-import { directionsUrl, formatAddress, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
+import { PENDING_BRANCH, directionsUrl, formatAddress, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
 import { useCountdown } from '@/hooks';
 import { useOpenUrl } from '@/lib/linking';
 import { colors, radii } from '@/theme/theme';
@@ -176,6 +176,26 @@ export default function OrderDetailScreen() {
                 ) : null}
               </View>
             ) : null}
+          </MaroonPanel>
+        ) : !status.cancelled ? (
+          // ROF has not assigned a branch yet: the same maroon card, without its buttons (design 2026-11-18 §5.2).
+          <MaroonPanel style={styles.branch}>
+            <View style={styles.branchTop}>
+              <View style={styles.branchIcon}>
+                <Store size={20} color={colors.white} strokeWidth={1.8} />
+              </View>
+              <View style={styles.flex}>
+                <Text variant="label" weight={400} color="white80">
+                  {branchLabel(status)}
+                </Text>
+                <Text weight={700} color="white" numberOfLines={1} style={styles.branchName}>
+                  {PENDING_BRANCH.title}
+                </Text>
+              </View>
+            </View>
+            <Text variant="small" style={styles.branchAddress}>
+              {PENDING_BRANCH.body}
+            </Text>
           </MaroonPanel>
         ) : null}
 

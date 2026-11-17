@@ -203,4 +203,22 @@ describe('16 · Order confirmed', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Got it' }));
     expect(session.read('branch-popup-seen:o1')).toBe(true);
   });
+
+  test('ROF has not assigned a branch yet: the popup says so and offers Track order (design 2026-11-18 §5.2)', async () => {
+    setMockParams({ orderId: 'o1' });
+    const pending = { ...ORDER, branch: null, distanceKm: null };
+    await renderScreen(<OrderConfirmedScreen />, { server: (c) => (c.path === '/orders/o1' ? { body: pending } : shop(() => undefined)(c)) });
+    expect(await screen.findByText('The nearest branch with your items')).toBeTruthy();
+    expect(screen.getByText('Chosen for your delivery address. Stock is confirmed by the branch.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'View branch details' })).toBeNull();
+    // The screen under the popup has its own Track order button; the popup's is the last one.
+    await fireEvent.press(screen.getAllByRole('button', { name: 'Track order' }).at(-1)!);
+    expect(mockRouter.push).toHaveBeenCalledWith('/orders/o1');
+  });
+
+  test('a branch without a known distance: the note leaves the distance out', async () => {
+    setMockParams({ orderId: 'o1' });
+    await renderScreen(<OrderConfirmedScreen />, { server: (c) => (c.path === '/orders/o1' ? { body: { ...ORDER, distanceKm: null } } : shop(() => undefined)(c)) });
+    expect(await screen.findByText('Chosen for your delivery address. Stock confirmed at this branch.')).toBeTruthy();
+  });
 });

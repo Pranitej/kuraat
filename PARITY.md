@@ -48,19 +48,20 @@ tokens) and `lib/env.js` (where the API is).
 | 12 | Cart (stepper, undo, warnings) | ✅ | ✅ | No promo code field (removed 18 Nov 2026) |
 | 13 | Delivery details (address, phone, delivering branch) | ✅ | ✅ | |
 | 14 | Payment (card, cash on delivery; no UPI) | ✅ | ✅ | Simulated payments until the real gateway |
-| 15 | Payment successful | ✅ | ✅ | |
-| 16 | Order confirmed + branch popup | ✅ | ✅ | |
+| 15 | Payment successful | ✅ | ✅ | "Confirmed by <branch>", or "Sent to the nearest branch" while RSOF has not assigned one (18 Nov 2026) |
+| 16 | Order confirmed + branch popup | ✅ | ✅ | RSOF assigns the branch from the pin we send; until it does, the popup reads "The nearest branch with your items" with "Track order" (shared wording `PENDING_BRANCH`, 18 Nov 2026) |
 | 17 | Profile, log out | ✅ | ✅ | |
 | 18 | Account (name, phone change, email, gender, photo) | ✅ | ✅ | Mobile: photo from the gallery |
 | 18 | Delete account (store requirement) | ✅ | ✅ | Account screen → confirm → WhatsApp code |
 | 19 | Password (set / change / forgot) | ✅ | ✅ | |
-| 20–21 | My orders (status dropdown, refresh button, empty states) | ✅ | ✅ | Dropdown groups from the server's status table (`ORDER_FILTERS`). Web: native select · Mobile: `SelectField variant="chip"` + bottom sheet (18 Nov 2026) |
-| 22 | Order tracking (live status, refresh button, cancel, delivery-code resend) | ✅ | ✅ | Both refresh every 30 s while an order is on its way (mobile: while the app is in front, and on return); the refresh button re-reads RSOF now (`?refresh=true`, at most once per 10 s). Phones show the status tag above the timeline |
+| 20–21 | My orders (status dropdown, refresh button, empty states) | ✅ | ✅ | Dropdown groups from the server's status table (`ORDER_FILTERS`). Web: native select · Mobile: `SelectField variant="chip"` + bottom sheet (18 Nov 2026). Cards show "Branch being confirmed" until RSOF assigns a branch |
+| 22 | Order tracking (live status, refresh button, cancel, delivery-code resend) | ✅ | ✅ | Both refresh every 30 s while an order is on its way (mobile: while the app is in front, and on return); the refresh button re-reads RSOF now (`?refresh=true`, at most once per 10 s). Phones show the status tag above the timeline. The maroon branch card reads "Branch being confirmed" (no Call/Directions) until RSOF assigns one |
 | 23 | Saved addresses | ✅ | ✅ | |
 | 24 | Add / edit address | ✅ | ✅ | |
 | 25 | Our branches (search, cities, map, call, directions) | ✅ | ✅ | |
 | 26 | Notifications | — | — | Removed from both apps (18 Nov 2026), together with Favourites and promo codes; the server endpoints are unchanged |
 | — | Session refresh, sign out on expiry | ✅ | ✅ | Web: tokens in local storage · Mobile: device keychain |
+| — | Current location once per session (Home) → `PUT /me/location` | ✅ | ✅ | Shared `captureLocationOnce`. Web: browser geolocation · Mobile: `expo-location`, while-in-use only (needs a new dev build). Refused → nothing, not asked again that session (18 Nov 2026) |
 | — | Offline banner | — | ✅ | Web shows the "can't reach kuraat" message per request |
 | — | Desktop / tablet layouts | ✅ | — | Mobile is phone-first; wide screens use a centred 640 pt column |
 

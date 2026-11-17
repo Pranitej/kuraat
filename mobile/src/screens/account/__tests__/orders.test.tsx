@@ -116,6 +116,11 @@ describe('20/21 · My orders', () => {
     expect(await screen.findByText('#KR-20418')).toBeTruthy();
   });
 
+  test('an order without a branch yet shows "Branch being confirmed" on its card', async () => {
+    await renderScreen(<OrdersScreen />, { server: (c) => (c.path === '/orders' ? { body: [{ ...ONGOING, branch: null }] } : undefined) });
+    expect(await screen.findByText('Branch being confirmed')).toBeTruthy();
+  });
+
   test('no orders yet: the empty state', async () => {
     await renderScreen(<OrdersScreen />);
     expect(await screen.findByText('No orders yet')).toBeTruthy();
@@ -123,6 +128,14 @@ describe('20/21 · My orders', () => {
 });
 
 describe('22 · Order tracking', () => {
+  test('ROF has not assigned a branch yet: the branch card says so, with no Call or Directions', async () => {
+    setMockParams({ orderId: 'o1' });
+    await renderScreen(<OrderDetailScreen />, { server: (c) => (c.path.startsWith('/orders/o1') ? { body: { ...ONGOING, branch: null } } : undefined) });
+    expect(await screen.findByText('Branch being confirmed')).toBeTruthy();
+    expect(screen.getByText(/nearest branch with everything in stock/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Call branch' })).toBeNull();
+  });
+
   test('the refresh button asks the server for fresh status', async () => {
     setMockParams({ orderId: 'o1' });
     const { calls } = await renderScreen(<OrderDetailScreen />, {

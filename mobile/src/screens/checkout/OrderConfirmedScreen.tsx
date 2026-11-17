@@ -9,7 +9,7 @@ import { Check, Clock, MapPin, Store } from '@/components/icons';
 import { Button, Card, Dialog, DialogLink, IconTile, MaroonPanel, Text } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useOrder } from '@/context/OrderContext';
-import { formatAddress, formatDistance, formatOrderDate, formatSAR, formatWindow } from '@/domain';
+import { PENDING_BRANCH, formatAddress, formatDistance, formatOrderDate, formatSAR, formatWindow } from '@/domain';
 import { useBackToHome } from '@/hooks';
 import { session } from '@/lib/storage.js';
 import { colors, layout, radii } from '@/theme/theme';
@@ -26,7 +26,8 @@ export default function OrderConfirmedScreen() {
 
   if (!order && loading) return <View style={styles.root} />;
   if (!order) return <Redirect href={ROUTES.orders} />;
-  const branch = order.branch || { id: null, name: 'the branch', address: '' };
+  // ROF assigns the branch (design 2026-11-18 §5.2); it may not have done so yet.
+  const branch = order.branch;
   const closePopup = () => {
     session.write(popupKey, true);
     setPopup(false);
@@ -126,31 +127,39 @@ export default function OrderConfirmedScreen() {
             Your order will be delivered from
           </Text>
           <Text weight={700} align="center" accessibilityRole="header" style={styles.popupName}>
-            {branch.name}
+            {branch ? branch.name : PENDING_BRANCH.popupTitle}
           </Text>
-          {branch.address ? (
+          {branch ? (
+            branch.address ? (
+              <Text color="muted" align="center" style={styles.popupAddress}>
+                {branch.address}
+              </Text>
+            ) : null
+          ) : (
             <Text color="muted" align="center" style={styles.popupAddress}>
-              {branch.address}
+              {PENDING_BRANCH.popupBody}
             </Text>
-          ) : null}
+          )}
           <View style={styles.popupNote}>
             <MapPin size={20} color={colors.maroon} strokeWidth={1.8} />
             <Text color="copy" style={styles.popupNoteText}>
-              Chosen for your delivery address, {formatDistance(order.distanceKm)} away. Stock confirmed at this branch.
+              {!branch
+                ? PENDING_BRANCH.popupNote
+                : order.distanceKm != null
+                  ? `Chosen for your delivery address, ${formatDistance(order.distanceKm)} away. Stock confirmed at this branch.`
+                  : 'Chosen for your delivery address. Stock confirmed at this branch.'}
             </Text>
           </View>
           <Button block onPress={closePopup} style={styles.gotIt}>
             Got it
           </Button>
-          {branch.id ? (
-            <DialogLink
-              label="View branch details"
-              onPress={() => {
-                closePopup();
-                router.push(ROUTES.branch(branch.id as string));
-              }}
-            />
-          ) : null}
+          <DialogLink
+            label={branch ? 'View branch details' : 'Track order'}
+            onPress={() => {
+              closePopup();
+              router.push(branch ? ROUTES.branch(branch.id) : ROUTES.order(order.id));
+            }}
+          />
         </View>
       </Dialog>
     </View>

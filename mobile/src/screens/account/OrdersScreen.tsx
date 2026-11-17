@@ -5,7 +5,7 @@ import { RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { OrderCard, RefreshButton } from '@/components/account/OrderParts';
 import { Screen, ScreenHeader, useScreenScrollY } from '@/components/layout';
-import { Package } from '@/components/icons';
+import { CloudOff, Package } from '@/components/icons';
 import { EmptyState, SelectField, Skeleton } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useOrders } from '@/context/OrderContext';
@@ -19,7 +19,7 @@ const FILTER_OPTIONS = (ORDER_FILTERS as { id: string; label: string }[]).map((f
 /** 20 · My orders  ·  21 · My orders (empty) */
 export default function OrdersScreen() {
   const router = useRouter();
-  const { orders, now, loaded, refresh } = useOrders();
+  const { orders, now, loaded, error, refresh } = useOrders();
   const [filter, setFilter] = useState<Filter>('all');
 
   // The dropdown's groups come from the server's status table (design 2026-11-18 §5.4).
@@ -29,9 +29,25 @@ export default function OrdersScreen() {
     <ScreenHeader
       title="My orders"
       backFallback={ROUTES.profile}
-      right={orders.length ? <RefreshButton label="Refresh orders" onRefresh={() => refresh({ force: true })} /> : null}
+      right={loaded ? <RefreshButton label="Refresh orders" onRefresh={() => refresh({ force: true })} /> : null}
     />
   );
+
+  // The first load failed: say so and offer a retry — "No orders yet" would be wrong.
+  if (!orders.length && loaded && error) {
+    const e = error as { message?: string };
+    return (
+      <Screen header={header} contentStyle={styles.emptyTop}>
+        <EmptyState
+          icon={CloudOff}
+          title="We can't load your orders"
+          message={e?.message || 'Please try again in a moment.'}
+          actionLabel="Try again"
+          onAction={() => refresh()}
+        />
+      </Screen>
+    );
+  }
 
   if (!orders.length && loaded) {
     return (

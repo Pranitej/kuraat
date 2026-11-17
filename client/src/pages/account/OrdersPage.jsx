@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, Package } from 'lucide-react';
+import { ChevronDown, CloudOff, Package } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import { EmptyState, Skeleton } from '@/components/ui';
 import { OrderCard, RefreshButton } from '@/components/account/OrderParts.jsx';
@@ -35,13 +35,15 @@ function StatusSelect({ value, onChange }) {
 /** 20 · My orders  ·  21 · My orders (empty) */
 export default function OrdersPage() {
   useDocumentTitle('My orders');
-  const { orders, now, loaded, refresh } = useOrders();
+  const { orders, now, loaded, error, refresh } = useOrders();
   const [filter, setFilter] = useState('all');
 
   // The dropdown's groups come from the server's status table (design 2026-11-18 §5.4).
   const list = useMemo(() => filterOrders(orders, filter), [orders, filter]);
 
-  const showEmpty = !orders.length && loaded;
+  // A failed first load is not "No orders yet": say so and offer a retry.
+  const loadFailed = !orders.length && loaded && Boolean(error);
+  const showEmpty = !orders.length && loaded && !error;
 
   return (
     <div className="pb-10">
@@ -49,10 +51,19 @@ export default function OrdersPage() {
         <ScreenHeader
           title="My orders"
           backFallback={ROUTES.profile}
-          right={orders.length ? <RefreshButton label="Refresh orders" onRefresh={() => refresh({ force: true })} /> : null}
+          right={loaded ? <RefreshButton label="Refresh orders" onRefresh={() => refresh({ force: true })} /> : null}
         />
         <div className="px-5 lg:px-0">
-          {showEmpty ? (
+          {loadFailed ? (
+            <EmptyState
+              className="pt-8"
+              icon={CloudOff}
+              title="We can't load your orders"
+              message={error?.message || 'Please try again in a moment.'}
+              actionLabel="Try again"
+              onAction={() => refresh()}
+            />
+          ) : showEmpty ? (
             <EmptyState
               className="pt-8"
               icon={Package}

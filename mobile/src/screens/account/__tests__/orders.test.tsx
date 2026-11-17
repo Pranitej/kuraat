@@ -101,6 +101,21 @@ describe('20/21 · My orders', () => {
     expect(screen.getByText('#KR-20418')).toBeTruthy();
   });
 
+  test('a failed first load says so and offers Try again — not "No orders yet"', async () => {
+    let up = false;
+    await renderScreen(<OrdersScreen />, {
+      server: (c) => {
+        if (!c.path.startsWith('/orders')) return undefined;
+        return up ? { body: [ONGOING] } : { status: 503, body: { code: 'rof_unavailable', message: "We can't reach the store right now." } };
+      },
+    });
+    expect(await screen.findByText("We can't load your orders")).toBeTruthy();
+    expect(screen.queryByText('No orders yet')).toBeNull();
+    up = true;
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('#KR-20418')).toBeTruthy();
+  });
+
   test('no orders yet: the empty state', async () => {
     await renderScreen(<OrdersScreen />);
     expect(await screen.findByText('No orders yet')).toBeTruthy();

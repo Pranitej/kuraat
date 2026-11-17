@@ -1,43 +1,56 @@
 import { useMemo, useState } from 'react';
-import { Package } from 'lucide-react';
+import { ChevronDown, Package } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
-import { Chip, EmptyState, Skeleton } from '@/components/ui';
-import { OrderCard } from '@/components/account/OrderParts.jsx';
+import { EmptyState, Skeleton } from '@/components/ui';
+import { OrderCard, RefreshButton } from '@/components/account/OrderParts.jsx';
 import { useOrders } from '@/context/OrderContext.jsx';
-import { orderStatusView } from '@/domain';
+import { ORDER_FILTERS, filterOrders } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 
-const FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: 'ongoing', label: 'Ongoing' },
-  { id: 'delivered', label: 'Delivered' },
-];
+/** Status dropdown styled like a chip; a native select so phones get their own picker. */
+function StatusSelect({ value, onChange }) {
+  return (
+    <label className="flex items-center gap-2.5 text-label text-muted">
+      Show
+      <span className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          aria-label="Show orders"
+          className="h-10 appearance-none rounded-pill border border-line bg-white pl-4 pr-10 text-[15px] font-semibold text-maroon outline-none transition focus:border-maroon focus:shadow-ring"
+        >
+          {ORDER_FILTERS.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown size={18} strokeWidth={2} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-maroon" aria-hidden />
+      </span>
+    </label>
+  );
+}
 
 /** 20 · My orders  ·  21 · My orders (empty) */
 export default function OrdersPage() {
   useDocumentTitle('My orders');
-  const { orders, now, loaded } = useOrders();
+  const { orders, now, loaded, refresh } = useOrders();
   const [filter, setFilter] = useState('all');
 
-  // Ongoing = not delivered and not cancelled; Delivered = delivered (cancelled orders: All only).
-  const list = useMemo(
-    () =>
-      orders.filter((o) => {
-        const s = orderStatusView(o);
-        if (filter === 'ongoing') return s.ongoing;
-        if (filter === 'delivered') return s.step === 3 && !s.cancelled;
-        return true;
-      }),
-    [orders, filter],
-  );
+  // The dropdown's groups come from the server's status table (design 2026-11-18 §5.4).
+  const list = useMemo(() => filterOrders(orders, filter), [orders, filter]);
 
   const showEmpty = !orders.length && loaded;
 
   return (
     <div className="pb-10">
       <div className="mx-auto max-w-column lg:max-w-[720px]">
-        <ScreenHeader title="My orders" backFallback={ROUTES.profile} />
+        <ScreenHeader
+          title="My orders"
+          backFallback={ROUTES.profile}
+          right={orders.length ? <RefreshButton label="Refresh orders" onRefresh={() => refresh({ force: true })} /> : null}
+        />
         <div className="px-5 lg:px-0">
           {showEmpty ? (
             <EmptyState
@@ -50,13 +63,7 @@ export default function OrdersPage() {
             />
           ) : (
             <>
-              <div className="flex gap-2.5">
-                {FILTERS.map((f) => (
-                  <Chip key={f.id} active={filter === f.id} onClick={() => setFilter(f.id)}>
-                    {f.label}
-                  </Chip>
-                ))}
-              </div>
+              <StatusSelect value={filter} onChange={setFilter} />
               <div className="mt-4 flex flex-col gap-3">
                 {!orders.length && !loaded
                   ? [0, 1].map((i) => <Skeleton key={i} className="h-[220px] rounded-xl" />)
@@ -66,10 +73,10 @@ export default function OrdersPage() {
                 <EmptyState
                   compact
                   icon={Package}
-                  title={filter === 'ongoing' ? 'No orders on the way' : 'No delivered orders yet'}
-                  message={filter === 'ongoing' ? 'Orders you place will show here until they are delivered.' : 'Delivered orders will show here with the branch they came from.'}
-                  actionLabel="Start shopping"
-                  actionTo={ROUTES.home}
+                  title="No orders here"
+                  message="Orders with this status will show here."
+                  actionLabel="Show all orders"
+                  onAction={() => setFilter('all')}
                 />
               )}
             </>

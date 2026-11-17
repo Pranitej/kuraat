@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Navigation, PackageSearch, PackageX, Phone, Store } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, WhatsAppIcon } from '@/components/ui';
-import { OrderTimeline, StatusTag, branchLabel } from '@/components/account/OrderParts.jsx';
+import { OrderTimeline, RefreshButton, StatusTag, branchLabel } from '@/components/account/OrderParts.jsx';
 import { useOrder, useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
 import { directionsUrl, formatAddress, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
@@ -57,7 +57,7 @@ function DeliveryCodeNote({ order, onResend }) {
 export default function OrderDetailPage() {
   const { orderId } = useParams();
   const { now } = useOrders();
-  const { order, loading, cancel, resendCode } = useOrder(orderId);
+  const { order, loading, cancel, resendCode, refresh } = useOrder(orderId);
   const toast = useToast();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -94,10 +94,21 @@ export default function OrderDetailPage() {
   return (
     <div className="pb-10">
       <div className="mx-auto max-w-column lg:max-w-[1080px] lg:px-8">
-        <ScreenHeader title={`Order #${order.number}`} backFallback={ROUTES.orders} right={<StatusTag status={status} />} />
+        <ScreenHeader
+          title={`Order #${order.number}`}
+          backFallback={ROUTES.orders}
+          right={
+            <span className="flex items-center gap-2">
+              {/* Phones: the tag sits above the timeline so the order number keeps its room. */}
+              <StatusTag status={status} className="hidden sm:inline-flex" />
+              <RefreshButton onRefresh={() => refresh({ force: true })} />
+            </span>
+          }
+        />
       </div>
       <div className="mx-auto max-w-column px-5 lg:grid lg:max-w-[1080px] lg:grid-cols-2 lg:items-start lg:gap-8 lg:px-8">
         <div className="flex flex-col gap-3 lg:gap-5">
+          <StatusTag status={status} className="self-start sm:hidden" />
           <Card className="p-4">
             <OrderTimeline steps={steps} />
             {status.id === 'out_for_delivery' && <DeliveryCodeNote order={order} onResend={resendCode} />}

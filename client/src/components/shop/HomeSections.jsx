@@ -65,7 +65,7 @@ export function SearchBar({ value, onChange, onOpenFilters, filtersActive }) {
   );
 }
 
-/** Sort + category sheet opened from the filter button (derived from chip styling). */
+/** Sort + category sheet opened from the filter button; no categories → sort only (design 2026-11-18 §5.5). */
 export function FilterSheet({ open, onClose, categories = [], category, sort, onApply }) {
   return (
     <Sheet
@@ -91,14 +91,18 @@ export function FilterSheet({ open, onClose, categories = [], category, sort, on
           </Chip>
         ))}
       </div>
-      <h3 className="mt-6 text-label text-maroon">Category</h3>
-      <div className="mt-2.5 flex flex-wrap gap-2.5 pb-2">
-        {categories.map((c) => (
-          <Chip key={c.id} active={category === c.id} onClick={() => onApply({ category: c.id, sort })}>
-            {c.label}
-          </Chip>
-        ))}
-      </div>
+      {categories.length > 0 && (
+        <>
+          <h3 className="mt-6 text-label text-maroon">Category</h3>
+          <div className="mt-2.5 flex flex-wrap gap-2.5 pb-2">
+            {categories.map((c) => (
+              <Chip key={c.id} active={category === c.id} onClick={() => onApply({ category: c.id, sort })}>
+                {c.label}
+              </Chip>
+            ))}
+          </div>
+        </>
+      )}
     </Sheet>
   );
 }

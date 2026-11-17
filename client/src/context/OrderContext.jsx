@@ -27,15 +27,17 @@ export function OrderProvider({ children }) {
 
   const upsert = useCallback((order) => setById((m) => ({ ...m, [order.id]: order })), []);
 
-  const refresh = useCallback(async () => {
+  /** force: the refresh button — fresh from RSOF, and a failure is thrown for the button's toast. */
+  const refresh = useCallback(async ({ force = false } = {}) => {
     if (!userId) return;
     setLoading(true);
     try {
-      const list = await api.listOrders();
+      const list = await api.listOrders({ refresh: force });
       setById((m) => ({ ...m, ...Object.fromEntries(list.map((o) => [o.id, o])) }));
       setError(null);
     } catch (e) {
       setError(e);
+      if (force) throw e;
     } finally {
       setLoading(false);
       setLoaded(true);
@@ -90,14 +92,18 @@ export function useOrder(id) {
   const order = getById(id);
   const [state, setState] = useState({ loading: true, error: null });
 
-  const refresh = useCallback(async () => {
-    try {
-      upsert(await api.getOrder(id));
-      setState({ loading: false, error: null });
-    } catch (error) {
-      setState({ loading: false, error });
-    }
-  }, [id, upsert]);
+  const refresh = useCallback(
+    async ({ force = false } = {}) => {
+      try {
+        upsert(await api.getOrder(id, { refresh: force }));
+        setState({ loading: false, error: null });
+      } catch (error) {
+        setState({ loading: false, error });
+        if (force) throw error;
+      }
+    },
+    [id, upsert],
+  );
 
   useEffect(() => {
     setState({ loading: true, error: null });

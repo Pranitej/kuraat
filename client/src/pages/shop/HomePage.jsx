@@ -10,7 +10,7 @@ import { useBranches } from '@/context/BranchContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { useCatalog } from '@/context/CatalogContext.jsx';
 import { DeliverToBar, DeliverToSheet, useDeliveryAddress } from '@/components/shop/DeliverTo.jsx';
-import { areaLabel, categoryChips, filterProducts, withDistances } from '@/domain';
+import { areaLabel, categoryFilter, filterProducts, withDistances } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
 
@@ -42,8 +42,10 @@ export default function HomePage() {
     setParams(next, { replace });
   };
 
-  const chips = useMemo(() => categoryChips(catalog.categories), [catalog.categories]);
-  const products = useMemo(() => filterProducts(catalog.products, { query, category, sort }), [catalog.products, query, category, sort]);
+  // Pills only when every product has a category (design 2026-11-18 §5.5); otherwise no category filter.
+  const { show: showCategories, chips } = useMemo(() => categoryFilter(catalog.products, catalog.categories), [catalog.products, catalog.categories]);
+  const activeCategory = showCategories ? category : 'all';
+  const products = useMemo(() => filterProducts(catalog.products, { query, category: activeCategory, sort }), [catalog.products, query, activeCategory, sort]);
   const branches = useMemo(() => withDistances(allBranches, address?.location), [allBranches, address]);
   const delivery = branches[0] && address ? { branch: branches[0], distanceKm: branches[0].distanceKm, area: areaLabel(address) } : null;
   const loading = catalog.status === 'loading';
@@ -96,13 +98,17 @@ export default function HomePage() {
           </SectionTitle>
 
           <div className="mt-4 flex items-center gap-4">
-            <ChipRow className="flex-1">
-              {chips.map((c) => (
-                <Chip key={c.id} active={category === c.id} onClick={() => setFilters({ category: c.id })}>
-                  {c.label}
-                </Chip>
-              ))}
-            </ChipRow>
+            {showCategories ? (
+              <ChipRow className="flex-1">
+                {chips.map((c) => (
+                  <Chip key={c.id} active={activeCategory === c.id} onClick={() => setFilters({ category: c.id })}>
+                    {c.label}
+                  </Chip>
+                ))}
+              </ChipRow>
+            ) : (
+              <span className="flex-1" />
+            )}
             <button
               type="button"
               onClick={() => setFiltersOpen(true)}
@@ -176,7 +182,7 @@ export default function HomePage() {
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         categories={chips}
-        category={category}
+        category={activeCategory}
         sort={sort}
         onApply={(f) => setFilters(f)}
       />

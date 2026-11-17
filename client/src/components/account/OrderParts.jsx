@@ -1,9 +1,36 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, ChevronRight, Store, X } from 'lucide-react';
-import { Card, Tag } from '@/components/ui';
+import { Check, ChevronRight, RefreshCw, Store, X } from 'lucide-react';
+import { Card, IconButton, Tag } from '@/components/ui';
+import { useToast } from '@/context/ToastContext.jsx';
 import { formatOrderDate, formatSAR, orderItemCount, orderStatusView } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
+
+/**
+ * Refresh button for order status (design 2026-11-18 §5.4): spins while the server re-reads RSOF;
+ * a failure keeps what is on screen and says why in a toast.
+ */
+export function RefreshButton({ onRefresh, label = 'Refresh status' }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onRefresh();
+    } catch (err) {
+      toast.show(err.message, { tone: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <IconButton label={label} onClick={run} aria-busy={busy || undefined}>
+      <RefreshCw size={20} strokeWidth={1.8} aria-hidden className={cn(busy && 'animate-spin')} />
+    </IconButton>
+  );
+}
 
 /** status: an orderStatusView(). */
 export function StatusTag({ status, className }) {

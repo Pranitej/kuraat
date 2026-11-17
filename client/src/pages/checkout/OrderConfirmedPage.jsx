@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Check, Clock, MapPin, Store } from 'lucide-react';
 import { Button, Card, IconTile, MaroonPanel, Modal } from '@/components/ui';
 import { useOrder } from '@/context/OrderContext.jsx';
-import { formatAddress, formatDistance, formatOrderDate, formatSAR, formatWindow } from '@/domain';
+import { PENDING_BRANCH, formatAddress, formatDistance, formatOrderDate, formatSAR, formatWindow } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { session } from '@/lib/storage.js';
 import { useDocumentTitle } from '@/hooks';
@@ -19,7 +19,8 @@ export default function OrderConfirmedPage() {
 
   if (!order && loading) return <div className="min-h-[60dvh]" aria-busy="true" />;
   if (!order) return <Navigate to={ROUTES.orders} replace />;
-  const branch = order.branch || { id: null, name: 'the branch', address: '' };
+  // ROF assigns the branch (design 2026-11-18 §5.2); it may not have done so yet.
+  const branch = order.branch;
   const closePopup = () => {
     session.write(popupKey, true);
     setPopup(false);
@@ -89,13 +90,21 @@ export default function OrderConfirmedPage() {
           <IconTile icon={Store} size={72} iconSize={30} />
           <p className="mt-5 text-body text-muted">Your order will be delivered from</p>
           <h2 id="branch-popup-title" className="mt-1 text-[22px] font-bold leading-7 text-ink">
-            {branch.name}
+            {branch ? branch.name : PENDING_BRANCH.popupTitle}
           </h2>
-          <p className="mt-1.5 text-body text-muted">{branch.address}</p>
+          {branch ? (
+            branch.address && <p className="mt-1.5 text-body text-muted">{branch.address}</p>
+          ) : (
+            <p className="mt-1.5 text-body text-muted">{PENDING_BRANCH.popupBody}</p>
+          )}
           <div className="mt-5 flex w-full gap-3 rounded-lg bg-sand px-4 py-3.5 text-left text-[15px] leading-[22px] text-copy">
             <MapPin size={20} strokeWidth={1.8} className="mt-px shrink-0 text-maroon" aria-hidden />
             <p>
-              Chosen for your delivery address, {formatDistance(order.distanceKm)} away. Stock confirmed at this branch.
+              {!branch
+                ? PENDING_BRANCH.popupNote
+                : order.distanceKm != null
+                  ? `Chosen for your delivery address, ${formatDistance(order.distanceKm)} away. Stock confirmed at this branch.`
+                  : 'Chosen for your delivery address. Stock confirmed at this branch.'}
             </p>
           </div>
           <Button block className="mt-6" onClick={closePopup} data-autofocus>
@@ -105,11 +114,11 @@ export default function OrderConfirmedPage() {
             type="button"
             onClick={() => {
               closePopup();
-              navigate(ROUTES.branch(branch.id));
+              navigate(branch ? ROUTES.branch(branch.id) : ROUTES.order(order.id));
             }}
             className="mt-4 text-[15px] font-bold text-maroon hover:underline"
           >
-            View branch details
+            {branch ? 'View branch details' : 'Track order'}
           </button>
         </div>
       </Modal>

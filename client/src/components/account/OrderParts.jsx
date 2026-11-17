@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Check, ChevronRight, RefreshCw, Store, X } from 'lucide-react';
 import { Card, IconButton, Tag } from '@/components/ui';
 import { useToast } from '@/context/ToastContext.jsx';
-import { formatOrderDate, formatSAR, orderItemCount, orderStatusView } from '@/domain';
+import { PENDING_BRANCH, formatOrderDate, formatSAR, orderItemCount, orderStatusView } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
 
@@ -97,6 +97,16 @@ export function OrderCard({ order, now }) {
           </span>
           <ChevronRight size={20} strokeWidth={1.8} className="shrink-0 text-ink" aria-hidden />
         </Link>
+      )}
+      {!order.branch && !status.cancelled && (
+        // ROF has not assigned a branch yet: the same sand row, not a link.
+        <div className="mt-3.5 flex items-center gap-3 rounded-lg bg-sand px-4 py-3">
+          <Store size={20} strokeWidth={1.8} className="shrink-0 text-maroon" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-label font-normal text-muted">{branchLabel(status)}</span>
+            <span className="block truncate text-[15px] font-bold text-ink">{PENDING_BRANCH.title}</span>
+          </span>
+        </div>
       )}
     </Card>
   );

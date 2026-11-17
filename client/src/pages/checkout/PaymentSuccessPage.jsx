@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { Button, Card, CirclePattern, ProgressBar, WhatsAppIcon } from '@/components/ui';
 import { useOrder } from '@/context/OrderContext.jsx';
-import { formatDateTime, formatSAR, paymentLabel } from '@/domain';
+import { PENDING_BRANCH, formatDateTime, formatSAR, paymentLabel } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 
@@ -31,7 +31,6 @@ export default function PaymentSuccessPage() {
 
   if (!order && loading) return <div className="min-h-[calc(100dvh-76px)]" aria-busy="true" />;
   if (!order) return <Navigate to={ROUTES.orders} replace />;
-  const branchName = order.branch?.name || 'the branch';
 
   const rows = cod
     ? [
@@ -79,7 +78,7 @@ export default function PaymentSuccessPage() {
 
         <div className="mt-auto pt-10">
           <p className="text-center text-body text-muted" aria-live="polite">
-            {confirmed ? `Confirmed by ${branchName}` : 'Confirming your order with the branch…'}
+            {confirmed ? (order.branch ? `Confirmed by ${order.branch.name}` : PENDING_BRANCH.sent) : 'Confirming your order with the branch…'}
           </p>
           <ProgressBar value={progress} className="mt-3" label="Confirming with the branch" />
           <Button block className="mt-5" disabled={!confirmed} onClick={() => navigate(ROUTES.orderConfirmed(order.id), { replace: true })}>

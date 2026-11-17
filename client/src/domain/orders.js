@@ -26,6 +26,19 @@ export function orderStatusView(order) {
   return { id, label, group, step, cancelled, ongoing: !cancelled && step < 3, tone };
 }
 
+/**
+ * ROF assigns the branch after the order is placed (design 2026-11-18 §5.2). Until then the order
+ * screens show this in the places the branch normally goes (same components, DESIGN_SYSTEM rule 12).
+ */
+export const PENDING_BRANCH = {
+  title: 'Branch being confirmed',
+  body: 'We send your order to the nearest branch with everything in stock. Its name, phone and directions appear here once it accepts.',
+  popupTitle: 'The nearest branch with your items',
+  popupBody: "We'll show the branch here and on the tracking screen once it accepts.",
+  popupNote: 'Chosen for your delivery address. Stock is confirmed by the branch.',
+  sent: 'Sent to the nearest branch',
+};
+
 /** The My orders status dropdown (design 2026-11-18 §5.4); ids are the server's filter groups. */
 export const ORDER_FILTERS = [
   { id: 'all', label: 'All orders' },

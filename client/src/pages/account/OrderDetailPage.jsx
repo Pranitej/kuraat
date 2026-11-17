@@ -6,7 +6,7 @@ import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Whats
 import { OrderTimeline, RefreshButton, StatusTag, branchLabel } from '@/components/account/OrderParts.jsx';
 import { useOrder, useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { directionsUrl, formatAddress, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
+import { PENDING_BRANCH, directionsUrl, formatAddress, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useCountdown, useDocumentTitle } from '@/hooks';
 
@@ -142,6 +142,21 @@ export default function OrderDetailPage() {
                   )}
                 </div>
               )}
+            </MaroonPanel>
+          )}
+          {!branch && !status.cancelled && (
+            // ROF has not assigned a branch yet: the same maroon branch card, without its buttons.
+            <MaroonPanel className="rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white/[0.16]" aria-hidden>
+                  <Store size={20} strokeWidth={1.8} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-label font-normal text-white/80">{branchLabel(status)}</p>
+                  <p className="truncate text-[18px] font-bold leading-6">{PENDING_BRANCH.title}</p>
+                </div>
+              </div>
+              <p className="mt-2.5 text-small text-white/90">{PENDING_BRANCH.body}</p>
             </MaroonPanel>
           )}
         </div>

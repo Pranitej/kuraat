@@ -205,6 +205,19 @@ describe('other mappings', () => {
     ).toEqual([{ status: 'AssignedToBranch', at: '2026-11-15T12:21:00Z' }]);
   });
 
+  test('toOrderSnapshot normalises a numeric status (UAT detail / partner API send codes)', () => {
+    expect(toOrderSnapshot({ id: 'o', orderNumber: 1001, status: 2 }).status).toBe('SharedLocationManually');
+    expect(toOrderSnapshot({ id: 'o', orderNumber: 1001, status: '5' }).status).toBe('Preparing');
+  });
+
+  test('toTimeline accepts numeric statusTo', () => {
+    expect(toTimeline([{ statusFrom: 0, statusTo: 5, createdOn: 't' }])).toEqual([{ status: 'Preparing', at: 't' }]);
+  });
+
+  test('toCreatedOrder normalises a numeric status too', () => {
+    expect(toCreatedOrder({ id: 'o1', orderNumber: 1003, status: 0 }).status).toBe('Created');
+  });
+
   test('order items (GET /api/orders/{id} products) → [{ productId, qty }]', () => {
     expect(toOrderItems({ products: [{ productId: 'p1', productName: 'X', quantity: 2 }] })).toEqual([{ productId: 'p1', qty: 2 }]);
     expect(toOrderItems({})).toEqual([]);

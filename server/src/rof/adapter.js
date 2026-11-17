@@ -4,6 +4,7 @@
  */
 import { MAX_ITEM_QTY } from '../config/business.js';
 import { FIELD_MAP, HIGHLIGHTS, PLACEMENT_ONLY_KEYS } from './fields.js';
+import { normalizeStatus } from './status.js';
 
 const isBlank = (v) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
 
@@ -141,14 +142,14 @@ export function toRofOrderPayload({ user, address, deliveryPhone, items }) {
   return payload;
 }
 
-/** POST /api/orders/manual reply (guide §7.1). */
-export const toCreatedOrder = (raw) => ({ rofOrderId: raw.id, orderNumber: raw.orderNumber, status: raw.status });
+/** POST /api/orders/manual reply (guide §7.1). Statuses may come as names or ROF codes. */
+export const toCreatedOrder = (raw) => ({ rofOrderId: raw.id, orderNumber: raw.orderNumber, status: normalizeStatus(raw.status) });
 
 /** GET /api/orders/{id} (guide §9.1) → the parts we keep. */
 export const toOrderSnapshot = (raw) => ({
   rofOrderId: raw.id,
   orderNumber: raw.orderNumber,
-  status: raw.status,
+  status: normalizeStatus(raw.status),
   branchId: raw.assignedToBranch ?? null,
   branchName: raw.assignBranchName ?? null,
   createdAt: raw.createdOn ?? null,
@@ -158,4 +159,4 @@ export const toOrderSnapshot = (raw) => ({
 export const toOrderItems = (raw) => (raw.products || []).map((p) => ({ productId: p.productId, qty: Number(p.quantity) }));
 
 /** GET /api/orders/{id}/timeline (guide §9.2, oldest first) → [{ status, at }]. */
-export const toTimeline = (rows = []) => rows.map((r) => ({ status: r.statusTo, at: r.createdOn }));
+export const toTimeline = (rows = []) => rows.map((r) => ({ status: normalizeStatus(r.statusTo), at: r.createdOn }));

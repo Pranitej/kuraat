@@ -102,7 +102,8 @@ export async function placeOrder(ctx, userId, input) {
   if (problem) throw conflict('cart_changed', problem);
   const items = priced.items.map((l) => ({ productId: l.productId, qty: l.qty }));
 
-  // 3 — branches
+  // 3 — coverage: ROF picks the branch (design 2026-11-18 §5.2), but we still only take orders for
+  // addresses a hub serves.
   const address = toAddress(addressRow);
   const { candidates } = await deliveryCandidates(ctx, address.location, items);
   if (!candidates.length) throw conflict('no_branch', "We don't have a branch that delivers to this address yet.");
@@ -136,7 +137,9 @@ export async function placeOrder(ctx, userId, input) {
   const user = await findUserById(ctx.db, userId);
   let created;
   try {
-    created = toCreatedOrder(await ctx.rof.createOrder(toRofOrderPayload({ user, address, deliveryPhone: input.deliveryPhone, items })));
+    created = toCreatedOrder(
+      await ctx.rof.createOrder(toRofOrderPayload({ user, address, deliveryPhone: input.deliveryPhone, items, payment: paid, total: amount })),
+    );
   } catch (error) {
     if (isRofError(error, 'rejected')) {
       await setPayment(ctx, paymentId, { status: 'voided', error_code: 'rof_rejected', error_message: error.message.slice(0, 300) });
@@ -182,52 +185,38 @@ export async function placeOrder(ctx, userId, input) {
     await trx('payments').where({ id: paymentId }).update({ order_id: orderId, updated_at: now });
   });
 
-  // 7 — assign the nearest branch that accepts
-  let chosen = null;
-  for (const candidate of candidates) {
-    try {
-      await ctx.rof.assignBranch(created.rofOrderId, candidate.branch.id);
-      chosen = candidate;
-      break;
-    } catch (error) {
-      if (!isRofError(error, 'rejected')) {
-        await setPayment(ctx, paymentId, { status: 'needs_review', error_code: 'rof_assign_unconfirmed', error_message: error.message.slice(0, 300) });
-        ctx.logger.error(`[orders] ROF assign failed for KR-${created.orderNumber}: ${error.message} — assign a branch in ROF manually`);
-        throw unavailable('order_unconfirmed', UNCONFIRMED);
-      }
-      ctx.logger.info(`[orders] ${candidate.branch.name} refused KR-${created.orderNumber}: ${error.message}`);
-    }
-  }
-  if (!chosen) {
-    await ctx.rof.cancelOrder(created.rofOrderId).catch((e) => ctx.logger.error(`[orders] could not cancel KR-${created.orderNumber} in ROF: ${e.message}`));
-    await ctx.db('orders').where({ id: orderId }).delete();
-    await setPayment(ctx, paymentId, {
-      status: 'voided',
-      error_code: 'not_available_nearby',
-      error_message: `ROF order KR-${created.orderNumber} cancelled: no nearby branch could fulfil it`,
-    });
-    throw conflict('not_available_nearby', "These items aren't available from branches near this address right now.");
+  // 7 — the customer's pin: ROF assigns the nearest branch with stock from it. A failure never
+  // fails the order (it is placed and paid); RSOF staff can still assign a branch by hand.
+  let locationShared = true;
+  try {
+    await ctx.rof.shareOrderLocation(created.rofOrderId, address.location);
+  } catch (error) {
+    if (!isRofError(error)) throw error;
+    locationShared = false;
+    ctx.logger.warn(`[orders] could not send the pin for KR-${created.orderNumber} to ROF (${error.kind}): ${error.message} — RSOF staff must assign a branch`);
   }
 
-  // 8 — done
+  // 8 — done: payment captured, then read the order once so an instant auto-assignment shows.
   const doneAt = ctx.clock.now();
   await ctx.db.transaction(async (trx) => {
-    await trx('orders').where({ id: orderId }).update({
-      branch_id: chosen.branch.id,
-      branch_name: chosen.branch.name,
-      distance_km: chosen.distanceKm,
-      rof_status: 'AssignedToBranch',
-      rof_status_at: doneAt,
-      updated_at: doneAt,
-    });
+    await trx('orders').where({ id: orderId }).update({ location_shared: locationShared, updated_at: doneAt });
     await trx('payments').where({ id: paymentId }).update({ status: 'captured', updated_at: doneAt });
-    const number = `KR-${created.orderNumber}`;
-    const link = { kind: 'order', id: orderId };
+    if (paid.method === 'card' && input.payment.saveCard) await saveCard(trx, userId, { brand: paid.brand, last4: paid.last4, expiry: paid.expiry }, doneAt);
+  });
+  const synced = await ctx.orders.refresh(await ctx.db('orders').where({ id: orderId }).first(), { maxAgeMs: 0 }).catch((error) => {
+    ctx.logger.warn(`[orders] could not re-read KR-${created.orderNumber} after placing it: ${error.message}`);
+    return null;
+  });
+
+  const number = `KR-${created.orderNumber}`;
+  const link = { kind: 'order', id: orderId };
+  const branchName = synced?.branch_name;
+  await ctx.db.transaction(async (trx) => {
     if (paid.method !== 'cod') {
       await notify(trx, userId, { type: 'payment', title: 'Payment received', body: `${sar(amount)} paid with ${paymentLabel(paid)}.`, link }, doneAt);
     }
-    await notify(trx, userId, { type: 'order', title: `Order #${number} confirmed`, body: `It will be delivered from ${chosen.branch.name}.`, link }, new Date(doneAt.getTime() + 1));
-    if (paid.method === 'card' && input.payment.saveCard) await saveCard(trx, userId, { brand: paid.brand, last4: paid.last4, expiry: paid.expiry }, doneAt);
+    const body = branchName ? `It will be delivered from ${branchName}.` : "We'll tell you which branch once it's confirmed.";
+    await notify(trx, userId, { type: 'order', title: `Order #${number} confirmed`, body, link }, new Date(doneAt.getTime() + 1));
   });
   await saveCart(ctx.db, userId, { items: [], promoCode: null }, doneAt);
   return { order: await orderFor(ctx, orderId), created: true };

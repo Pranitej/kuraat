@@ -31,7 +31,7 @@ const place = (overrides = {}) =>
 const payment = () => t.db('payments').first();
 
 describe('placing an order', () => {
-  test('happy path: KR-20418, assigned to the nearest hub, totals stored, notifications, cart emptied', async () => {
+  test('happy path: ROF gets the pin and assigns the nearest hub; totals stored, notifications, cart emptied', async () => {
     await api('put', '/cart', pdfCart);
     const res = await place();
     expect(res.status).toBe(201);
@@ -63,7 +63,14 @@ describe('placing an order', () => {
     ]);
 
     expect(rofOrders()).toHaveLength(1);
-    expect(rofOrders()[0]).toMatchObject({ status: 'AssignedToBranch', assignedToBranch: BRANCH_IDS.corniche });
+    expect(rofOrders()[0]).toMatchObject({ status: 'AssignedToBranch', assignedToBranch: BRANCH_IDS.corniche, latitude: 26.348558, longitude: expect.any(Number) });
+    // ROF assigned it from the pin — we never call assign/branch any more.
+    expect(rofOrders()[0].timeline.map((r) => [r.statusTo, r.remarks])).toEqual([
+      ['Created', 'Order created'],
+      ['SharedLocationManually', 'Location shared by customer'],
+      ['AssignedToBranch', 'Assigned to branch automatically'],
+    ]);
+    expect((await t.db('orders').first()).location_shared).toBeTruthy();
     expect((await payment()).status).toBe('captured');
     const notes = await t.db('notifications').where({ user_id: me.user.id }).whereNot({ type: 'welcome' }).orderBy('created_at');
     expect(notes.map((n) => [n.type, n.title])).toEqual([
@@ -74,7 +81,7 @@ describe('placing an order', () => {
     expect((await api('get', '/cart')).body.items).toEqual([]);
   });
 
-  test('the ROF payload uses the delivery phone, MobileApp source and Delivery fulfilment', async () => {
+  test('the ROF payload: delivery phone, MobileApp, Delivery, orderType 0, country/province, money in remarks', async () => {
     await api('put', '/cart', pdfCart);
     await place({ deliveryPhone: '559876543' });
     expect(rofOrders()[0]).toMatchObject({
@@ -83,9 +90,12 @@ describe('placing an order', () => {
       customerEmail: 'sara.m@example.com',
       address: 'Building 14, King Fahd Rd, Al Rakah, Al Khobar 34445',
       city: 'Al Khobar',
-      remarks: 'Landmark: Near Al Rakah Park · Account phone: +966 50 123 4821',
+      remarks: 'Landmark: Near Al Rakah Park · Account phone: +966 50 123 4821 · Paid by card',
       source: 'MobileApp',
       fulfillmentType: 'Delivery',
+      orderType: 0,
+      country: 'Saudi Arabia',
+      province: 'Eastern Province',
       items: [
         { productId: PRODUCT_IDS.classic, quantity: 1 },
         { productId: PRODUCT_IDS.croissant, quantity: 2 },
@@ -93,7 +103,7 @@ describe('placing an order', () => {
     });
   });
 
-  test('Praline: Corniche refuses (no stock), Dhahran accepts', async () => {
+  test('Praline: ROF assigns Dhahran (Corniche has no Praline)', async () => {
     await api('put', '/cart', { items: [{ productId: PRODUCT_IDS.praline, qty: 1 }] });
     const res = await place();
     expect(res.status).toBe(201);
@@ -136,16 +146,28 @@ describe('placing an order', () => {
     expect(await t.db('orders')).toHaveLength(0);
   });
 
-  test('no nearby branch has stock → the ROF order is cancelled, 409 not_available_nearby', async () => {
+  test('no hub has the stock → still placed; ROF leaves it for staff, no branch yet, cancel allowed', async () => {
     const stock = t.mockRof.store.data.stock[PRODUCT_IDS.classic];
-    for (const branchId of Object.keys(stock)) stock[branchId] = branchId === BRANCH_IDS.jeddah ? 50 : 0;
+    for (const branchId of Object.keys(stock)) stock[branchId] = 0;
+    t.mockRof.store.data.products.find((p) => p.id === PRODUCT_IDS.classic).allowOversell = true;
     await api('put', '/cart', { items: [{ productId: PRODUCT_IDS.classic, qty: 1 }] });
     const res = await place();
-    expect(res.status).toBe(409);
-    expect(res.body.code).toBe('not_available_nearby');
-    expect(rofOrders()[0].status).toBe('Canceled');
-    expect(await t.db('orders')).toHaveLength(0);
-    expect((await payment()).status).toBe('voided');
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ branch: null, distanceKm: null, canCancel: true, status: { code: 'SharedLocationManually', label: 'Location received' } });
+    expect((await payment()).status).toBe('captured');
+    expect((await t.db('notifications').where({ type: 'order' }).first()).body).toBe("We'll tell you which branch once it's confirmed.");
+    expect((await api('post', `/orders/${res.body.id}/cancel`)).status).toBe(200);
+  });
+
+  test('pin share fails → the order is still placed and paid; location_shared false, warning logged', async () => {
+    await api('put', '/cart', pdfCart);
+    await fault({ locationReject: 'Location service unavailable' });
+    const res = await place();
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({ branch: null, status: { code: 'Created', label: 'Order placed' } });
+    expect((await payment()).status).toBe('captured');
+    expect((await t.db('orders').first()).location_shared).toBeFalsy();
+    expect(t.logs.some(([level, line]) => level === 'warn' && line.includes('pin') && line.includes('Location service unavailable'))).toBe(true);
   });
 
   test('ROF create times out → 503 order_unconfirmed, payment needs_review, never retried', async () => {

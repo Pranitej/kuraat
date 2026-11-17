@@ -32,6 +32,11 @@ describe('schema', () => {
     for (const table of TABLES) expect(await t.db.schema.hasTable(table), table).toBe(true);
   });
 
+  test('migration 003: last known customer location and whether the order pin reached ROF', async () => {
+    for (const column of ['last_lat', 'last_lng', 'last_location_at']) expect(await t.db.schema.hasColumn('users', column), column).toBe(true);
+    expect(await t.db.schema.hasColumn('orders', 'location_shared')).toBe(true);
+  });
+
   test('money columns are DECIMAL(10,2) and come back as numbers', async () => {
     const { userId } = await seedDemo(t.db, { now: t.clock.now(), hashCost: 4 });
     await t.db('payments').insert({

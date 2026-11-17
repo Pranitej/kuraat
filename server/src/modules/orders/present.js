@@ -2,6 +2,7 @@
  * Order as the app sees it (design spec §6.5): our totals and payment + ROF's status and timeline,
  * folded into the four tracking steps of the design (+ a cancelled state).
  */
+import { roundedDistance } from '../../lib/geo.js';
 import { FALLBACK_BY_STEP, canCancel, canResendCode, statusInfo } from '../../rof/status.js';
 
 const STEPS = [
@@ -89,7 +90,8 @@ export function presentOrder(row, { payment = null, branch = null, media = null 
         }
       : null,
     branch: branch ?? (row.branch_id ? { id: row.branch_id, name: row.branch_name } : null),
-    distanceKm: row.distance_km ?? null,
+    // ROF picks the branch now (design 2026-11-18 §5.2): measure from the delivery address to it.
+    distanceKm: row.distance_km ?? (branch?.location && row.address?.location ? roundedDistance(row.address.location, branch.location) : null),
     address: row.address,
     deliveryPhone: row.delivery_phone,
     window: { start: iso(row.window_start), end: iso(row.window_end) },

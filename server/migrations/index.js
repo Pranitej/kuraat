@@ -4,8 +4,10 @@
  */
 import * as init from './001_init.js';
 import * as accountDeletion from './002_account_deletion.js';
+import * as location from './003_location.js';
 
 export const migrations = [
   { name: '001_init', ...init },
   { name: '002_account_deletion', ...accountDeletion },
+  { name: '003_location', ...location },
 ];

@@ -50,7 +50,7 @@ describe('delete account (store requirement)', () => {
     const me = await signInDemo(t);
     const order = await placeTestOrder(t, me);
     await advance(t, order.number, 'Delivered');
-    await api('get', `/orders/${order.id}`, me.auth); // syncs the delivered status
+    await api('get', `/orders/${order.id}?refresh=true`, me.auth); // syncs the delivered status (placing already read ROF once)
     const userId = me.user.id;
 
     const verificationToken = await verifiedDeletion(me);

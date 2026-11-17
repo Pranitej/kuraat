@@ -13,7 +13,7 @@ client / mobile  ──►  kuraat server (this app)  ──►  RSOF order syst
 |---|---|
 | Customer accounts and login (WhatsApp code or password), profile | Categories, products, product details (custom fields) |
 | Addresses with coordinates | Hub branches (location, phone) |
-| Cart, promo codes, prices, VAT, delivery fee | Order creation + branch assignment |
+| Cart, prices, VAT, delivery fee | Order creation + branch assignment (from the pin we send) |
 | Payments (simulated in UAT), saved cards (brand + last 4 only) | Order status, timeline, cancel, delivery-code resend |
 | Notifications, delivery estimates, branch opening hours | |
 
@@ -138,8 +138,8 @@ creation times out is **never re-sent**; its payment is marked `needs_review` an
    (and `ROF_INVENTORY_CHECK=true` if `Inventory.Read` is granted).
 3. `npm run rof:check` — every line should be `OK`. A `MISMATCH` names the field; fix it in `src/rof/adapter.js` or
    `src/rof/fields.js` (e.g. if RSOF named the weight field `weight` instead of `weight_g`).
-4. Optional, after agreeing with RSOF: `npm run rof:check -- --write` creates one test order, assigns it, reads it and
-   cancels it.
+4. Optional, after agreeing with RSOF: `npm run rof:check -- --write` creates one test order, sends it a pin, reports
+   whether RSOF auto-assigned it, reads it and cancels it.
 5. Place one real order from the app and ask branch staff to move it through the statuses.
 
 Assumptions to confirm on UAT (not shown in the guide): the inventory reply shape

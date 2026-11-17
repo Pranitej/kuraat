@@ -113,25 +113,19 @@ export async function runRofCheck({ baseUrl, email, password, timeoutMs = 10000,
         remarks: 'Automated kuraat contract check — safe to ignore; cancelled immediately',
         source: 'MobileApp',
         fulfillmentType: 'Delivery',
+        orderType: 0,
+        country: 'Saudi Arabia',
         items: [{ productId: firstActive.id, quantity: 1 }],
       }),
     );
     if (created && check('order create', createdOrderSchema, created, `#${created.orderNumber}`)) {
-      let assigned = null;
-      for (const hub of hubs) {
-        try {
-          await rof.assignBranch(created.id, hub.id);
-          assigned = hub;
-          break;
-        } catch (error) {
-          line('INFO', 'order assign', `${hub.name}: ${error.message}`);
-        }
-      }
-      if (assigned) line('OK', 'order assign', assigned.name);
-      else {
-        ok = false;
-        line('FAIL', 'order assign', 'no hub accepted the test order');
-      }
+      // We never assign: ROF's auto-assignment picks the branch from the pin (design 2026-11-18 §5.2).
+      const pin = hubs[0].location;
+      const shared = await call('order pin', () => rof.shareOrderLocation(created.id, pin));
+      if (shared !== undefined) line('OK', 'order pin', `${pin.lat}, ${pin.lng}`);
+      const afterPin = await call('order detail after pin', () => rof.getOrder(created.id));
+      if (afterPin?.assignedToBranch) line('OK', 'order auto-assign', afterPin.assignBranchName || afterPin.assignedToBranch);
+      else if (afterPin) line('WARN', 'order auto-assign', `not assigned yet (status ${afterPin.status}) — auto-assignment may be off; staff would assign by hand`);
       const order = await call('order detail', () => rof.getOrder(created.id));
       if (order) check('order detail', orderDetailSchema, order, `status ${order.status}`);
       const timeline = await call('order timeline', () => rof.getOrderTimeline(created.id));

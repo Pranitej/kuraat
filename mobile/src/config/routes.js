@@ -20,7 +20,6 @@ export const ROUTES = {
   profile: '/profile',
   account: '/profile/account',
   password: '/profile/password',
-  favorites: '/favorites',
   orders: '/orders',
   order: (orderId) => `/orders/${orderId}`,
   addresses: '/addresses',
@@ -29,20 +28,4 @@ export const ROUTES = {
 
   branches: '/branches',
   branch: (id) => `/branches?branch=${id}`,
-  notifications: '/notifications',
 };
-
-/** Where a notification link opens. */
-export function notificationTarget(link) {
-  if (!link) return ROUTES.notifications;
-  switch (link.kind) {
-    case 'order':
-      return ROUTES.order(link.id);
-    case 'product':
-      return ROUTES.product(link.id);
-    case 'password':
-      return ROUTES.password;
-    default:
-      return ROUTES.home;
-  }
-}

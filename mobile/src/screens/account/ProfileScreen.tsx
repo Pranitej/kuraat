@@ -4,26 +4,22 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BackButton } from '@/components/layout';
-import { ChevronRight, Heart, KeyRound, LogOut, MapPin, ReceiptText, User } from '@/components/icons';
+import { ChevronRight, KeyRound, LogOut, MapPin, ReceiptText, User } from '@/components/icons';
 import { Avatar, Button, ConfirmDialog, IconTile, MaroonPanel, Text } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
-import { useFavorites } from '@/context/FavoritesContext';
 import { useToast } from '@/context/ToastContext';
 import { formatPhone } from '@/domain';
 import { colors, layout, radii } from '@/theme/theme';
 
-const favoritesSubtitle = (n: number) => (n ? `${n} saved ${n === 1 ? 'sweet' : 'sweets'}` : 'Sweets you save with the heart');
-
-/** 17 · Profile (+ Favourites, added after the PDF) */
+/** 17 · Profile */
 export default function ProfileScreen() {
   const router = useRouter();
   const toast = useToast();
   const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
   const { addresses } = useAddresses();
-  const { ids: favoriteIds } = useFavorites();
   const [confirm, setConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
@@ -31,7 +27,6 @@ export default function ProfileScreen() {
     { to: ROUTES.account, icon: User, title: 'Account', subtitle: 'Name, phone number, gender' },
     { to: ROUTES.password, icon: KeyRound, title: 'Password', subtitle: 'Set or change your password' },
     { to: ROUTES.orders, icon: ReceiptText, title: 'Orders', subtitle: 'View your previous orders' },
-    { to: ROUTES.favorites, icon: Heart, title: 'Favourites', subtitle: favoritesSubtitle(favoriteIds.length) },
     {
       to: ROUTES.addresses,
       icon: MapPin,

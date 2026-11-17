@@ -9,7 +9,6 @@ import { useAuth } from '@/context/AuthContext.jsx';
 import { useBranches } from '@/context/BranchContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { useCatalog } from '@/context/CatalogContext.jsx';
-import { useNotifications } from '@/context/NotificationContext.jsx';
 import { DeliverToBar, DeliverToSheet, useDeliveryAddress } from '@/components/shop/DeliverTo.jsx';
 import { areaLabel, categoryChips, filterProducts, withDistances } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
@@ -20,7 +19,6 @@ export default function HomePage() {
   useDocumentTitle('Home');
   const { user } = useAuth();
   const { count } = useCart();
-  const { unreadCount } = useNotifications();
   const { address, addresses, loaded: addressesLoaded, choose } = useDeliveryAddress();
   const catalog = useCatalog();
   const { branches: allBranches } = useBranches();
@@ -55,7 +53,7 @@ export default function HomePage() {
 
   return (
     <div className="pb-0">
-      {!isDesktop && <HomeHeader user={user} unread={unreadCount} />}
+      {!isDesktop && <HomeHeader user={user} />}
 
       <div className="mx-auto max-w-column px-5 lg:max-w-app lg:px-8">
         <DeliverToBar address={address} loaded={addressesLoaded} onOpen={() => setAddressSheet(true)} className="mb-3 lg:mb-0 lg:mt-8" />

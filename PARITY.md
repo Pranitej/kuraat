@@ -41,17 +41,16 @@ tokens) and `lib/env.js` (where the API is).
 | 04 | Verify (WhatsApp code) — sign-up, sign-in, reset, phone change, delete account | ✅ | ✅ | Mobile: code autofill from the keyboard |
 | 05 | Set password | ✅ | ✅ | |
 | 06 | Sign in (password / WhatsApp code) | ✅ | ✅ | |
-| 07–08 | Home, search, filter sheet, favourites, add to cart | ✅ | ✅ | Web keeps filters in the URL; mobile in the screen |
+| 07–08 | Home, search, filter sheet, add to cart | ✅ | ✅ | Web keeps filters in the URL; mobile in the screen. No bell or hearts (removed 18 Nov 2026) |
 | — | Home "Deliver to" (address sheet; drives nearest branch, checkout address, default) | ✅ | ✅ | Added after the PDF (17 Nov 2026) |
 | 09–10 | Product detail (gallery, details, allergens, delivered-from) | ✅ | ✅ | |
 | 11 | Image zoom, share | ✅ | ✅ | Web: Web Share / copy link · Mobile: native share sheet, pinch to zoom |
-| 12 | Cart (stepper, undo, promo, warnings) | ✅ | ✅ | |
+| 12 | Cart (stepper, undo, warnings) | ✅ | ✅ | No promo code field (removed 18 Nov 2026) |
 | 13 | Delivery details (address, phone, delivering branch) | ✅ | ✅ | |
 | 14 | Payment (card, cash on delivery; no UPI) | ✅ | ✅ | Simulated payments until the real gateway |
 | 15 | Payment successful | ✅ | ✅ | |
 | 16 | Order confirmed + branch popup | ✅ | ✅ | |
 | 17 | Profile, log out | ✅ | ✅ | |
-| — | Favourites (list, un-heart + Undo, "no longer sold" clean-up, empty state) | ✅ | ✅ | Added after the PDF (17 Nov 2026). Web: also a heart in the desktop app bar |
 | 18 | Account (name, phone change, email, gender, photo) | ✅ | ✅ | Mobile: photo from the gallery |
 | 18 | Delete account (store requirement) | ✅ | ✅ | Account screen → confirm → WhatsApp code |
 | 19 | Password (set / change / forgot) | ✅ | ✅ | |
@@ -60,7 +59,7 @@ tokens) and `lib/env.js` (where the API is).
 | 23 | Saved addresses | ✅ | ✅ | |
 | 24 | Add / edit address | ✅ | ✅ | |
 | 25 | Our branches (search, cities, map, call, directions) | ✅ | ✅ | |
-| 26 | Notifications (read, mark all read, open target) | ✅ | ✅ | |
+| 26 | Notifications | — | — | Removed from both apps (18 Nov 2026), together with Favourites and promo codes; the server endpoints are unchanged |
 | — | Session refresh, sign out on expiry | ✅ | ✅ | Web: tokens in local storage · Mobile: device keychain |
 | — | Offline banner | — | ✅ | Web shows the "can't reach kuraat" message per request |
 | — | Desktop / tablet layouts | ✅ | — | Mobile is phone-first; wide screens use a centred 640 pt column |
@@ -69,5 +68,5 @@ tokens) and `lib/env.js` (where the API is).
 
 - **Real map, GPS and address search** — not in either app yet; both use the drawn map and the fixed demo
   "current location". Planned for both together.
-- **Push notifications** — not in either app; the in-app notification list works in both.
+- **Push notifications** — not in either app (the in-app notification list was removed too).
 - **Product detail refresh** — both apps keep a product's detail for the session (known minor, shared).

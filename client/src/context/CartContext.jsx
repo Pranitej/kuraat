@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { cartLines, isCartBlocked } from '@/domain';
 import { getCart, putCart } from '@/services/cartService.js';
 import { createCartSync } from '@/services/cartSync.js';
-import { ApiError } from '@/services/api.js';
 import { useAuth } from './AuthContext.jsx';
 import { useCatalog } from './CatalogContext.jsx';
 
@@ -15,22 +14,21 @@ const NOTICES = ['qty_reduced', 'price_changed'];
 
 /**
  * The cart lives on the server, which prices it from RSOF. Taps change the local items at once and
- * are saved in the background (cartSync); totals, promo and warnings come from the server's last
- * answer (`syncing` while a save is on its way).
+ * are saved in the background (cartSync); totals and warnings come from the server's last answer
+ * (`syncing` while a save is on its way). There are no promo codes: every save sends none, which
+ * also clears one saved before they were removed.
  */
 export function CartProvider({ children }) {
   const { user } = useAuth();
   const userId = user?.id;
   const { getProduct } = useCatalog();
   const [items, setItems] = useState([]);
-  const [promoCode, setPromoCode] = useState(null);
   const [priced, setPriced] = useState(null);
   const [notices, setNotices] = useState({});
   const [status, setStatus] = useState('idle');
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
   const itemsRef = useRef(items);
-  const promoRef = useRef(promoCode);
 
   const syncRef = useRef(null);
   if (!syncRef.current) {
@@ -56,9 +54,7 @@ export function CartProvider({ children }) {
     setSyncing(false);
     if (!userId) {
       itemsRef.current = [];
-      promoRef.current = null;
       setItems([]);
-      setPromoCode(null);
       setPriced(null);
       setNotices({});
       setStatus('idle');
@@ -69,19 +65,17 @@ export function CartProvider({ children }) {
     try {
       const answer = await getCart();
       const next = toItems(answer);
-      const code = answer.promo?.valid ? answer.promo.code : null;
       itemsRef.current = next;
-      promoRef.current = code;
       setItems(next);
-      setPromoCode(code);
       setPriced(answer);
       setStatus('ready');
       const changed = answer.items.filter((l) => NOTICES.includes(l.warning));
       setNotices(Object.fromEntries(changed.map((l) => [l.productId, l.warning])));
-      // Save the adjusted cart so checkout accepts it; the notices stay until the next change.
-      if (changed.length) {
+      // Save the adjusted cart (or drop a code saved before promo codes were removed) so checkout
+      // accepts it; the notices stay until the next change.
+      if (changed.length || answer.promo) {
         setSyncing(true);
-        sync.schedule({ items: next, promoCode: code });
+        sync.schedule({ items: next, promoCode: null });
       }
     } catch (e) {
       setError(e);
@@ -94,15 +88,13 @@ export function CartProvider({ children }) {
   }, [load]);
 
   const commit = useCallback(
-    (nextItems, nextPromo = promoRef.current) => {
+    (nextItems) => {
       itemsRef.current = nextItems;
-      promoRef.current = nextPromo;
       setItems(nextItems);
-      setPromoCode(nextPromo);
       setNotices({});
       setError(null);
       setSyncing(true);
-      sync.schedule({ items: nextItems, promoCode: nextPromo });
+      sync.schedule({ items: nextItems, promoCode: null });
     },
     [sync],
   );
@@ -130,8 +122,7 @@ export function CartProvider({ children }) {
       const prev = itemsRef.current;
       const index = prev.findIndex((i) => i.productId === productId);
       if (index < 0) return null;
-      const next = prev.filter((i) => i.productId !== productId);
-      commit(next, next.length ? promoRef.current : null);
+      commit(prev.filter((i) => i.productId !== productId));
       return { item: prev[index], index };
     },
     [commit],
@@ -148,26 +139,6 @@ export function CartProvider({ children }) {
     [commit],
   );
 
-  /** Saves the cart with the code; an invalid code is refused with the server's reason. */
-  const applyPromo = useCallback(
-    async (code) => {
-      await sync.flush().catch(() => {});
-      const answer = await putCart({ items: itemsRef.current, promoCode: code });
-      setPriced(answer);
-      if (!answer.promo?.valid) {
-        promoRef.current = null;
-        setPromoCode(null);
-        throw new ApiError(answer.promo?.error || "This code isn't valid.", { code: 'invalid_promo', field: 'promo' });
-      }
-      promoRef.current = answer.promo.code;
-      setPromoCode(answer.promo.code);
-      return answer.promo;
-    },
-    [sync],
-  );
-
-  const removePromo = useCallback(() => commit(itemsRef.current, null), [commit]);
-
   /** Waits for pending saves (before leaving the cart, before paying). Rejects if a save fails. */
   const flush = useCallback(() => sync.flush(), [sync]);
 
@@ -178,7 +149,6 @@ export function CartProvider({ children }) {
       items,
       lines,
       totals: priced?.totals || EMPTY_TOTALS,
-      promo: priced?.promo?.valid && promoCode ? priced.promo : null,
       count,
       status,
       syncing,
@@ -189,12 +159,10 @@ export function CartProvider({ children }) {
       setQty,
       remove,
       restore,
-      applyPromo,
-      removePromo,
       reload: load,
       flush,
     };
-  }, [items, priced, promoCode, notices, getProduct, status, syncing, error, add, setQty, remove, restore, applyPromo, removePromo, load, flush]);
+  }, [items, priced, notices, getProduct, status, syncing, error, add, setQty, remove, restore, load, flush]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

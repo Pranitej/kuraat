@@ -30,19 +30,6 @@ const searchText = (p) =>
     .join(' ')
     .toLowerCase();
 
-/**
- * Favourites screen: the hearted ids (server order = oldest first) matched to the loaded catalogue,
- * newest first. Ids the catalogue no longer has come back as `missingIds` (newest first too).
- */
-export function favoriteProducts(ids = [], products = []) {
-  const byId = new Map(products.map((p) => [p.id, p]));
-  const newestFirst = [...ids].reverse();
-  return {
-    products: newestFirst.filter((id) => byId.has(id)).map((id) => byId.get(id)),
-    missingIds: newestFirst.filter((id) => !byId.has(id)),
-  };
-}
-
 /** Search + category (slug) + sort. "recommended" keeps the server's order. */
 export function filterProducts(products, { query = '', category = 'all', sort = 'recommended' } = {}) {
   const q = query.trim().toLowerCase();

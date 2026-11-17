@@ -1,9 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { cartLines, isCartBlocked } from '@/domain';
-import { ApiError as ApiErrorJs } from '@/services/api.js';
 import { getCart, putCart } from '@/services/cartService.js';
 import { createCartSync as createCartSyncJs } from '@/services/cartSync.js';
-import type { CartItem, CartWarning, PricedCart, PricedLine, Promo, Totals } from '@/types/api';
+import type { CartItem, CartWarning, PricedCart, PricedLine, Totals } from '@/types/api';
 import { useAuth } from './AuthContext';
 import { useCatalog } from './CatalogContext';
 
@@ -20,10 +19,6 @@ const createCartSync = createCartSyncJs as unknown as (options: {
   onError?: (error: unknown) => void;
 }) => CartSync;
 
-const ApiError = ApiErrorJs as unknown as new (
-  message: string,
-  options?: { code?: string; field?: string | null; status?: number },
-) => Error;
 const MAX_QTY = 20;
 const EMPTY_TOTALS: Totals = { count: 0, subtotal: 0, discount: 0, delivery: 0, total: 0, vat: 0 };
 const toItems = (priced: PricedCart): CartItem[] => priced.items.map((l) => ({ productId: l.productId, qty: l.qty }));
@@ -39,7 +34,6 @@ export type CartValue = {
   items: CartItem[];
   lines: CartLine[];
   totals: Totals;
-  promo: Promo | null;
   count: number;
   status: 'idle' | 'loading' | 'ready' | 'error';
   syncing: boolean;
@@ -50,8 +44,6 @@ export type CartValue = {
   setQty: (productId: string, qty: number) => void;
   remove: (productId: string) => Removed | null;
   restore: (removed: Removed) => void;
-  applyPromo: (code: string) => Promise<Promo>;
-  removePromo: () => void;
   reload: () => Promise<void>;
   flush: () => Promise<void>;
 };
@@ -61,21 +53,20 @@ const CartContext = createContext<CartValue | null>(null);
 /**
  * The cart lives on the server, which prices it from RSOF (same rules as the web's CartContext).
  * Taps change the local items at once and are saved in the background (cartSync: 300 ms of quiet,
- * one save at a time, latest state wins); totals, promo and warnings come from the server's answer.
+ * one save at a time, latest state wins); totals and warnings come from the server's answer. There
+ * are no promo codes: every save sends none, which also clears one saved before they were removed.
  */
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const userId = user?.id;
   const { getProduct } = useCatalog();
   const [items, setItems] = useState<CartItem[]>([]);
-  const [promoCode, setPromoCode] = useState<string | null>(null);
   const [priced, setPriced] = useState<PricedCart | null>(null);
   const [notices, setNotices] = useState<Record<string, CartWarning>>({});
   const [status, setStatus] = useState<CartValue['status']>('idle');
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const itemsRef = useRef(items);
-  const promoRef = useRef(promoCode);
 
   const [sync] = useState(() =>
     createCartSync({
@@ -99,9 +90,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setSyncing(false);
     if (!userId) {
       itemsRef.current = [];
-      promoRef.current = null;
       setItems([]);
-      setPromoCode(null);
       setPriced(null);
       setNotices({});
       setStatus('idle');
@@ -112,19 +101,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const answer: PricedCart = await getCart();
       const next = toItems(answer);
-      const code = answer.promo?.valid ? answer.promo.code : null;
       itemsRef.current = next;
-      promoRef.current = code;
       setItems(next);
-      setPromoCode(code);
       setPriced(answer);
       setStatus('ready');
       const changed = answer.items.filter((l) => l.warning && NOTICES.includes(l.warning));
       setNotices(Object.fromEntries(changed.map((l) => [l.productId, l.warning])));
-      // Save the adjusted cart so checkout accepts it; the notices stay until the next change.
-      if (changed.length) {
+      // Save the adjusted cart (or drop a code saved before promo codes were removed) so checkout
+      // accepts it; the notices stay until the next change.
+      if (changed.length || answer.promo) {
         setSyncing(true);
-        sync.schedule({ items: next, promoCode: code });
+        sync.schedule({ items: next, promoCode: null });
       }
     } catch (e) {
       setError(e);
@@ -137,15 +124,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [load]);
 
   const commit = useCallback(
-    (nextItems: CartItem[], nextPromo: string | null = promoRef.current) => {
+    (nextItems: CartItem[]) => {
       itemsRef.current = nextItems;
-      promoRef.current = nextPromo;
       setItems(nextItems);
-      setPromoCode(nextPromo);
       setNotices({});
       setError(null);
       setSyncing(true);
-      sync.schedule({ items: nextItems, promoCode: nextPromo });
+      sync.schedule({ items: nextItems, promoCode: null });
     },
     [sync],
   );
@@ -174,8 +159,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const prev = itemsRef.current;
       const index = prev.findIndex((i) => i.productId === productId);
       if (index < 0) return null;
-      const next = prev.filter((i) => i.productId !== productId);
-      commit(next, next.length ? promoRef.current : null);
+      commit(prev.filter((i) => i.productId !== productId));
       return { item: prev[index], index };
     },
     [commit],
@@ -192,26 +176,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
-  /** Saves the cart with the code; an invalid code is refused with the server's reason. */
-  const applyPromo = useCallback(
-    async (code: string): Promise<Promo> => {
-      await sync.flush().catch(() => {});
-      const answer: PricedCart = await putCart({ items: itemsRef.current, promoCode: code });
-      setPriced(answer);
-      if (!answer.promo?.valid) {
-        promoRef.current = null;
-        setPromoCode(null);
-        throw new ApiError(answer.promo?.error || "This code isn't valid.", { code: 'invalid_promo', field: 'promo' });
-      }
-      promoRef.current = answer.promo.code;
-      setPromoCode(answer.promo.code);
-      return answer.promo;
-    },
-    [sync],
-  );
-
-  const removePromo = useCallback(() => commit(itemsRef.current, null), [commit]);
-
   /** Waits for pending saves (before leaving the cart, before paying). Rejects if a save fails. */
   const flush = useCallback((): Promise<void> => sync.flush(), [sync]);
 
@@ -225,7 +189,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items,
       lines,
       totals: priced?.totals || EMPTY_TOTALS,
-      promo: priced?.promo?.valid && promoCode ? priced.promo : null,
       count,
       status,
       syncing,
@@ -236,29 +199,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setQty,
       remove,
       restore,
-      applyPromo,
-      removePromo,
       reload: load,
       flush,
     };
-  }, [
-    items,
-    priced,
-    promoCode,
-    notices,
-    getProduct,
-    status,
-    syncing,
-    error,
-    add,
-    setQty,
-    remove,
-    restore,
-    applyPromo,
-    removePromo,
-    load,
-    flush,
-  ]);
+  }, [items, priced, notices, getProduct, status, syncing, error, add, setQty, remove, restore, load, flush]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

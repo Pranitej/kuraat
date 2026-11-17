@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Bell, Heart, Search, ShoppingBag, X } from 'lucide-react';
+import { Search, ShoppingBag, X } from 'lucide-react';
 import { Avatar, IconButton, Logo } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
-import { useNotifications } from '@/context/NotificationContext.jsx';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
 
@@ -22,22 +21,16 @@ export function CountBadge({ count, className }) {
   );
 }
 
-export function UnreadDot({ show, className }) {
-  if (!show) return null;
-  return <span className={cn('absolute right-[9px] top-[9px] size-2.5 rounded-full border-2 border-white bg-maroon', className)} aria-hidden />;
-}
-
 const NAV = [
   { to: ROUTES.home, label: 'Shop' },
   { to: ROUTES.branches, label: 'Branches' },
   { to: ROUTES.orders, label: 'Orders' },
 ];
 
-/** Desktop app bar (≥1024): logo · search · nav · notifications · cart · profile. */
+/** Desktop app bar (≥1024): logo · search · nav · cart · profile. */
 export default function AppBar() {
   const { user } = useAuth();
   const { count } = useCart();
-  const { unreadCount } = useNotifications();
   const location = useLocation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -106,8 +99,6 @@ export default function AppBar() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <IconButton icon={Heart} label="Favourites" to={ROUTES.favorites} />
-          <IconButton icon={Bell} label="Notifications" to={ROUTES.notifications} badge={<UnreadDot show={unreadCount > 0} />} />
           <IconButton icon={ShoppingBag} label={`Cart, ${count} items`} to={ROUTES.cart} badge={<CountBadge count={count} />} />
           <Link to={ROUTES.profile} aria-label="Profile" className="rounded-full transition hover:opacity-90">
             <Avatar name={user?.name} src={user?.avatar} size={44} />

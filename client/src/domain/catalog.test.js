@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { categoryChips, favoriteProducts, filterProducts, slugify } from './catalog.js';
+import { categoryChips, filterProducts, slugify } from './catalog.js';
 
 const product = (over) => ({
   id: over.name,
@@ -52,27 +52,5 @@ describe('filterProducts', () => {
     expect(names(filterProducts(PRODUCTS, { sort: 'price-desc' }))[0]).toBe('Truffle Box · Classic');
     expect(names(filterProducts(PRODUCTS, { sort: 'name' }))[0]).toBe('Burnt Chocolate Cheesecake');
     expect(names(filterProducts(PRODUCTS, { sort: 'recommended' }))).toEqual(names(PRODUCTS));
-  });
-});
-
-describe('favoriteProducts', () => {
-  const byId = (id) => product({ id, name: id });
-  const CATALOG = [byId('p1'), byId('p2'), byId('p3')];
-
-  test('newest saved first, matched to the loaded catalogue', () => {
-    const { products, missingIds } = favoriteProducts(['p1', 'p3'], CATALOG);
-    expect(products.map((p) => p.id)).toEqual(['p3', 'p1']);
-    expect(missingIds).toEqual([]);
-  });
-
-  test('saved products the catalogue no longer has are reported, not shown', () => {
-    const { products, missingIds } = favoriteProducts(['gone', 'p2', 'old'], CATALOG);
-    expect(products.map((p) => p.id)).toEqual(['p2']);
-    expect(missingIds).toEqual(['old', 'gone']);
-  });
-
-  test('empty inputs', () => {
-    expect(favoriteProducts([], CATALOG)).toEqual({ products: [], missingIds: [] });
-    expect(favoriteProducts(undefined, undefined)).toEqual({ products: [], missingIds: [] });
   });
 });

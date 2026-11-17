@@ -8,7 +8,7 @@ import { ROUTES } from '@/lib/routes';
 import type { CartLine } from '@/context/CartContext';
 import { formatSAR, lineWarning } from '@/domain';
 import { colors, radii } from '@/theme/theme';
-import type { Promo, Totals } from '@/types/api';
+import type { Totals } from '@/types/api';
 
 const STEPS = ['Cart', 'Delivery', 'Payment'];
 
@@ -112,17 +112,15 @@ export const CartItemCard = memo(function CartItemCard({
   );
 });
 
-/** Totals card: subtotal, discount, delivery, total, VAT. */
+/** Totals card: subtotal, delivery, total, VAT. */
 export function OrderSummary({
   totals,
-  promo,
   title,
   dimmed,
   style,
   children,
 }: {
   totals: Totals;
-  promo: Promo | null;
   title?: string;
   dimmed?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -137,7 +135,6 @@ export function OrderSummary({
       ) : null}
       <View style={styles.summaryRows}>
         <SummaryRow label={`Subtotal (${totals.count} ${totals.count === 1 ? 'item' : 'items'})`} value={formatSAR(totals.subtotal)} />
-        {totals.discount > 0 && promo ? <SummaryRow label={`Discount (${promo.code})`} value={`− ${formatSAR(totals.discount)}`} /> : null}
         <SummaryRow label="Delivery" value={totals.delivery === 0 ? 'Free' : formatSAR(totals.delivery)} />
       </View>
       <View style={styles.divider} />

@@ -4,7 +4,7 @@ React web build of the kuraat mobile app designs (`../kuraat — Mobile App UI S
 PDF, adapted for phones, tablets and desktop.
 
 The app talks **only to the kuraat server API** (`../server`). The server owns accounts, addresses, the cart,
-prices, promo codes, payments and notifications, and reads the catalogue, branches and order status from the
+prices and payments, and reads the catalogue, branches and order status from the
 RSOF order system (a local fake of it during development). Nothing but the login session and UI conveniences is
 kept in the browser.
 
@@ -44,7 +44,6 @@ for unknown paths (SPA fallback), because the app uses client-side routes such a
 | Sign in as the demo customer | Mobile **50 123 4821**, password **Kuraat@2026** |
 | Sign in with WhatsApp code | The test code is always **123456** (nothing is sent in test mode); any other code is "not correct" |
 | Create a new customer | Welcome → Create an account, with any Saudi mobile starting with 5 (e.g. 55 123 4567) |
-| Promo codes | **KURAAT10** (10 % off), **FREEDELIVERY**, **WELCOME15** (first order only — the demo customer already has orders) |
 | Card payment | **4242 4242 4242 4242**, future expiry, any CVV · declined: **4000 0000 0000 0002** · or cash on delivery |
 | Branch chosen by stock | Order **Truffle Box · Praline**: it is out of stock at Corniche, so the order ships from Dhahran. The cart and delivery screens say so in advance only when the server's `ROF_INVENTORY_CHECK` is on |
 | Move an order along | `cd server && npm run mock-rof:advance -- 20418` (next status) or `… 20418 OutForDelivery`; the tracking screen follows within 30 s |
@@ -53,7 +52,7 @@ for unknown paths (SPA fallback), because the app uses client-side routes such a
 | Start over | Stop the fake RSOF, delete `server/mock-rof/data/state.json`, start it again, then remove the demo customer from the `kuraat` database (or recreate the database) and run `npm run db:seed` |
 
 The demo customer starts with the PDF's cart (Truffle Box · Classic ×1, Butter Croissant Box ×2), three saved
-addresses, the two delivered orders **#KR-20377** and **#KR-20291**, and the PDF notifications. The next order is
+addresses and the two delivered orders **#KR-20377** and **#KR-20291**. The next order is
 **#KR-20418**, the order shown in the PDF.
 
 Times are always shown in Saudi time (UTC+3), whatever the device's time zone.
@@ -71,10 +70,9 @@ client/
     ├── domain/                 Pure display/form logic for the server's data — Saudi-time formatting,
     │                           validation, password rules, catalogue / cart / order / branch views
     ├── services/               The API layer: api.js (HTTP, tokens, refresh, ApiError) + one file per area
-    │                           (auth, catalog, branches, addresses, cart + cartSync, checkout, orders,
-    │                           notifications)
-    ├── context/                React state per area (Auth, Catalog, Branches, Cart, Favorites, Addresses,
-    │                           Orders, Notifications, Checkout, Toast)
+    │                           (auth, catalog, branches, addresses, cart + cartSync, checkout, orders)
+    ├── context/                React state per area (Auth, Catalog, Branches, Cart, Addresses, Orders,
+    │                           Checkout, Toast)
     ├── components/
     │   ├── ui/                 Design-system primitives (Button, Field, Chip, Tag, Toggle, Modal, …)
     │   ├── layout/             ScreenHeader, BottomBar, AuthLayout, AppBar (desktop), AppShell
@@ -94,8 +92,8 @@ client/
   session once (shared by parallel requests) and retries; if that fails the app signs out.
 - **Session**: access + refresh token in local storage (key `kuraat:v1:auth`); restored with `GET /me` at start.
 - **Cart**: taps change the screen at once and are saved in the background (`services/cartSync.js`: after 300 ms
-  of quiet, one save at a time, latest state wins). Totals, promo results and price/stock warnings come from the
-  server's priced cart. "Continue" and "Pay" wait for pending saves.
+  of quiet, one save at a time, latest state wins). Totals and price/stock warnings come from the server's
+  priced cart. The apps have no promo codes and always save the cart without one. "Continue" and "Pay" wait for pending saves.
 - **Checkout**: the delivering branch and slot come from `POST /checkout/quote`. One idempotency key per checkout
   (kept in session storage) is sent with every "Pay", so retries never create a second order.
 - **Orders**: status is read live from RSOF through the server; ongoing orders are re-read every 30 s.

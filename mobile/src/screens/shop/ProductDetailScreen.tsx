@@ -8,7 +8,6 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { BottomBar, Screen, useScreenScrollY } from '@/components/layout';
 import { ChevronLeft, Maximize, PackageSearch, ShoppingBag, ZoomIn } from '@/components/icons';
 import { DeliveryFromCard } from '@/components/shop/DeliveryFromCard';
-import { FavoriteButton } from '@/components/shop/ProductCard';
 import { Button, Card, EmptyState, IconButton, Skeleton, Stepper, Tag, Text, TextLink } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
@@ -69,9 +68,7 @@ function CompactHeader({ product, onBack }: { product: Product; onBack: () => vo
         <Text variant="heading" numberOfLines={1} style={styles.compactTitle}>
           {product.name}
         </Text>
-        <View style={styles.compactHeart}>
-          <FavoriteButton productId={product.id} productName={product.name} size={44} />
-        </View>
+        <View style={styles.compactSpacer} />
       </View>
     </Animated.View>
   );
@@ -227,12 +224,7 @@ export default function ProductDetailScreen() {
         />
         <View style={[styles.heroTop, { top: insets.top + layout.headerTop }]} pointerEvents="box-none">
           <IconButton icon={ChevronLeft} label="Back" variant="overlay" iconSize={22} strokeWidth={2} onPress={goBack} />
-          <View style={styles.heroActions}>
-            <View style={shadows.float}>
-              <FavoriteButton productId={product.id} productName={product.name} size={44} />
-            </View>
-            <IconButton icon={Maximize} label="View full screen" variant="overlay" onPress={() => openZoom()} />
-          </View>
+          <IconButton icon={Maximize} label="View full screen" variant="overlay" onPress={() => openZoom()} />
         </View>
         <View style={styles.heroBottom} pointerEvents="box-none">
           {images.length > 1 ? <Thumbs images={images} active={active} onSelect={select} /> : <View />}
@@ -371,7 +363,6 @@ const styles = StyleSheet.create({
   loadingTitle: { height: 28, width: '66%', borderRadius: 4 },
   loadingLine: { height: 16, width: '50%', borderRadius: 4 },
   heroTop: { position: 'absolute', left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between' },
-  heroActions: { flexDirection: 'row', gap: 12 },
   heroBottom: {
     position: 'absolute',
     left: 20,
@@ -438,7 +429,7 @@ const styles = StyleSheet.create({
   },
   compactRow: { height: 60, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingBottom: 8 },
   compactTitle: { flex: 1, textAlign: 'center' },
-  compactHeart: { borderRadius: 22, borderWidth: 1, borderColor: colors.lineSubtle, backgroundColor: colors.white },
+  compactSpacer: { width: 44, height: 44 },
   purchase: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   addToCart: { flex: 1.15, minWidth: 0, paddingHorizontal: 12 },
   buyNow: { flex: 1, minWidth: 0, paddingHorizontal: 12 },

@@ -157,18 +157,6 @@ export type Order = {
   cancelledAt: string | null;
 };
 
-export type NotificationLink = { kind: 'order' | 'product' | 'password' | 'home'; id?: string };
-
-export type AppNotification = {
-  id: string;
-  type: string;
-  title: string;
-  body: string;
-  link: NotificationLink | null;
-  read: boolean;
-  createdAt: string;
-};
-
 /** Saudi Arabia: card (incl. Mada) or cash on delivery. */
 export type PaymentMethod = 'card' | 'cod';
 

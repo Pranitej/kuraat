@@ -69,13 +69,11 @@ function server(extra: (c: FetchCall) => { status?: number; body?: unknown } | u
       const b = c.body as { items: Items; promoCode: string | null };
       return { body: priced(b.items, b.promoCode) };
     }
-    if (c.path === '/favorites') return { body: { productIds: [] } };
     if (c.path === '/categories') return { body: [{ id: 'c1', name: 'Truffles' }] };
     if (c.path === '/products') return { body: [PRODUCT] };
     if (c.path === '/branches') return { body: [] };
     if (c.path === '/addresses') return { body: [] };
     if (c.path === '/orders') return { body: [] };
-    if (c.path === '/notifications') return { body: [] };
     return { status: 404, body: { code: 'not_found', message: 'nope' } };
   });
 }
@@ -119,7 +117,7 @@ describe('AuthProvider', () => {
     await waitFor(() => expect(result.current.auth.user?.id).toBe('u1'));
     signedIn = false;
     await act(async () => {
-      await Promise.allSettled([apiRequest('/orders'), apiRequest('/notifications')]);
+      await Promise.allSettled([apiRequest('/orders'), apiRequest('/addresses')]);
     });
     expect(calls.filter((c) => c.path === '/auth/refresh')).toHaveLength(1);
     await waitFor(() => expect(result.current.auth.user).toBeNull());
@@ -144,19 +142,14 @@ describe('CartProvider', () => {
     expect(put?.body).toEqual({ items: [{ productId: 'p1', qty: 3 }], promoCode: null });
   });
 
-  test('an invalid promo code is refused with the server reason and not kept', async () => {
+  test('a promo code saved before codes were removed is cleared on load', async () => {
     tokenStore.write(TOKENS);
-    server();
+    const calls = server((c) =>
+      c.path === '/cart' && c.method === 'GET' ? { body: priced([{ productId: 'p1', qty: 1 }], 'KURAAT10') } : undefined,
+    );
     const { result } = await renderHook(useAll, { wrapper: AppProviders });
     await waitFor(() => expect(result.current.cart.status).toBe('ready'));
-    let error: unknown;
-    await act(async () => {
-      await result.current.cart.applyPromo('NOPE').catch((e: unknown) => {
-        error = e;
-      });
-    });
-    expect(error).toMatchObject({ code: 'invalid_promo', field: 'promo', message: "This code isn't valid." });
-    expect(result.current.cart.promo).toBeNull();
+    await waitFor(() => expect(calls.find((c) => c.path === '/cart' && c.method === 'PUT')?.body).toEqual({ items: [{ productId: 'p1', qty: 1 }], promoCode: null }));
   });
 });
 

@@ -21,7 +21,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useBranches } from '@/context/BranchContext';
 import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
-import { useNotifications } from '@/context/NotificationContext';
 import { areaLabel, categoryChips, filterProducts, withDistances } from '@/domain';
 import { productGrid } from '@/lib/grid';
 import { colors, layout } from '@/theme/theme';
@@ -37,7 +36,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { count } = useCart();
-  const { unreadCount } = useNotifications();
   const { address, addresses, loaded: addressesLoaded, choose } = useDeliveryAddress();
   const catalog = useCatalog();
   const { branches: allBranches } = useBranches();
@@ -75,7 +73,7 @@ export default function HomeScreen() {
 
   return (
     <Screen
-      header={<HomeHeader user={user} unread={unreadCount} />}
+      header={<HomeHeader user={user} />}
       gutter={0}
       padBottom={false}
       scrollRef={scroll}

@@ -26,18 +26,6 @@ describe('09/10 · Product detail', () => {
     );
   });
 
-  test('the heart saves the product to favourites', async () => {
-    const { calls } = await renderScreen(<ProductDetailScreen />, {
-      server: (c) =>
-        c.path === '/favorites' && c.method === 'PUT'
-          ? { body: { productIds: (c.body as { productIds: string[] }).productIds } }
-          : undefined,
-    });
-    await fireEvent.press((await screen.findAllByRole('button', { name: 'Save Truffle Box · Classic to favourites' }))[0]);
-    expect(screen.getByText('Saved to your favourites')).toBeTruthy();
-    await waitFor(() => expect(calls.find((c) => c.path === '/favorites' && c.method === 'PUT')?.body).toEqual({ productIds: ['p1'] }));
-  });
-
   test('on a tablet the photos fill the 640 pt column, not the whole window', async () => {
     const dims = jest
       .spyOn(require('react-native'), 'useWindowDimensions')

@@ -3,14 +3,14 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { CartItemCard, CheckoutSteps, OrderSummary } from '@/components/checkout/CheckoutParts';
 import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
-import { ChevronRight, CloudOff, ShoppingBag, Store, Tag as TagIcon, X } from '@/components/icons';
-import { Button, EmptyState, Field, IconButton, InfoBanner, Skeleton, Tag, Text } from '@/components/ui';
+import { ChevronRight, CloudOff, ShoppingBag, Store } from '@/components/icons';
+import { Button, EmptyState, InfoBanner, Skeleton, Tag, Text } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useCart, type CartLine } from '@/context/CartContext';
 import { useToast } from '@/context/ToastContext';
 import { useDeliveryQuote } from '@/hooks/quote';
-import { colors, radii } from '@/theme/theme';
+import { radii } from '@/theme/theme';
 import type { Quote } from '@/types/api';
 
 function availabilityText(count: number, delivery: Quote): [string, string] {
@@ -28,30 +28,10 @@ function availabilityText(count: number, delivery: Quote): [string, string] {
 export default function CartScreen() {
   const router = useRouter();
   const toast = useToast();
-  const {
-    lines,
-    count,
-    totals,
-    promo,
-    setQty,
-    remove,
-    restore,
-    applyPromo,
-    removePromo,
-    items,
-    status,
-    error,
-    syncing,
-    blocked,
-    flush,
-    reload,
-  } = useCart();
+  const { lines, count, totals, setQty, remove, restore, items, status, error, syncing, blocked, flush, reload } = useCart();
   const { defaultAddress } = useAddresses();
   const productIds = useMemo(() => items.map((i) => i.productId), [items]);
   const { quote: delivery } = useDeliveryQuote({ addressId: defaultAddress?.id, productIds });
-  const [code, setCode] = useState('');
-  const [promoError, setPromoError] = useState('');
-  const [applying, setApplying] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const lineCount = lines.length;
 
@@ -71,24 +51,6 @@ export default function CartScreen() {
       toast.show((err as Error).message, { tone: 'error' });
     } finally {
       setLeaving(false);
-    }
-  };
-
-  const apply = async () => {
-    if (!code.trim()) {
-      setPromoError('Enter a promo code');
-      return;
-    }
-    setApplying(true);
-    setPromoError('');
-    try {
-      const p = await applyPromo(code);
-      setCode('');
-      toast.show(`${p.code} applied — ${(p.label || '').toLowerCase()}`);
-    } catch (err) {
-      setPromoError((err as Error).message);
-    } finally {
-      setApplying(false);
     }
   };
 
@@ -145,7 +107,6 @@ export default function CartScreen() {
   return (
     <Screen
       header={header}
-      keyboard
       bottomBar={
         <BottomBar>
           <Button block rightIcon={ChevronRight} disabled={blocked} loading={leaving} onPress={continueToDelivery}>
@@ -168,40 +129,7 @@ export default function CartScreen() {
       </View>
 
       <View style={styles.block}>
-        {promo ? (
-          <View style={styles.applied}>
-            <TagIcon size={20} color={colors.maroon} strokeWidth={1.8} />
-            <Text numberOfLines={1} style={[styles.flex, styles.appliedText]}>
-              <Text weight={700}>{promo.code}</Text> applied · <Text color="muted">{promo.label}</Text>
-            </Text>
-            <IconButton icon={X} label="Remove promo code" variant="plain" size="xs" iconSize={18} onPress={removePromo} />
-          </View>
-        ) : (
-          <View>
-            <View style={styles.promoRow}>
-              <Field
-                icon={TagIcon}
-                value={code}
-                onChangeText={(t) => {
-                  setCode(t.toUpperCase());
-                  setPromoError('');
-                }}
-                placeholder="Promo code"
-                accessibilityLabel="Promo code"
-                autoCapitalize="characters"
-                autoCorrect={false}
-                returnKeyType="done"
-                onSubmitEditing={apply}
-                error={promoError || null}
-                style={styles.flex}
-              />
-              <Button variant="secondary" size="sm" loading={applying} onPress={apply} style={styles.apply}>
-                Apply
-              </Button>
-            </View>
-          </View>
-        )}
-        <OrderSummary totals={totals} promo={promo} dimmed={syncing} />
+        <OrderSummary totals={totals} dimmed={syncing} />
       </View>
 
       {delivery ? (
@@ -224,18 +152,6 @@ const styles = StyleSheet.create({
   first: { marginTop: 16 },
   lineSkeleton: { height: 116, borderRadius: radii.xl },
   block: { marginTop: 16, gap: 12 },
-  applied: {
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderRadius: radii.md,
-    backgroundColor: colors.sand,
-    paddingHorizontal: 16,
-  },
-  appliedText: { fontSize: 15 },
-  promoRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  apply: { height: 52, paddingHorizontal: 20 },
   banner: { marginTop: 12 },
   bannerText: { fontSize: 15, lineHeight: 22 },
 });

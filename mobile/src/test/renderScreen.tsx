@@ -79,14 +79,12 @@ export function fakeServer(extra: (c: FetchCall) => Reply = () => undefined) {
       const b = c.body as { items: Items; promoCode: string | null };
       return { body: pricedCart(b.items, b.promoCode) };
     }
-    if (c.path === '/favorites') return { body: { productIds: [] } };
     if (c.path === '/categories') return { body: [{ id: 'c1', name: 'Truffles' }] };
     if (c.path === '/products') return { body: PRODUCTS };
     if (c.path.startsWith('/products/')) return { body: PRODUCTS[0] };
     if (c.path === '/branches') return { body: [] };
     if (c.path === '/addresses') return { body: [] };
     if (c.path === '/orders' && c.method === 'GET') return { body: [] };
-    if (c.path === '/notifications') return { body: [] };
     if (c.path === '/auth/signout') return { status: 204 };
     return { status: 404, body: { code: 'not_found', message: 'We could not find that.' } };
   });

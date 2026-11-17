@@ -2,7 +2,6 @@ import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderScreen } from '@/test/renderScreen';
 import { mockRouter, resetRouterMock } from '@/test/routerMock';
 import HomeScreen from '../HomeScreen';
-import NotificationsScreen from '../NotificationsScreen';
 
 jest.mock('expo-router', () => require('@/test/routerMock').expoRouterMock);
 
@@ -35,36 +34,6 @@ describe('07 · Home', () => {
     await renderScreen(<HomeScreen />);
     await fireEvent.press(await screen.findByLabelText('Truffle Box · Classic, SAR 185'));
     expect(mockRouter.push).toHaveBeenCalledWith('/products/p1');
-  });
-});
-
-describe('26 · Notifications', () => {
-  const notification = {
-    id: 'n1',
-    type: 'order',
-    title: 'Order confirmed',
-    body: 'Order #KR-20418 is confirmed.',
-    link: { kind: 'order', id: 'o1' },
-    read: false,
-    createdAt: new Date().toISOString(),
-  };
-
-  test('tapping a notification marks it read and opens its screen', async () => {
-    const { calls } = await renderScreen(<NotificationsScreen />, {
-      server: (c) => {
-        if (c.path === '/notifications') return { body: [notification] };
-        if (c.path === '/notifications/n1/read') return { status: 204 };
-        return undefined;
-      },
-    });
-    await fireEvent.press(await screen.findByText('Order confirmed'));
-    expect(mockRouter.push).toHaveBeenCalledWith('/orders/o1');
-    await waitFor(() => expect(calls.some((c) => c.path === '/notifications/n1/read' && c.method === 'POST')).toBe(true));
-  });
-
-  test('nothing yet: the caught-up empty state', async () => {
-    await renderScreen(<NotificationsScreen />);
-    expect(await screen.findByText('You are all caught up')).toBeTruthy();
   });
 });
 

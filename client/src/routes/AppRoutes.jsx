@@ -14,8 +14,6 @@ const HomePage = lazy(() => import('@/pages/shop/HomePage.jsx'));
 const ProductDetailPage = lazy(() => import('@/pages/shop/ProductDetailPage.jsx'));
 const ImageZoomPage = lazy(() => import('@/pages/shop/ImageZoomPage.jsx'));
 const BranchesPage = lazy(() => import('@/pages/shop/BranchesPage.jsx'));
-const NotificationsPage = lazy(() => import('@/pages/shop/NotificationsPage.jsx'));
-const FavoritesPage = lazy(() => import('@/pages/shop/FavoritesPage.jsx'));
 
 const CartPage = lazy(() => import('@/pages/checkout/CartPage.jsx'));
 const DeliveryPage = lazy(() => import('@/pages/checkout/DeliveryPage.jsx'));
@@ -56,8 +54,6 @@ export default function AppRoutes() {
               <Route path="/home" element={<HomePage />} />
               <Route path="/products/:productId" element={<ProductDetailPage />} />
               <Route path="/branches" element={<BranchesPage />} />
-              <Route path="/notifications" element={<NotificationsPage />} />
-              <Route path="/favorites" element={<FavoritesPage />} />
 
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout/delivery" element={<DeliveryPage />} />

@@ -85,14 +85,13 @@ export function CartItemCard({ line, branchName, onQty, onRemove }) {
   );
 }
 
-/** Totals card: subtotal, discount, delivery, total, VAT. */
-export function OrderSummary({ totals, promo, className, children, title }) {
+/** Totals card: subtotal, delivery, total, VAT. */
+export function OrderSummary({ totals, className, children, title }) {
   return (
     <Card className={cn('p-4', className)}>
       {title && <h2 className="mb-3 text-h3 text-ink">{title}</h2>}
       <div className="flex flex-col gap-3">
         <SummaryRow label={`Subtotal (${totals.count} ${totals.count === 1 ? 'item' : 'items'})`} value={formatSAR(totals.subtotal)} />
-        {totals.discount > 0 && <SummaryRow label={`Discount (${promo.code})`} value={`− ${formatSAR(totals.discount)}`} />}
         <SummaryRow label="Delivery" value={totals.delivery === 0 ? 'Free' : formatSAR(totals.delivery)} />
       </div>
       <div className="my-3.5 h-[2px] rounded-pill bg-divider" />

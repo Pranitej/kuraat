@@ -5,7 +5,7 @@ import Animated, { interpolateColor, useAnimatedStyle } from 'react-native-reani
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { promoBannerPhoto } from '@/assets/images';
 import { useScreenScrollY } from '@/components/layout';
-import { Bell, ChevronRight, ListFilter, Mail, MapPin, Phone, Search, ShoppingBag, Store, X } from '@/components/icons';
+import { ChevronRight, ListFilter, Mail, MapPin, Phone, Search, ShoppingBag, Store, X } from '@/components/icons';
 import { Avatar, BottomSheet, Button, Chip, IconButton, Logo, MaroonPanel, Tag, Text } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { HEAD_OFFICE, SORT_OPTIONS, formatDistance, mapsUrl, telUrl } from '@/domain';
@@ -25,13 +25,8 @@ export function CountBadge({ count }: { count: number }) {
   );
 }
 
-/** Unread dot on the bell. */
-export function UnreadDot({ show }: { show: boolean }) {
-  return show ? <View style={styles.unread} pointerEvents="none" /> : null;
-}
-
-/** Home header: bell · logo · avatar; pinned, with a hairline once the page scrolls. */
-export function HomeHeader({ user, unread }: { user: User | null; unread: number }) {
+/** Home header: logo centred · avatar; pinned, with a hairline once the page scrolls. */
+export function HomeHeader({ user }: { user: User | null }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollY = useScreenScrollY();
@@ -41,12 +36,7 @@ export function HomeHeader({ user, unread }: { user: User | null; unread: number
   return (
     <Animated.View style={[styles.header, { paddingTop: insets.top + layout.headerTop }, line]}>
       <View style={styles.headerRow}>
-        <IconButton
-          icon={Bell}
-          label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
-          onPress={() => router.push(ROUTES.notifications)}
-          badge={<UnreadDot show={unread > 0} />}
-        />
+        <View style={styles.headerSpacer} />
         <Logo width={116} />
         <Pressable onPress={() => router.push(ROUTES.profile)} accessibilityRole="button" accessibilityLabel="Profile" hitSlop={4}>
           <Avatar name={user?.name} src={user?.avatar} size={44} />
@@ -281,18 +271,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   countText: { fontSize: 11, lineHeight: 14 },
-  unread: {
-    position: 'absolute',
-    top: 9,
-    right: 9,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: colors.white,
-    backgroundColor: colors.maroon,
-  },
-  header: { backgroundColor: colors.cream, borderBottomWidth: 1, zIndex: 2 },
+  headerSpacer: { width: 44, height: 44 },
+  header:{ backgroundColor: colors.cream, borderBottomWidth: 1, zIndex: 2 },
   headerRow: {
     height: 76,
     flexDirection: 'row',

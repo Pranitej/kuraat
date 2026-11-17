@@ -22,7 +22,7 @@ export default function DeliveryPage() {
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
   const { user } = useAuth();
-  const { items, totals, promo, status: cartStatus } = useCart();
+  const { items, totals, status: cartStatus } = useCart();
   const { addresses } = useAddresses();
   const checkout = useCheckout();
   const selected = deliveryAddress(addresses, checkout.addressId);
@@ -66,7 +66,7 @@ export default function DeliveryPage() {
       steps={<CheckoutSteps current={1} />}
       aside={
         <div className="flex flex-col gap-4">
-          <OrderSummary totals={totals} promo={promo} title="Order summary" />
+          <OrderSummary totals={totals} title="Order summary" />
           {cta}
         </div>
       }

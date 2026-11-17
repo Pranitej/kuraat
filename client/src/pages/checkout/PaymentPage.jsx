@@ -110,7 +110,7 @@ export default function PaymentPage() {
       steps={<CheckoutSteps current={2} />}
       aside={
         <div className="flex flex-col gap-4">
-          <OrderSummary totals={totals} promo={cart.promo} title="Order summary" />
+          <OrderSummary totals={totals} title="Order summary" />
           {delivery && <DeliveryFromCard icon="store" branch={delivery.branch} distanceKm={delivery.distanceKm} showDistance />}
           {cta}
         </div>

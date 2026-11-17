@@ -266,7 +266,7 @@ export default function AccountScreen() {
         loading={sendingDeleteCode}
         icon={Trash2}
         title="Delete your account?"
-        message={`This removes your profile, saved addresses, cards and favourites. Past orders stay with the branch for its records. We will send a 6-digit code on WhatsApp to ${formatPhone(u.phone)} to confirm.`}
+        message={`This removes your profile, saved addresses and cards. Past orders stay with the branch for its records. We will send a 6-digit code on WhatsApp to ${formatPhone(u.phone)} to confirm.`}
         confirmLabel="Send code"
         cancelLabel="Keep my account"
       />

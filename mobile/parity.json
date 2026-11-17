@@ -31,8 +31,6 @@
     "services/catalogService.test.js",
     "services/checkout.test.js",
     "services/checkoutService.js",
-    "services/notificationService.js",
-    "services/notificationService.test.js",
     "services/orderService.js",
     "test/stubFetch.js",
     "theme/tokens.js",

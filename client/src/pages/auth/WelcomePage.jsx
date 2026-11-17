@@ -9,7 +9,7 @@ const LEGAL = {
     title: 'Terms of use',
     body: [
       'Orders are prepared fresh by the kuraat branch nearest to your delivery address and delivered within the time slot shown at checkout.',
-      'Prices are in Saudi riyals and include 15% VAT. Delivery is charged at SAR 15.00 per order unless a promotion applies.',
+      'Prices are in Saudi riyals and include 15% VAT. Delivery is charged at SAR 15.00 per order.',
       'You can cancel an order free of charge until the branch starts preparing it. Perishable items cannot be returned once delivered.',
     ],
   },

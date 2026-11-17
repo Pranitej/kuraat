@@ -67,7 +67,7 @@ mobile/
     │   ├── shop/ branch/ checkout/ account/   Feature components (same names as the web)
     │   └── icons.ts         The Lucide icons in use, imported one by one (small bundle)
     ├── context/             Data providers (same rules as the web's): auth, catalogue, branches, cart,
-    │                        favourites, addresses, orders, notifications, checkout, toast
+    │                        addresses, orders, checkout, toast
     ├── hooks/               App state, countdown, navigation, typed delivery-quote hook
     ├── lib/                 Platform files: storage.js (device store + keychain), env.js (API URL),
     │                        monitoring, linking, haptics, photo
@@ -79,13 +79,13 @@ mobile/
 
 ### How it works
 
-- **Data**: the server owns accounts, prices, VAT, promos, stock, the delivering branch, payments and order status.
+- **Data**: the server owns accounts, prices, VAT, stock, the delivering branch, payments and order status.
   The app never computes those itself.
 - **Session**: access + refresh tokens in the **device keychain / keystore** (expo-secure-store); a 401 refreshes once
   (shared by parallel requests) and retries; a refused refresh signs out once.
 - **Cart**: taps update at once and are saved in the background (300 ms of quiet, one save at a time, latest wins).
 - **Checkout**: one idempotency key per checkout, reused on every "Pay" retry — never a second order.
-- **Orders and notifications** refresh every 30 s while something is on its way **and the app is in front**, and when
+- **Orders** refresh every 30 s while something is on its way **and the app is in front**, and when
   the app comes back to the front. Times are always Saudi time.
 - **Offline**: a banner shows while the phone has no connection; requests fail with the shared "can't reach kuraat"
   message and screens offer "Try again".

@@ -2,49 +2,17 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Heart, Plus } from '@/components/icons';
+import { Plus } from '@/components/icons';
 import { Skeleton, Text } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useCart } from '@/context/CartContext';
-import { useFavorites } from '@/context/FavoritesContext';
 import { useToast } from '@/context/ToastContext';
 import { formatSAR } from '@/domain';
 import { tap } from '@/lib/haptics';
 import { colors, radii, shadows } from '@/theme/theme';
 import type { Product } from '@/types/api';
 
-/** Heart on product photos: toggles the favourite with a short toast (same as the web). */
-export function FavoriteButton({ productId, productName, size = 34 }: { productId: string; productName: string; size?: number }) {
-  const { isFavorite, toggle } = useFavorites();
-  const toast = useToast();
-  const router = useRouter();
-  const active = isFavorite(productId);
-  const notify = (added: boolean) =>
-    toast.show(added ? 'Saved to your favourites' : 'Removed from your favourites', {
-      tone: 'info',
-      duration: 1800,
-      action: added
-        ? { label: 'View', onPress: () => router.push(ROUTES.favorites) }
-        : { label: 'Undo', onPress: () => notify(toggle(productId)) },
-    });
-  return (
-    <Pressable
-      onPress={() => {
-        tap();
-        notify(toggle(productId));
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={active ? `Remove ${productName} from favourites` : `Save ${productName} to favourites`}
-      accessibilityState={{ selected: active }}
-      hitSlop={6}
-      style={({ pressed }) => [styles.heart, { width: size, height: size, borderRadius: size / 2 }, pressed && styles.pressedSmall]}
-    >
-      <Heart size={Math.round(size * 0.55)} color={colors.maroon} strokeWidth={1.9} fill={active ? colors.maroon : 'none'} />
-    </Pressable>
-  );
-}
-
-/** Product card (PDF screens 07/08): photo, heart, name, meta, price, "+" quick add. */
+/** Product card (PDF screens 07/08): photo, name, meta, price, "+" quick add. */
 export const ProductCard = memo(function ProductCard({ product, width }: { product: Product; width: number }) {
   const router = useRouter();
   const { add } = useCart();
@@ -74,9 +42,6 @@ export const ProductCard = memo(function ProductCard({ product, width }: { produ
             recyclingKey={product.id}
           />
         ) : null}
-        <View style={styles.heartSpot}>
-          <FavoriteButton productId={product.id} productName={product.name} />
-        </View>
       </View>
       <View style={styles.body}>
         <Text weight={600} numberOfLines={2} style={styles.name}>
@@ -125,9 +90,6 @@ export function ProductCardSkeleton({ width }: { width: number }) {
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: radii.xl, borderWidth: 1, borderColor: colors.lineSubtle, overflow: 'hidden' },
   photo: { backgroundColor: colors.sand },
-  heartSpot: { position: 'absolute', top: 8, right: 8 },
-  heart: { backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
-  pressedSmall: { transform: [{ scale: 0.9 }] },
   body: { flex: 1, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12 },
   name: { fontSize: 15, lineHeight: 20 },
   meta: { marginTop: 2 },

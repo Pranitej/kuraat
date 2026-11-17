@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, CloudOff, ShoppingBag, Store, Tag as TagIcon, X } from 'lucide-react';
+import { ChevronRight, CloudOff, ShoppingBag, Store } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import BottomBar from '@/components/layout/BottomBar.jsx';
-import { Button, EmptyState, InfoBanner, Skeleton, Tag, inputBase, inputShell } from '@/components/ui';
+import { Button, EmptyState, InfoBanner, Skeleton, Tag } from '@/components/ui';
 import { CartItemCard, CheckoutLayout, CheckoutSteps, OrderSummary } from '@/components/checkout/CheckoutParts.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
@@ -25,12 +25,9 @@ export default function CartPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const isDesktop = useIsDesktop();
-  const { lines, count, totals, promo, setQty, remove, restore, applyPromo, removePromo, items, status, error, syncing, blocked, flush, reload } = useCart();
+  const { lines, count, totals, setQty, remove, restore, items, status, error, syncing, blocked, flush, reload } = useCart();
   const { defaultAddress } = useAddresses();
   const { quote: delivery } = useDeliveryQuote({ addressId: defaultAddress?.id, productIds: items.map((i) => i.productId) });
-  const [code, setCode] = useState('');
-  const [promoError, setPromoError] = useState('');
-  const [applying, setApplying] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const lineCount = lines.length;
 
@@ -49,25 +46,6 @@ export default function CartPage() {
       toast.show(err.message, { tone: 'error' });
     } finally {
       setLeaving(false);
-    }
-  };
-
-  const apply = async (e) => {
-    e.preventDefault();
-    if (!code.trim()) {
-      setPromoError('Enter a promo code');
-      return;
-    }
-    setApplying(true);
-    setPromoError('');
-    try {
-      const p = await applyPromo(code);
-      setCode('');
-      toast.show(`${p.code} applied — ${p.label.toLowerCase()}`);
-    } catch (err) {
-      setPromoError(err.message);
-    } finally {
-      setApplying(false);
     }
   };
 
@@ -126,56 +104,13 @@ export default function CartPage() {
   );
   const summaryClass = cn('transition-opacity', syncing && 'opacity-60');
 
-  const promoBlock = (
-    <div>
-      {promo ? (
-        <div className="flex h-[52px] items-center gap-3 rounded-md bg-sand px-4">
-          <TagIcon size={20} strokeWidth={1.8} className="text-maroon" aria-hidden />
-          <p className="min-w-0 flex-1 truncate text-[15px] text-ink">
-            <span className="font-bold">{promo.code}</span> applied · <span className="text-muted">{promo.label}</span>
-          </p>
-          <button type="button" onClick={removePromo} aria-label="Remove promo code" className="grid size-8 place-items-center rounded-full text-maroon hover:bg-white/60">
-            <X size={18} strokeWidth={2} />
-          </button>
-        </div>
-      ) : (
-        <form noValidate onSubmit={apply} className="flex gap-3">
-          <div className={cn(inputShell({ error: promoError }), 'min-w-0 flex-1')}>
-            <TagIcon size={20} strokeWidth={1.8} className="shrink-0 text-maroon" aria-hidden />
-            <input
-              value={code}
-              onChange={(e) => {
-                setCode(e.target.value.toUpperCase());
-                setPromoError('');
-              }}
-              placeholder="Promo code"
-              aria-label="Promo code"
-              aria-invalid={Boolean(promoError) || undefined}
-              autoCapitalize="characters"
-              className={cn(inputBase, 'uppercase placeholder:normal-case')}
-            />
-          </div>
-          <Button type="submit" variant="secondary" size="sm" className="h-[52px] px-5" loading={applying}>
-            Apply
-          </Button>
-        </form>
-      )}
-      {promoError && (
-        <p role="alert" className="mt-1.5 text-label text-hotpink">
-          {promoError}
-        </p>
-      )}
-    </div>
-  );
-
   return (
     <CheckoutLayout
       header={header}
       steps={<CheckoutSteps current={0} />}
       aside={
         <div className="flex flex-col gap-4">
-          {promoBlock}
-          <OrderSummary totals={totals} promo={promo} className={summaryClass} />
+          <OrderSummary totals={totals} className={summaryClass} />
           {cta}
         </div>
       }
@@ -194,8 +129,7 @@ export default function CartPage() {
 
       {!isDesktop && (
         <div className="mt-4 flex flex-col gap-3">
-          {promoBlock}
-          <OrderSummary totals={totals} promo={promo} className={summaryClass} />
+          <OrderSummary totals={totals} className={summaryClass} />
         </div>
       )}
 

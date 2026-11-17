@@ -4,7 +4,6 @@ import { ChevronLeft, Maximize, PackageSearch, ShoppingBag, ZoomIn } from 'lucid
 import { Button, Card, EmptyState, IconButton, QuantityStepper, Skeleton, Tag } from '@/components/ui';
 import BottomBar from '@/components/layout/BottomBar.jsx';
 import { BackButton } from '@/components/layout/ScreenHeader.jsx';
-import { FavoriteButton } from '@/components/shop/ProductCard.jsx';
 import DeliveryFromCard from '@/components/shop/DeliveryFromCard.jsx';
 import { formatSAR, formatWindow, quoteStockLabel } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
@@ -128,7 +127,7 @@ export default function ProductDetailPage() {
         <div className="mx-auto grid h-[76px] max-w-column grid-cols-[44px_1fr_44px] items-center gap-3 px-5">
           <IconButton icon={ChevronLeft} label="Back" iconSize={22} strokeWidth={2} onClick={goBack} tabIndex={showCompactHeader ? 0 : -1} />
           <p className="truncate text-center text-heading text-ink">{product.name}</p>
-          <FavoriteButton productId={product.id} productName={product.name} size={44} className="border border-line-subtle bg-white" />
+          <span aria-hidden />
         </div>
       </div>
 
@@ -154,10 +153,7 @@ export default function ProductDetailPage() {
 
             <div className="absolute inset-x-5 top-4 flex items-center justify-between lg:inset-x-auto lg:right-4" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
               <IconButton icon={ChevronLeft} label="Back" variant="overlay" iconSize={22} strokeWidth={2} onClick={goBack} className="lg:hidden" />
-              <div className="flex gap-3">
-                <FavoriteButton productId={product.id} productName={product.name} size={44} className="shadow-float" />
-                <IconButton icon={Maximize} label="View full screen" variant="overlay" onClick={() => openZoom()} />
-              </div>
+              <IconButton icon={Maximize} label="View full screen" variant="overlay" onClick={() => openZoom()} />
             </div>
 
             <div className="absolute inset-x-5 bottom-10 flex items-end justify-between lg:bottom-4 lg:left-auto lg:right-4" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>

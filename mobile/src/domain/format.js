@@ -95,13 +95,6 @@ export function formatOrderDate(value, now = new Date()) {
   return formatDate(value);
 }
 
-/** Notifications: "12:21" today, otherwise "8 Nov". */
-export function formatNotificationTime(value, now = new Date()) {
-  if (isSameDay(value, now)) return formatTime(value);
-  if (isYesterday(value, now)) return 'Yesterday';
-  return formatDayMonth(value);
-}
-
 /** Delivery window: "Today, 5:00 – 7:00 PM" / "Tomorrow, 12:00 – 2:00 PM". */
 export function formatWindow(start, end, now = new Date(), { long = true } = {}) {
   const tomorrow = new Date(toDate(now).getTime() + DAY_MS);

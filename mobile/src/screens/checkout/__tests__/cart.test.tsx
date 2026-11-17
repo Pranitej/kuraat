@@ -54,12 +54,10 @@ describe('12 · Cart', () => {
     expect(names).toEqual(['cart-line-p1', 'cart-line-p2']);
   });
 
-  test('an invalid promo code shows the reason under the field', async () => {
+  test('there is no promo code field', async () => {
     await renderScreen(<CartScreen />, { server: (c) => (c.path === '/cart' && c.method === 'GET' ? { body: TWO } : undefined) });
     await screen.findByText('Butter Croissant Box');
-    await fireEvent.changeText(screen.getByLabelText('Promo code'), 'nope');
-    await fireEvent.press(screen.getByRole('button', { name: 'Apply' }));
-    expect(await screen.findByText("This code isn't valid.")).toBeTruthy();
+    expect(screen.queryByLabelText('Promo code')).toBeNull();
   });
 
   test('an out-of-stock line blocks checkout until it is removed', async () => {

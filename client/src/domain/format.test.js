@@ -1,6 +1,6 @@
 // vitest.config.js runs these in America/New_York: every result below must still be Saudi time.
 import { describe, expect, test } from 'vitest';
-import { formatDate, formatDateTime, formatDayMonth, formatNotificationTime, formatOrderDate, formatTime, formatTime12, formatWindow, isSameDay } from './format.js';
+import { formatDate, formatDateTime, formatDayMonth, formatOrderDate, formatTime, formatTime12, formatWindow, isSameDay } from './format.js';
 
 describe('Saudi time whatever the browser’s zone', () => {
   test('the zone really is New York in these tests', () => {
@@ -32,12 +32,10 @@ describe('Saudi time whatever the browser’s zone', () => {
     expect(formatDateTime('2026-11-15T22:30:00Z')).toBe('16 Nov 2026, 01:30');
   });
 
-  test('order and notification dates use the Saudi today and yesterday', () => {
+  test('order dates use the Saudi today and yesterday', () => {
     const now = new Date('2026-11-16T08:00:00Z'); // 11:00, 16 Nov
     expect(formatOrderDate('2026-11-15T22:30:00Z', now)).toBe('Today, 01:30');
     expect(formatOrderDate('2026-11-15T09:21:00Z', now)).toBe('Yesterday, 12:21');
     expect(formatOrderDate('2026-11-08T10:05:00Z', now)).toBe('8 Nov 2026');
-    expect(formatNotificationTime('2026-11-15T09:21:00Z', now)).toBe('Yesterday');
-    expect(formatNotificationTime('2026-11-16T07:00:00Z', now)).toBe('10:00');
   });
 });

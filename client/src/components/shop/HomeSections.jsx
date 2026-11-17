@@ -1,15 +1,15 @@
 import { Link } from 'react-router-dom';
-import { Bell, ChevronRight, ListFilter, Mail, MapPin, Phone, Search, ShoppingBag, Store, X } from 'lucide-react';
+import { ChevronRight, ListFilter, Mail, MapPin, Phone, Search, ShoppingBag, Store, X } from 'lucide-react';
 import { Avatar, Button, Chip, IconButton, Logo, MaroonPanel, Sheet, Tag } from '@/components/ui';
-import { CountBadge, UnreadDot } from '@/components/layout/AppBar.jsx';
+import { CountBadge } from '@/components/layout/AppBar.jsx';
 import { promoBannerPhoto } from '@/assets/images.js';
 import { HEAD_OFFICE, SORT_OPTIONS, formatDistance, mapsUrl, telUrl } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
 import { useScrollY } from '@/hooks';
 
-/** Mobile home header: bell · logo · avatar (pinned with a hairline once scrolled). */
-export function HomeHeader({ user, unread }) {
+/** Mobile home header: logo centred · avatar (pinned with a hairline once scrolled). */
+export function HomeHeader({ user }) {
   const scrolled = useScrollY() > 8;
   return (
     <header
@@ -19,7 +19,7 @@ export function HomeHeader({ user, unread }) {
       )}
     >
       <div className="mx-auto flex h-[76px] max-w-column items-center justify-between px-5">
-        <IconButton icon={Bell} label="Notifications" to={ROUTES.notifications} badge={<UnreadDot show={unread > 0} />} />
+        <span className="size-11" aria-hidden />
         <Link to={ROUTES.home} aria-label="kuraat home">
           <Logo className="w-[116px]" />
         </Link>

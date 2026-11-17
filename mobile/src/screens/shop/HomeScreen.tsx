@@ -21,7 +21,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useBranches } from '@/context/BranchContext';
 import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
-import { areaLabel, categoryChips, filterProducts, withDistances } from '@/domain';
+import { areaLabel, categoryFilter, filterProducts, withDistances } from '@/domain';
 import { productGrid } from '@/lib/grid';
 import { colors, layout } from '@/theme/theme';
 import type { Branch, Product } from '@/types/api';
@@ -50,10 +50,15 @@ export default function HomeScreen() {
   const setFilters = (changes: Partial<Filters>) => setFiltersState((f) => ({ ...f, ...changes }));
   const { q: query, category, sort } = filters;
 
-  const chips = useMemo(() => categoryChips(catalog.categories) as { id: string; label: string }[], [catalog.categories]);
+  // Pills only when every product has a category (design 2026-11-18 §5.5); otherwise no category filter.
+  const { show: showCategories, chips } = useMemo(
+    () => categoryFilter(catalog.products, catalog.categories) as { show: boolean; chips: { id: string; label: string }[] },
+    [catalog.products, catalog.categories],
+  );
+  const activeCategory = showCategories ? category : 'all';
   const products = useMemo(
-    () => filterProducts(catalog.products, { query, category, sort }) as Product[],
-    [catalog.products, query, category, sort],
+    () => filterProducts(catalog.products, { query, category: activeCategory, sort }) as Product[],
+    [catalog.products, query, activeCategory, sort],
   );
   const branches = useMemo(() => withDistances(allBranches, address?.location) as Branch[], [allBranches, address]);
   const delivery =
@@ -118,13 +123,15 @@ export default function HomeScreen() {
           >
             Our sweets
           </SectionTitle>
-          <ChipRow style={styles.chips}>
-            {chips.map((c) => (
-              <Chip key={c.id} active={category === c.id} onPress={() => setFilters({ category: c.id })}>
-                {c.label}
-              </Chip>
-            ))}
-          </ChipRow>
+          {showCategories ? (
+            <ChipRow style={styles.chips}>
+              {chips.map((c) => (
+                <Chip key={c.id} active={activeCategory === c.id} onPress={() => setFilters({ category: c.id })}>
+                  {c.label}
+                </Chip>
+              ))}
+            </ChipRow>
+          ) : null}
 
           {query ? (
             <Text variant="small" color="muted" style={styles.results} accessibilityLiveRegion="polite">
@@ -202,7 +209,7 @@ export default function HomeScreen() {
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         categories={chips}
-        category={category}
+        category={activeCategory}
         sort={sort}
         onApply={(f) => setFilters(f)}
       />

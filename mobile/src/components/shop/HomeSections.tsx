@@ -131,16 +131,21 @@ export function FilterSheet({
           </Chip>
         ))}
       </View>
-      <Text variant="label" color="maroon" style={[styles.sheetLabel, styles.sheetGap]}>
-        Category
-      </Text>
-      <View style={[styles.wrap, styles.sheetEnd]}>
-        {categories.map((c) => (
-          <Chip key={c.id} active={category === c.id} onPress={() => onApply({ category: c.id, sort })}>
-            {c.label}
-          </Chip>
-        ))}
-      </View>
+      {/* No categories (a product without one) → sort only (design 2026-11-18 §5.5). */}
+      {categories.length > 0 ? (
+        <>
+          <Text variant="label" color="maroon" style={[styles.sheetLabel, styles.sheetGap]}>
+            Category
+          </Text>
+          <View style={[styles.wrap, styles.sheetEnd]}>
+            {categories.map((c) => (
+              <Chip key={c.id} active={category === c.id} onPress={() => onApply({ category: c.id, sort })}>
+                {c.label}
+              </Chip>
+            ))}
+          </View>
+        </>
+      ) : null}
     </BottomSheet>
   );
 }

@@ -1,15 +1,17 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Check, ChevronRight, Store, X } from '@/components/icons';
-import { Card, Tag, Text, type TagTone } from '@/components/ui';
+import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { Check, ChevronRight, RefreshCw, Store, X } from '@/components/icons';
+import { Card, IconButton, Tag, Text, type TagTone } from '@/components/ui';
+import { useToast } from '@/context/ToastContext';
 import { ROUTES } from '@/lib/routes';
 import { formatOrderDate, formatSAR, orderItemCount, orderStatusView } from '@/domain';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
 
-export type StatusView = { id: string; label: string; step: number; cancelled: boolean; ongoing: boolean; tone: TagTone };
+export type StatusView = { id: string; label: string; group: string; step: number; cancelled: boolean; ongoing: boolean; tone: TagTone };
 export type TimelineRow = { id: string; title: string; state: 'done' | 'current' | 'todo' | 'cancelled'; time: string };
 
 /** Status tag: dark while on its way, light with a check when delivered, alert when cancelled. */
@@ -19,6 +21,44 @@ export function StatusTag({ status }: { status: StatusView }) {
     <Tag tone={status.tone} icon={icon} style={styles.statusTag}>
       {status.label}
     </Tag>
+  );
+}
+
+/**
+ * Refresh button for order status (design 2026-11-18 §5.4, same as the web): spins while the server
+ * re-reads RSOF; a failure keeps what is on screen and says why in a toast.
+ */
+export function RefreshButton({ onRefresh, label = 'Refresh status' }: { onRefresh: () => Promise<unknown>; label?: string }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const turn = useSharedValue(0);
+  useEffect(() => {
+    if (busy) {
+      turn.set(withRepeat(withTiming(360, { duration: 800, easing: Easing.linear }), -1));
+    } else {
+      cancelAnimation(turn);
+      turn.set(0);
+    }
+  }, [busy, turn]);
+  const spin = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.get()}deg` }] }));
+
+  const run = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onRefresh();
+    } catch (err) {
+      toast.show((err as Error).message, { tone: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <IconButton label={label} onPress={run}>
+      <Animated.View style={spin}>
+        <RefreshCw size={20} color={colors.maroon} strokeWidth={1.8} />
+      </Animated.View>
+    </IconButton>
   );
 }
 

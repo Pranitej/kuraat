@@ -41,7 +41,7 @@ tokens) and `lib/env.js` (where the API is).
 | 04 | Verify (WhatsApp code) — sign-up, sign-in, reset, phone change, delete account | ✅ | ✅ | Mobile: code autofill from the keyboard |
 | 05 | Set password | ✅ | ✅ | |
 | 06 | Sign in (password / WhatsApp code) | ✅ | ✅ | |
-| 07–08 | Home, search, filter sheet, add to cart | ✅ | ✅ | Web keeps filters in the URL; mobile in the screen. No bell or hearts (removed 18 Nov 2026) |
+| 07–08 | Home, search, filter sheet, add to cart | ✅ | ✅ | Web keeps filters in the URL; mobile in the screen. No bell or hearts (removed 18 Nov 2026). Category pills (and the sheet's Category section) only when every product has a category (`categoryFilter`, 18 Nov 2026) |
 | — | Home "Deliver to" (address sheet; drives nearest branch, checkout address, default) | ✅ | ✅ | Added after the PDF (17 Nov 2026) |
 | 09–10 | Product detail (gallery, details, allergens, delivered-from) | ✅ | ✅ | |
 | 11 | Image zoom, share | ✅ | ✅ | Web: Web Share / copy link · Mobile: native share sheet, pinch to zoom |
@@ -54,8 +54,8 @@ tokens) and `lib/env.js` (where the API is).
 | 18 | Account (name, phone change, email, gender, photo) | ✅ | ✅ | Mobile: photo from the gallery |
 | 18 | Delete account (store requirement) | ✅ | ✅ | Account screen → confirm → WhatsApp code |
 | 19 | Password (set / change / forgot) | ✅ | ✅ | |
-| 20–21 | My orders (tabs, empty state) | ✅ | ✅ | |
-| 22 | Order tracking (live status, cancel, delivery-code resend) | ✅ | ✅ | Both refresh every 30 s while an order is on its way (mobile: while the app is in front, and on return) |
+| 20–21 | My orders (status dropdown, refresh button, empty states) | ✅ | ✅ | Dropdown groups from the server's status table (`ORDER_FILTERS`). Web: native select · Mobile: `SelectField variant="chip"` + bottom sheet (18 Nov 2026) |
+| 22 | Order tracking (live status, refresh button, cancel, delivery-code resend) | ✅ | ✅ | Both refresh every 30 s while an order is on its way (mobile: while the app is in front, and on return); the refresh button re-reads RSOF now (`?refresh=true`, at most once per 10 s). Phones show the status tag above the timeline |
 | 23 | Saved addresses | ✅ | ✅ | |
 | 24 | Add / edit address | ✅ | ✅ | |
 | 25 | Our branches (search, cities, map, call, directions) | ✅ | ✅ | |

@@ -57,13 +57,48 @@ const DELIVERED = {
 beforeEach(() => resetRouterMock());
 
 describe('20/21 · My orders', () => {
-  test('the Ongoing chip shows only orders on their way', async () => {
+  test('the status dropdown filters orders', async () => {
     await renderScreen(<OrdersScreen />, { server: (c) => (c.path === '/orders' ? { body: [ONGOING, DELIVERED] } : undefined) });
     expect(await screen.findByText('#KR-20418')).toBeTruthy();
     expect(screen.getByText('#KR-20377')).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Ongoing' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Show: All orders' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Completed' }));
+    expect(screen.getByText('#KR-20377')).toBeTruthy();
+    expect(screen.queryByText('#KR-20418')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Show: Completed' })).toBeTruthy();
+  });
+
+  test('a status group with no orders says so and offers all orders', async () => {
+    await renderScreen(<OrdersScreen />, { server: (c) => (c.path === '/orders' ? { body: [DELIVERED] } : undefined) });
+    await screen.findByText('#KR-20377');
+    await fireEvent.press(screen.getByRole('button', { name: 'Show: All orders' }));
+    await fireEvent.press(screen.getByRole('radio', { name: 'Cancelled' }));
+    expect(screen.getByText('No orders here')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Show all orders' }));
+    expect(screen.getByText('#KR-20377')).toBeTruthy();
+  });
+
+  test('refresh asks the server for fresh status', async () => {
+    const { calls } = await renderScreen(<OrdersScreen />, {
+      server: (c) => (c.path.startsWith('/orders') ? { body: [ONGOING, DELIVERED] } : undefined),
+    });
+    await screen.findByText('#KR-20418');
+    await fireEvent.press(screen.getByRole('button', { name: 'Refresh orders' }));
+    await waitFor(() => expect(calls.some((c) => c.path === '/orders?refresh=true')).toBe(true));
+  });
+
+  test('a failed refresh keeps the list and shows a toast', async () => {
+    await renderScreen(<OrdersScreen />, {
+      server: (c) => {
+        if (c.path === '/orders?refresh=true') return { status: 503, body: { code: 'rof_unavailable', message: "We can't reach the store right now." } };
+        if (c.path === '/orders') return { body: [ONGOING] };
+        return undefined;
+      },
+    });
+    await screen.findByText('#KR-20418');
+    await fireEvent.press(screen.getByRole('button', { name: 'Refresh orders' }));
+    expect(await screen.findByText("We can't reach the store right now.")).toBeTruthy();
     expect(screen.getByText('#KR-20418')).toBeTruthy();
-    expect(screen.queryByText('#KR-20377')).toBeNull();
   });
 
   test('no orders yet: the empty state', async () => {
@@ -73,6 +108,15 @@ describe('20/21 · My orders', () => {
 });
 
 describe('22 · Order tracking', () => {
+  test('the refresh button asks the server for fresh status', async () => {
+    setMockParams({ orderId: 'o1' });
+    const { calls } = await renderScreen(<OrderDetailScreen />, {
+      server: (c) => (c.path.startsWith('/orders/o1') ? { body: ONGOING } : undefined),
+    });
+    await fireEvent.press(await screen.findByRole('button', { name: 'Refresh status' }));
+    await waitFor(() => expect(calls.some((c) => c.path === '/orders/o1?refresh=true')).toBe(true));
+  });
+
   test('cancel after confirming: the status becomes Cancelled', async () => {
     setMockParams({ orderId: 'o1' });
     await renderScreen(<OrderDetailScreen />, {

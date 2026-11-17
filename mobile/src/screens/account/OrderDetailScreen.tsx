@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
-import { OrderTimeline, StatusTag, branchLabel, type StatusView, type TimelineRow } from '@/components/account/OrderParts';
+import { OrderTimeline, RefreshButton, StatusTag, branchLabel, type StatusView, type TimelineRow } from '@/components/account/OrderParts';
 import { Screen, ScreenHeader } from '@/components/layout';
 import { Navigation, PackageSearch, PackageX, Phone, Store } from '@/components/icons';
 import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Text, WhatsAppIcon } from '@/components/ui';
@@ -114,7 +114,9 @@ export default function OrderDetailScreen() {
 
   return (
     <Screen
-      header={<ScreenHeader title={`Order #${order.number}`} backFallback={ROUTES.orders} right={<StatusTag status={status} />} />}
+      header={
+        <ScreenHeader title={`Order #${order.number}`} backFallback={ROUTES.orders} right={<RefreshButton onRefresh={() => refresh({ force: true })} />} />
+      }
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -129,6 +131,10 @@ export default function OrderDetailScreen() {
       }
     >
       <View style={styles.stack}>
+        {/* The tag sits here, not in the header, so the order number keeps its room (same as the web on phones). */}
+        <View style={styles.statusRow}>
+          <StatusTag status={status} />
+        </View>
         <Card style={styles.pad}>
           <OrderTimeline steps={steps} />
           {status.id === 'out_for_delivery' ? <DeliveryCodeNote order={order} onResend={resendCode} /> : null}
@@ -248,6 +254,7 @@ export default function OrderDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  statusRow: { flexDirection: 'row' },
   flex: { flex: 1, minWidth: 0 },
   stack: { gap: 12 },
   pad: { padding: 16 },

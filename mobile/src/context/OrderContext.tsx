@@ -26,7 +26,7 @@ export type OrderValue = {
   loading: boolean;
   loaded: boolean;
   error: unknown;
-  refresh: () => Promise<void>;
+  refresh: (options?: { force?: boolean }) => Promise<void>;
   placeOrder: (input: PlaceOrderInput) => Promise<Order>;
   upsert: (order: Order) => void;
   now: Date;
@@ -51,20 +51,25 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   const upsert = useCallback((order: Order) => setById((m) => ({ ...m, [order.id]: order })), []);
 
-  const refresh = useCallback(async () => {
-    if (!userId) return;
-    setLoading(true);
-    try {
-      const list: Order[] = await api.listOrders();
-      setById((m) => ({ ...m, ...Object.fromEntries(list.map((o) => [o.id, o])) }));
-      setError(null);
-    } catch (e) {
-      setError(e);
-    } finally {
-      setLoading(false);
-      setLoaded(true);
-    }
-  }, [userId]);
+  /** force: the refresh button — fresh from RSOF, and a failure is thrown for the button's toast. */
+  const refresh = useCallback(
+    async ({ force = false }: { force?: boolean } = {}) => {
+      if (!userId) return;
+      setLoading(true);
+      try {
+        const list: Order[] = await api.listOrders({ refresh: force });
+        setById((m) => ({ ...m, ...Object.fromEntries(list.map((o) => [o.id, o])) }));
+        setError(null);
+      } catch (e) {
+        setError(e);
+        if (force) throw e;
+      } finally {
+        setLoading(false);
+        setLoaded(true);
+      }
+    },
+    [userId],
+  );
 
   useEffect(() => {
     setById({});
@@ -118,14 +123,18 @@ export function useOrder(id: string) {
   const order = getById(id);
   const [state, setState] = useState<{ loading: boolean; error: unknown }>({ loading: true, error: null });
 
-  const refresh = useCallback(async () => {
-    try {
-      upsert(await api.getOrder(id));
-      setState({ loading: false, error: null });
-    } catch (error) {
-      setState({ loading: false, error });
-    }
-  }, [id, upsert]);
+  const refresh = useCallback(
+    async ({ force = false }: { force?: boolean } = {}) => {
+      try {
+        upsert(await api.getOrder(id, { refresh: force }));
+        setState({ loading: false, error: null });
+      } catch (error) {
+        setState({ loading: false, error });
+        if (force) throw error;
+      }
+    },
+    [id, upsert],
+  );
 
   useEffect(() => {
     setState({ loading: true, error: null });

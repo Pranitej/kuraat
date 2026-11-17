@@ -3,42 +3,35 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { OrderCard } from '@/components/account/OrderParts';
+import { OrderCard, RefreshButton } from '@/components/account/OrderParts';
 import { Screen, ScreenHeader, useScreenScrollY } from '@/components/layout';
 import { Package } from '@/components/icons';
-import { Chip, EmptyState, Skeleton } from '@/components/ui';
+import { EmptyState, SelectField, Skeleton } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useOrders } from '@/context/OrderContext';
-import { orderStatusView } from '@/domain';
+import { ORDER_FILTERS, filterOrders } from '@/domain';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
 
-type Filter = 'all' | 'ongoing' | 'delivered';
-const FILTERS: { id: Filter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'ongoing', label: 'Ongoing' },
-  { id: 'delivered', label: 'Delivered' },
-];
+type Filter = string;
+const FILTER_OPTIONS = (ORDER_FILTERS as { id: string; label: string }[]).map((f) => ({ value: f.id, label: f.label }));
 
 /** 20 · My orders  ·  21 · My orders (empty) */
 export default function OrdersScreen() {
   const router = useRouter();
-  const { orders, now, loaded } = useOrders();
+  const { orders, now, loaded, refresh } = useOrders();
   const [filter, setFilter] = useState<Filter>('all');
 
-  // Ongoing = not delivered and not cancelled; Delivered = delivered (cancelled orders: All only).
-  const list = useMemo(
-    () =>
-      orders.filter((o) => {
-        const s = orderStatusView(o) as { ongoing: boolean; step: number; cancelled: boolean };
-        if (filter === 'ongoing') return s.ongoing;
-        if (filter === 'delivered') return s.step === 3 && !s.cancelled;
-        return true;
-      }),
-    [orders, filter],
-  );
+  // The dropdown's groups come from the server's status table (design 2026-11-18 §5.4).
+  const list = useMemo(() => filterOrders(orders, filter) as Order[], [orders, filter]);
 
-  const header = <ScreenHeader title="My orders" backFallback={ROUTES.profile} />;
+  const header = (
+    <ScreenHeader
+      title="My orders"
+      backFallback={ROUTES.profile}
+      right={orders.length ? <RefreshButton label="Refresh orders" onRefresh={() => refresh({ force: true })} /> : null}
+    />
+  );
 
   if (!orders.length && loaded) {
     return (
@@ -83,7 +76,6 @@ function OrderList({
   now: Date;
   anyOrders: boolean;
 }) {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const scrollY = useScreenScrollY();
   const { refresh } = useOrders();
@@ -109,13 +101,7 @@ function OrderList({
         />
       }
       ListHeaderComponent={
-        <View style={styles.chips}>
-          {FILTERS.map((f) => (
-            <Chip key={f.id} active={filter === f.id} onPress={() => setFilter(f.id)}>
-              {f.label}
-            </Chip>
-          ))}
-        </View>
+        <SelectField variant="chip" label="Show" sheetTitle="Show orders" value={filter} options={FILTER_OPTIONS} onChange={setFilter} style={styles.filter} />
       }
       ItemSeparatorComponent={() => <View style={styles.gap} />}
       renderItem={({ item }) => <OrderCard order={item} now={now} />}
@@ -130,14 +116,10 @@ function OrderList({
           <EmptyState
             compact
             icon={Package}
-            title={filter === 'ongoing' ? 'No orders on the way' : 'No delivered orders yet'}
-            message={
-              filter === 'ongoing'
-                ? 'Orders you place will show here until they are delivered.'
-                : 'Delivered orders will show here with the branch they came from.'
-            }
-            actionLabel="Start shopping"
-            onAction={() => router.replace(ROUTES.home)}
+            title="No orders here"
+            message="Orders with this status will show here."
+            actionLabel="Show all orders"
+            onAction={() => setFilter('all')}
           />
         ) : null
       }
@@ -147,7 +129,7 @@ function OrderList({
 
 const styles = StyleSheet.create({
   emptyTop: { paddingTop: 32 },
-  chips: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  filter: { marginBottom: 16 },
   gap: { height: 12 },
   skeletons: { gap: 12 },
   skeleton: { height: 220, borderRadius: radii.xl },

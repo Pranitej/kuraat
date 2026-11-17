@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { renderScreen } from '@/test/renderScreen';
+import { PRODUCTS, renderScreen } from '@/test/renderScreen';
 import { mockRouter, resetRouterMock } from '@/test/routerMock';
 import HomeScreen from '../HomeScreen';
 
@@ -8,6 +8,20 @@ jest.mock('expo-router', () => require('@/test/routerMock').expoRouterMock);
 beforeEach(() => resetRouterMock());
 
 describe('07 · Home', () => {
+  test('no category pills (and no Category in the filter sheet) when a product has no category', async () => {
+    const products = [PRODUCTS[0], { ...PRODUCTS[0], id: 'p-no-cat', name: 'Praline Box', categoryName: null }];
+    await renderScreen(<HomeScreen />, { server: (c) => (c.path === '/products' ? { body: products } : undefined) });
+    expect(await screen.findByText('Praline Box')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'All' })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Sort and filter' }));
+    expect(screen.queryByText('Category')).toBeNull();
+  });
+
+  test('category pills when every product has one', async () => {
+    await renderScreen(<HomeScreen />);
+    expect(await screen.findByRole('button', { name: 'All' })).toBeTruthy();
+  });
+
   test('shows the catalogue; search narrows it and an unknown name shows the empty state', async () => {
     await renderScreen(<HomeScreen />);
     expect(await screen.findByText('Truffle Box · Classic')).toBeTruthy();

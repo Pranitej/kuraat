@@ -1,11 +1,17 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import * as Location from 'expo-location';
+import { session } from '@/lib/storage.js';
 import { PRODUCTS, renderScreen } from '@/test/renderScreen';
 import { mockRouter, resetRouterMock } from '@/test/routerMock';
 import HomeScreen from '../HomeScreen';
 
 jest.mock('expo-router', () => require('@/test/routerMock').expoRouterMock);
 
-beforeEach(() => resetRouterMock());
+beforeEach(() => {
+  resetRouterMock();
+  session.clearAll();
+  jest.clearAllMocks();
+});
 
 describe('07 · Home', () => {
   test('no category pills (and no Category in the filter sheet) when a product has no category', async () => {
@@ -58,5 +64,27 @@ describe('07/08 · Home footer', () => {
     await screen.findByText('Contact us');
     const scroll = screen.getByTestId('screen-scroll');
     expect(StyleSheet.flatten(scroll.props.contentContainerStyle).paddingBottom).toBe(0);
+  });
+});
+
+describe('07 · Home — location once per session (design 2026-11-18 §5.6)', () => {
+  const locationPuts = (calls: { path: string; method: string }[]) => calls.filter((c) => c.path === '/me/location' && c.method === 'PUT');
+
+  test('saves the device location once; Home again in the same session sends nothing', async () => {
+    const first = await renderScreen(<HomeScreen />);
+    await waitFor(() => expect(locationPuts(first.calls)).toHaveLength(1));
+    expect(first.calls.find((c) => c.path === '/me/location')?.body).toEqual({ lat: 26.2874, lng: 50.2085 });
+    const second = await renderScreen(<HomeScreen />);
+    expect(await screen.findAllByText('Truffle Box · Classic')).toBeTruthy();
+    expect(locationPuts(second.calls)).toHaveLength(0);
+  });
+
+  test('permission refused: nothing sent, no position asked, Home shows as usual', async () => {
+    jest.mocked(Location.requestForegroundPermissionsAsync).mockResolvedValueOnce({ status: 'denied', granted: false, canAskAgain: false } as never);
+    const { calls } = await renderScreen(<HomeScreen />);
+    expect(await screen.findByText('Truffle Box · Classic')).toBeTruthy();
+    await waitFor(() => expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1));
+    expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
+    expect(locationPuts(calls)).toHaveLength(0);
   });
 });

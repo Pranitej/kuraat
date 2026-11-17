@@ -86,6 +86,7 @@ export function fakeServer(extra: (c: FetchCall) => Reply = () => undefined) {
     if (c.path === '/addresses') return { body: [] };
     if (c.path === '/orders' && c.method === 'GET') return { body: [] };
     if (c.path === '/auth/signout') return { status: 204 };
+    if (c.path === '/me/location') return { status: 204 };
     return { status: 404, body: { code: 'not_found', message: 'We could not find that.' } };
   });
 }

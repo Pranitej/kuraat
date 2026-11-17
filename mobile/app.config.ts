@@ -69,6 +69,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-image-picker',
       { photosPermission: 'kuraat uses your photos to set your profile picture.', cameraPermission: false, microphonePermission: false },
     ],
+    // Foreground only (no background tracking): the nearest branch, once per session.
+    ['expo-location', { locationWhenInUsePermission: 'kuraat uses your location to find the branch nearest to you.', isIosBackgroundLocationEnabled: false, isAndroidBackgroundLocationEnabled: false }],
     ['expo-localization', { supportsRTL: false }],
     ['expo-build-properties', { android: { usesCleartextTraffic: VARIANT === 'development' } }],
   ],

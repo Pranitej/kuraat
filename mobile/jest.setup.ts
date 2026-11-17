@@ -12,3 +12,10 @@ setUpTests();
 // Keyboard-aware scroll views: the library's own Jest mock (plain ScrollView).
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock factories cannot use imports
 jest.mock('react-native-keyboard-controller', () => require('react-native-keyboard-controller/jest'));
+
+// Device location (expo-location): permission granted at Al Rakah by default; tests override per case.
+jest.mock('expo-location', () => ({
+  Accuracy: { Balanced: 3 },
+  requestForegroundPermissionsAsync: jest.fn(async () => ({ status: 'granted', granted: true, canAskAgain: true })),
+  getCurrentPositionAsync: jest.fn(async () => ({ coords: { latitude: 26.2874, longitude: 50.2085 }, timestamp: 0 })),
+}));

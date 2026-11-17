@@ -178,9 +178,18 @@ describe('placing an order', () => {
     await api('put', '/cart', pdfCart);
     const res = await place({ payment: { method: 'cod' } });
     expect(res.status).toBe(201);
-    expect(res.body.payment).toEqual({ method: 'cod', brand: null, last4: null, upiId: null, transactionId: null, paidAt: null });
+    expect(res.body.payment).toEqual({ method: 'cod', brand: null, last4: null, transactionId: null, paidAt: null });
     expect(await payment()).toMatchObject({ status: 'captured', transaction_id: null });
     expect(await t.db('notifications').where({ type: 'payment' })).toHaveLength(0);
+  });
+
+  test('UPI is not offered in Saudi Arabia → 400 invalid; nothing charged, no ROF order', async () => {
+    await api('put', '/cart', pdfCart);
+    const res = await place({ payment: { method: 'upi', upiId: 'sara@okaxis' } });
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ code: 'invalid', field: 'payment.method', message: 'Choose card or cash on delivery.' });
+    expect(await payment()).toBeUndefined();
+    expect(rofOrders()).toHaveLength(0);
   });
 
   test('saveCard remembers brand and last 4 only', async () => {

@@ -6,15 +6,19 @@ import { validate } from '../../http/validate.js';
 import { phoneSchema } from '../auth/phone.js';
 import { placeOrder } from './place.js';
 
-const paymentSchema = z.discriminatedUnion('method', [
-  z.object({
-    method: z.literal('card'),
-    card: z.object({ number: z.string().max(30), expiry: z.string().max(10), cvv: z.string().max(4) }),
-    saveCard: z.boolean().optional(),
-  }),
-  z.object({ method: z.literal('upi'), upiId: z.string().max(120) }),
-  z.object({ method: z.literal('cod') }),
-]);
+/** Saudi Arabia: card (incl. Mada) or cash on delivery. UPI is India-only and is not offered. */
+const paymentSchema = z.discriminatedUnion(
+  'method',
+  [
+    z.object({
+      method: z.literal('card'),
+      card: z.object({ number: z.string().max(30), expiry: z.string().max(10), cvv: z.string().max(4) }),
+      saveCard: z.boolean().optional(),
+    }),
+    z.object({ method: z.literal('cod') }),
+  ],
+  { error: (issue) => (issue.code === 'invalid_union' ? 'Choose card or cash on delivery.' : undefined) },
+);
 
 const placeSchema = z.object({
   addressId: z.string().min(1),

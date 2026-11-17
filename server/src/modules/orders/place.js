@@ -26,7 +26,7 @@ import { authorizePayment } from '../payments/simulator.js';
 const UNCONFIRMED = "We couldn't confirm your order with the store. Please contact us before trying again — you won't be charged twice.";
 
 const sar = (n) => `SAR ${Number(n).toFixed(2)}`;
-const paymentLabel = (p) => (p.method === 'card' ? `${p.brand} •••• ${p.last4}` : p.method === 'upi' ? `UPI · ${p.upi_id}` : 'cash on delivery');
+const paymentLabel = (p) => (p.method === 'card' ? `${p.brand} •••• ${p.last4}` : 'cash on delivery');
 
 /** First problem in a priced cart, as a customer-facing message (null when the cart is fine). */
 function cartProblem(priced) {
@@ -78,7 +78,7 @@ async function upsertPayment(ctx, userId, key, fields) {
 const setPayment = (ctx, id, fields) => ctx.db('payments').where({ id }).update({ ...fields, updated_at: ctx.clock.now() });
 
 /**
- * @param {{ addressId, deliveryPhone, promoCode?, payment: { method, card?, upiId?, saveCard? }, idempotencyKey }} input
+ * @param {{ addressId, deliveryPhone, promoCode?, payment: { method: 'card'|'cod', card?, saveCard? }, idempotencyKey }} input
  * @returns {Promise<{ order: object, created: boolean }>}
  */
 export async function placeOrder(ctx, userId, input) {
@@ -129,7 +129,6 @@ export async function placeOrder(ctx, userId, input) {
     amount,
     brand: paid.brand,
     last4: paid.last4,
-    upi_id: paid.upiId,
     transaction_id: paid.transactionId,
   });
 
@@ -225,7 +224,7 @@ export async function placeOrder(ctx, userId, input) {
     const number = `KR-${created.orderNumber}`;
     const link = { kind: 'order', id: orderId };
     if (paid.method !== 'cod') {
-      await notify(trx, userId, { type: 'payment', title: 'Payment received', body: `${sar(amount)} paid with ${paymentLabel({ ...paid, upi_id: paid.upiId })}.`, link }, doneAt);
+      await notify(trx, userId, { type: 'payment', title: 'Payment received', body: `${sar(amount)} paid with ${paymentLabel(paid)}.`, link }, doneAt);
     }
     await notify(trx, userId, { type: 'order', title: `Order #${number} confirmed`, body: `It will be delivered from ${chosen.branch.name}.`, link }, new Date(doneAt.getTime() + 1));
     if (paid.method === 'card' && input.payment.saveCard) await saveCard(trx, userId, { brand: paid.brand, last4: paid.last4, expiry: paid.expiry }, doneAt);

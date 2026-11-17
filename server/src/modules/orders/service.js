@@ -17,7 +17,8 @@ const sar = (n) => `SAR ${Number(n).toFixed(2)}`;
 
 function cancellationBody(payment) {
   if (!payment || payment.method === 'cod') return 'Your order was cancelled.';
-  const via = payment.method === 'card' ? `${payment.brand} •••• ${payment.last4}` : `UPI · ${payment.upi_id}`;
+  // Cards only today; "your original payment method" covers payments made before UPI was removed.
+  const via = payment.method === 'card' ? `${payment.brand} •••• ${payment.last4}` : 'your original payment method';
   return `Your order was cancelled. ${sar(payment.amount)} will be refunded to ${via}.`;
 }
 

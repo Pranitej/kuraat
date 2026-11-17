@@ -103,10 +103,3 @@ export function validateCvv(value) {
   if (d.length < 3 || d.length > 4) return '3 or 4 digits';
   return '';
 }
-
-export function validateUpi(value) {
-  const v = (value || '').trim();
-  if (!v) return 'Enter your UPI ID';
-  if (!/^[\w.-]{2,}@[a-zA-Z]{2,}$/.test(v)) return 'Use the format name@bank';
-  return '';
-}

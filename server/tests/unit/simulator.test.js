@@ -7,7 +7,7 @@ const card = (overrides = {}) => ({ number: '4242 4242 4242 4242', expiry: '12/2
 describe('payment simulator (no real money — UAT default)', () => {
   test('a valid card is authorised with brand, last 4 and a transaction id', () => {
     const result = authorizePayment({ method: 'card', card: card(), amount: 328 }, { now });
-    expect(result).toEqual({ method: 'card', brand: 'Visa', last4: '4242', expiry: '12/29', upiId: null, transactionId: expect.stringMatching(/^TXN-[0-9A-F]{8}$/) });
+    expect(result).toEqual({ method: 'card', brand: 'Visa', last4: '4242', expiry: '12/29', transactionId: expect.stringMatching(/^TXN-[0-9A-F]{8}$/) });
     expect(JSON.stringify(result)).not.toContain('4242424242424242');
   });
 
@@ -33,10 +33,14 @@ describe('payment simulator (no real money — UAT default)', () => {
     expect(authorizePayment({ method: 'card', card: card({ expiry: '11/26' }), amount: 10 }, { now }).last4).toBe('4242');
   });
 
-  test('UPI needs name@bank; cash on delivery has no transaction', () => {
-    expect(authorizePayment({ method: 'upi', upiId: ' sara@okaxis ', amount: 10 }, { now })).toMatchObject({ method: 'upi', upiId: 'sara@okaxis' });
-    expect(() => authorizePayment({ method: 'upi', upiId: 'sara', amount: 10 }, { now })).toThrow(expect.objectContaining({ field: 'upiId' }));
-    expect(authorizePayment({ method: 'cod', amount: 10 }, { now })).toEqual({ method: 'cod', brand: null, last4: null, expiry: null, upiId: null, transactionId: null });
+  test('cash on delivery has no transaction', () => {
+    expect(authorizePayment({ method: 'cod', amount: 10 }, { now })).toEqual({ method: 'cod', brand: null, last4: null, expiry: null, transactionId: null });
+  });
+
+  test.each(['upi', 'paypal', undefined])('method %s is not offered in Saudi Arabia → 400 invalid, never cash on delivery', (method) => {
+    expect(() => authorizePayment({ method, upiId: 'sara@okaxis', amount: 10 }, { now })).toThrow(
+      expect.objectContaining({ status: 400, code: 'invalid', field: 'payment.method' }),
+    );
   });
 
   test('card brands', () => {

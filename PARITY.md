@@ -46,7 +46,7 @@ tokens) and `lib/env.js` (where the API is).
 | 11 | Image zoom, share | ✅ | ✅ | Web: Web Share / copy link · Mobile: native share sheet, pinch to zoom |
 | 12 | Cart (stepper, undo, promo, warnings) | ✅ | ✅ | |
 | 13 | Delivery details (address, phone, delivering branch) | ✅ | ✅ | |
-| 14 | Payment (card, UPI, cash) | ✅ | ✅ | Simulated payments until the real gateway |
+| 14 | Payment (card, cash on delivery; no UPI) | ✅ | ✅ | Simulated payments until the real gateway |
 | 15 | Payment successful | ✅ | ✅ | |
 | 16 | Order confirmed + branch popup | ✅ | ✅ | |
 | 17 | Profile, log out | ✅ | ✅ | |

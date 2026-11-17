@@ -50,7 +50,7 @@ const ORDER = {
   vat: 26.09,
   total: 200,
   promoCode: null,
-  payment: { method: 'card', brand: 'Visa', last4: '4242', upiId: null, transactionId: 'TX-1', paidAt: '2026-11-16T09:21:00.000Z' },
+  payment: { method: 'card', brand: 'Visa', last4: '4242', transactionId: 'TX-1', paidAt: '2026-11-16T09:21:00.000Z' },
   branch: { id: 'b1', name: 'Al Khobar Corniche', address: 'Corniche Rd' },
   distanceKm: 2.4,
   address: ADDRESS,
@@ -164,6 +164,19 @@ describe('14 · Payment', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Place order · SAR 200.00' }));
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/checkout/success/o1'));
     expect(calls.find((c) => c.path === '/orders' && c.method === 'POST')?.body).toMatchObject({ payment: { method: 'cod' } });
+  });
+
+  test('Saudi Arabia: only card and cash on delivery; an old draft that chose UPI starts on card', async () => {
+    session.write('checkout', { addressId: 'a1', deliveryPhone: '501234821', paymentMethod: 'upi', idempotencyKey: null, lastOrderId: null });
+    await renderScreen(<PaymentScreen />, { server: shop(() => ({ status: 201, body: ORDER })) });
+    await screen.findByText('Payment method');
+    expect(screen.getAllByRole('radio').map((r) => r.props.accessibilityLabel)).toEqual([
+      'Credit / debit card, Visa, Mastercard, Mada',
+      'Cash on delivery, Pay when your order arrives',
+    ]);
+    expect(screen.queryByText(/UPI/)).toBeNull();
+    expect(screen.getByRole('radio', { name: /Credit \/ debit card/ }).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByLabelText('Card number')).toBeTruthy();
   });
 });
 

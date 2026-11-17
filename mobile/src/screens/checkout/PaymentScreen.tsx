@@ -21,23 +21,25 @@ import {
   validateCardNumber,
   validateCvv,
   validateExpiry,
-  validateUpi,
 } from '@/domain';
 import { useDeliveryQuote } from '@/hooks/quote';
 import { success as successHaptic } from '@/lib/haptics';
-import { toPaymentBody } from '@/services/orderService.js';
+import { PAYMENT_METHODS, toPaymentBody } from '@/services/orderService.js';
 import { colors, radii } from '@/theme/theme';
 import type { PaymentMethod } from '@/types/api';
 
-const METHODS: { id: PaymentMethod; title: string; subtitle: string; icon?: LucideIcon; text?: string }[] = [
+// Saudi Arabia: card (incl. Mada) and cash on delivery. UPI (shown in the PDF) was removed — it is India-only.
+const METHODS: { id: PaymentMethod; title: string; subtitle: string; icon: LucideIcon }[] = [
   { id: 'card', title: 'Credit / debit card', subtitle: 'Visa, Mastercard, Mada', icon: CreditCard },
-  { id: 'upi', title: 'UPI', subtitle: 'Pay with any UPI app', text: 'UPI' },
   { id: 'cod', title: 'Cash on delivery', subtitle: 'Pay when your order arrives', icon: Banknote },
 ];
 
 /** Server field names → this form's error slots. */
-const FIELD_ERRORS: Record<string, keyof Errors> = { 'card.number': 'number', 'card.expiry': 'expiry', 'card.cvv': 'cvv', upiId: 'upi' };
-type Errors = Partial<Record<'number' | 'expiry' | 'cvv' | 'upi' | 'form', string>>;
+const FIELD_ERRORS: Record<string, keyof Errors> = { 'card.number': 'number', 'card.expiry': 'expiry', 'card.cvv': 'cvv' };
+type Errors = Partial<Record<'number' | 'expiry' | 'cvv' | 'form', string>>;
+
+/** The method remembered in the checkout draft, if it is still offered. */
+const offered = (method: string | undefined): PaymentMethod => (PAYMENT_METHODS.includes(method as PaymentMethod) ? (method as PaymentMethod) : 'card');
 
 /** 14 · Payment */
 export default function PaymentScreen() {
@@ -57,10 +59,9 @@ export default function PaymentScreen() {
     ensureIdempotencyKey();
   }, [ensureIdempotencyKey]);
 
-  const [method, setMethod] = useState<PaymentMethod>(checkout.paymentMethod || 'card');
+  const [method, setMethod] = useState<PaymentMethod>(() => offered(checkout.paymentMethod));
   const [card, setCard] = useState({ number: '', expiry: '', cvv: '' });
   const [save, setSave] = useState(true);
-  const [upiId, setUpiId] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [processing, setProcessing] = useState(false);
   // Blocks a second tap before the first one has re-rendered the button (review focus 2).
@@ -82,7 +83,6 @@ export default function PaymentScreen() {
     let errs: Errors = {};
     if (method === 'card')
       errs = { number: validateCardNumber(card.number), expiry: validateExpiry(card.expiry), cvv: validateCvv(card.cvv) };
-    if (method === 'upi') errs = { upi: validateUpi(upiId) };
     setErrors(errs);
     return !Object.values(errs).some(Boolean);
   };
@@ -97,7 +97,7 @@ export default function PaymentScreen() {
       const order = await placeOrder({
         addressId: address.id,
         deliveryPhone: checkout.deliveryPhone || address.phone,
-        payment: toPaymentBody(method, { card, upiId, saveCard: save }),
+        payment: toPaymentBody(method, { card, saveCard: save }),
         idempotencyKey: ensureIdempotencyKey(),
       });
       successHaptic();
@@ -163,13 +163,7 @@ export default function PaymentScreen() {
               >
                 <RadioDot checked={checked} />
                 <View style={styles.methodIcon}>
-                  {m.icon ? (
-                    <m.icon size={21} color={colors.maroon} strokeWidth={1.8} />
-                  ) : (
-                    <Text weight={700} color="maroon" style={styles.upi}>
-                      {m.text}
-                    </Text>
-                  )}
+                  <m.icon size={21} color={colors.maroon} strokeWidth={1.8} />
                 </View>
                 <View style={styles.flex}>
                   <Text weight={700} style={styles.methodTitle}>
@@ -231,24 +225,6 @@ export default function PaymentScreen() {
                 </Animated.View>
               ) : null}
 
-              {checked && m.id === 'upi' ? (
-                <Animated.View entering={FadeIn.duration(180)} style={styles.methodBody}>
-                  <Field
-                    label="UPI ID"
-                    placeholder="name@bank"
-                    autoComplete="off"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    keyboardType="email-address"
-                    value={upiId}
-                    disabled={processing}
-                    onChangeText={setUpiId}
-                    error={errors.upi}
-                    helper="You will approve the payment in your UPI app."
-                  />
-                </Animated.View>
-              ) : null}
-
               {checked && m.id === 'cod' ? (
                 <Animated.View entering={FadeIn.duration(180)} style={styles.methodBody}>
                   <Text variant="small" color="muted">
@@ -295,7 +271,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  upi: { fontSize: 13 },
   methodTitle: { fontSize: 16, lineHeight: 22 },
   methodBody: { paddingHorizontal: 16, paddingBottom: 16 },
   cardRow: { marginTop: 16, flexDirection: 'row', gap: 12 },

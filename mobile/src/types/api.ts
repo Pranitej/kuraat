@@ -140,10 +140,9 @@ export type Order = {
   total: number;
   promoCode: string | null;
   payment: {
-    method: 'card' | 'upi' | 'cod';
+    method: PaymentMethod;
     brand: string | null;
     last4: string | null;
-    upiId: string | null;
     transactionId: string | null;
     paidAt: string | null;
   } | null;
@@ -170,7 +169,8 @@ export type AppNotification = {
   createdAt: string;
 };
 
-export type PaymentMethod = 'card' | 'upi' | 'cod';
+/** Saudi Arabia: card (incl. Mada) or cash on delivery. */
+export type PaymentMethod = 'card' | 'cod';
 
 /** Server error as the shared ApiError carries it. */
 export type ApiErrorLike = Error & { code: string; field: string | null; status: number };

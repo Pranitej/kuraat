@@ -12,20 +12,23 @@ import { useCheckout } from '@/context/CheckoutContext.jsx';
 import { useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
 import { useDeliveryQuote } from '@/hooks/useDeliveryQuote.js';
-import { toPaymentBody } from '@/services/orderService.js';
-import { formatCardNumber, formatExpiry, formatSAR, onlyDigits, validateCardNumber, validateCvv, validateExpiry, validateUpi } from '@/domain';
+import { PAYMENT_METHODS, toPaymentBody } from '@/services/orderService.js';
+import { formatCardNumber, formatExpiry, formatSAR, onlyDigits, validateCardNumber, validateCvv, validateExpiry } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
 import { cn } from '@/lib/cn.js';
 
+// Saudi Arabia: card (incl. Mada) and cash on delivery. UPI (shown in the PDF) was removed — it is India-only.
 const METHODS = [
   { id: 'card', title: 'Credit / debit card', subtitle: 'Visa, Mastercard, Mada', icon: CreditCard },
-  { id: 'upi', title: 'UPI', subtitle: 'Pay with any UPI app', text: 'UPI' },
   { id: 'cod', title: 'Cash on delivery', subtitle: 'Pay when your order arrives', icon: Banknote },
 ];
 
 /** Server field names → this form's error slots. */
-const FIELD_ERRORS = { 'card.number': 'number', 'card.expiry': 'expiry', 'card.cvv': 'cvv', upiId: 'upi' };
+const FIELD_ERRORS = { 'card.number': 'number', 'card.expiry': 'expiry', 'card.cvv': 'cvv' };
+
+/** The method remembered in the checkout draft, if it is still offered (a draft may say "upi"). */
+const offered = (method) => (PAYMENT_METHODS.includes(method) ? method : 'card');
 
 /** 14 · Payment */
 export default function PaymentPage() {
@@ -46,10 +49,9 @@ export default function PaymentPage() {
     ensureIdempotencyKey();
   }, [ensureIdempotencyKey]);
 
-  const [method, setMethod] = useState(checkout.paymentMethod || 'card');
+  const [method, setMethod] = useState(() => offered(checkout.paymentMethod));
   const [card, setCard] = useState({ number: '', expiry: '', cvv: '' });
   const [save, setSave] = useState(true);
-  const [upiId, setUpiId] = useState('');
   const [errors, setErrors] = useState({});
   const [processing, setProcessing] = useState(false);
 
@@ -68,7 +70,6 @@ export default function PaymentPage() {
   const validate = () => {
     let errs = {};
     if (method === 'card') errs = { number: validateCardNumber(card.number), expiry: validateExpiry(card.expiry), cvv: validateCvv(card.cvv) };
-    if (method === 'upi') errs = { upi: validateUpi(upiId) };
     setErrors(errs);
     return !Object.values(errs).some(Boolean);
   };
@@ -82,7 +83,7 @@ export default function PaymentPage() {
       const order = await placeOrder({
         addressId: address.id,
         deliveryPhone: checkout.deliveryPhone || address.phone,
-        payment: toPaymentBody(method, { card, upiId, saveCard: save }),
+        payment: toPaymentBody(method, { card, saveCard: save }),
         idempotencyKey: ensureIdempotencyKey(),
       });
       cart.reload(); // the server emptied it
@@ -138,7 +139,7 @@ export default function PaymentPage() {
               >
                 <RadioDot checked={checked} />
                 <span className="grid size-[42px] shrink-0 place-items-center rounded-sm bg-sand text-maroon" aria-hidden>
-                  {m.icon ? <m.icon size={21} strokeWidth={1.8} /> : <span className="text-[13px] font-bold">{m.text}</span>}
+<m.icon size={21} strokeWidth={1.8} />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-[16px] font-bold leading-[22px] text-ink">{m.title}</span>
@@ -192,21 +193,6 @@ export default function PaymentPage() {
                     <Toggle id="save-card" checked={save} onChange={setSave} label="Save this card for next time" />
                   </div>
                 </fieldset>
-              )}
-
-              {checked && m.id === 'upi' && (
-                <div className="animate-fade-in px-4 pb-4">
-                  <TextField
-                    label="UPI ID"
-                    placeholder="name@bank"
-                    autoComplete="off"
-                    value={upiId}
-                    disabled={processing}
-                    onChange={(e) => setUpiId(e.target.value)}
-                    error={errors.upi}
-                    helper="You will approve the payment in your UPI app."
-                  />
-                </div>
               )}
 
               {checked && m.id === 'cod' && (

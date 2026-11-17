@@ -65,7 +65,7 @@ describe('small helpers', () => {
   test('item count and payment label', () => {
     expect(orderItemCount(preparing)).toBe(3);
     expect(paymentLabel({ method: 'card', brand: 'Visa', last4: '4242' })).toBe('Visa •••• 4242');
-    expect(paymentLabel({ method: 'upi', upiId: 'sara@bank' })).toBe('UPI · sara@bank');
     expect(paymentLabel({ method: 'cod' })).toBe('Cash on delivery');
+    expect(paymentLabel({ method: 'upi', upiId: 'sara@bank' })).toBe('');
   });
 });

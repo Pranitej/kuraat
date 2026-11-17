@@ -111,7 +111,7 @@ Placing an order: create a new `idempotencyKey` (UUID) when the payment screen o
 retry — the server then never creates a second ROF order. A declined card can be retried with the same key.
 
 Test payments (UAT): card `4242 4242 4242 4242` (any future expiry, any CVV) succeeds; `4000 0000 0000 0002` is
-declined; UPI `name@bank`; cash on delivery.
+declined; cash on delivery. UPI is not offered (Saudi Arabia).
 
 ## How the ROF connection is built (for whoever switches to UAT)
 

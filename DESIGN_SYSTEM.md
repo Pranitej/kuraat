@@ -18,7 +18,7 @@
 
 1. Create an account with a **WhatsApp one-time code** (optionally set a password), or sign in with password / WhatsApp code.
 2. Browse a small curated catalogue, view rich product detail (3 photos, weight, dimensions, allergens) and zoom photos.
-3. Check out in three steps (**Cart → Delivery → Payment**), pay by card / UPI / cash on delivery.
+3. Check out in three steps (**Cart → Delivery → Payment**), pay by card (incl. Mada) or cash on delivery.
 4. See which **branch** the order will be delivered from — the branch is chosen automatically from the delivery
    address and stock ("Delivery branch is chosen in the backend from the address and stock").
 5. Track orders, manage account, password and saved addresses, browse branches and read notifications.
@@ -311,8 +311,8 @@ Same screen after "Read more" and scrolling: compact sticky header (back · prod
 2. **Navigation:** Manage → Saved addresses; Add new address → Edit address (new) → back to Delivery with the new address selected.
 
 ### 14 · Payment (page 16)
-1. **Components:** stepper (✓ ✓ 3); "Payment method"; radio cards: **Credit / debit card** (Visa, Mastercard, Mada) expands to Card number (card icon + lock), Expiry (MM / YY), CVV, "Save this card for next time" toggle; **UPI** ("Pay with any UPI app", UPI ID field when selected); **Cash on delivery** ("Pay when your order arrives"); bottom bar "Total · 3 items  SAR 328.00" + primary "🔒 Pay SAR 328.00".
-2. **Validation:** Luhn card number, future expiry, 3–4 digit CVV, UPI ID format.
+1. **Components:** stepper (✓ ✓ 3); "Payment method"; radio cards: **Credit / debit card** (Visa, Mastercard, Mada) expands to Card number (card icon + lock), Expiry (MM / YY), CVV, "Save this card for next time" toggle; **Cash on delivery** ("Pay when your order arrives"); bottom bar "Total · 3 items  SAR 328.00" + primary "🔒 Pay SAR 328.00".
+2. **Validation:** Luhn card number, future expiry, 3–4 digit CVV.
 3. **Interaction:** processing state (button spinner, inputs locked) → Payment successful; declined card shows an inline error.
 
 ### 15 · Payment successful (page 17)
@@ -405,7 +405,7 @@ Home ─► Notifications ─► (Order detail | Product | Password | Home)
 | Splash pager dots (3) | Treated as a boot progress indicator (no onboarding slides exist in the PDF). |
 | Filter button on Home search | Opens a bottom sheet with Sort + Category chips (reuses chip/sheet styling). |
 | "See all" | Resets filters and scrolls to the full grid (no separate catalogue screen exists). |
-| UPI | Shown as in the PDF; selecting it reveals a UPI ID field. |
+| UPI | **Removed** (17 Nov 2026, product decision): the app serves Saudi Arabia, where UPI (an India-only system) is not used. The PDF's UPI card is not built; payment is card (Visa, Mastercard, Mada) or cash on delivery. |
 | Confirmed screen content under the popup | Reconstructed from visible edges + extracted text (estimated delivery, items, delivering to, two buttons). |
 | Error / empty-cart / toast states | Not drawn in the PDF; built from existing tokens/components (hot pink = alert per guide). |
 | Product prices | Card/detail show integers ("SAR 185"); checkout shows 2 decimals ("SAR 185.00"), as in the PDF. |

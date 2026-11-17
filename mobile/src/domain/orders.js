@@ -43,6 +43,6 @@ export function orderItemCount(order) {
 export function paymentLabel(payment) {
   if (!payment) return '';
   if (payment.method === 'card') return `${payment.brand} •••• ${payment.last4}`;
-  if (payment.method === 'upi') return `UPI · ${payment.upiId}`;
-  return 'Cash on delivery';
+  if (payment.method === 'cod') return 'Cash on delivery';
+  return ''; // a method no longer offered (e.g. an old UPI test order): no label rather than a wrong one
 }

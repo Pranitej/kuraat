@@ -45,7 +45,7 @@ for unknown paths (SPA fallback), because the app uses client-side routes such a
 | Sign in with WhatsApp code | The test code is always **123456** (nothing is sent in test mode); any other code is "not correct" |
 | Create a new customer | Welcome → Create an account, with any Saudi mobile starting with 5 (e.g. 55 123 4567) |
 | Promo codes | **KURAAT10** (10 % off), **FREEDELIVERY**, **WELCOME15** (first order only — the demo customer already has orders) |
-| Card payment | **4242 4242 4242 4242**, future expiry, any CVV · declined: **4000 0000 0000 0002** · or UPI `name@bank`, or cash |
+| Card payment | **4242 4242 4242 4242**, future expiry, any CVV · declined: **4000 0000 0000 0002** · or cash on delivery |
 | Branch chosen by stock | Order **Truffle Box · Praline**: it is out of stock at Corniche, so the order ships from Dhahran. The cart and delivery screens say so in advance only when the server's `ROF_INVENTORY_CHECK` is on |
 | Move an order along | `cd server && npm run mock-rof:advance -- 20418` (next status) or `… 20418 OutForDelivery`; the tracking screen follows within 30 s |
 | Cancel an order | Possible until the branch starts preparing it (tracking screen → Cancel order) |

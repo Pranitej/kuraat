@@ -3,7 +3,7 @@ import { local } from '@/lib/storage.js';
 import { stubFetch } from '@/test/stubFetch.js';
 import { setTokens } from './api.js';
 import { getQuote, withIdempotencyKey } from './checkoutService.js';
-import { cancelOrder, getOrder, listOrders, placeOrder, resendCode, toPaymentBody } from './orderService.js';
+import { PAYMENT_METHODS, cancelOrder, getOrder, listOrders, placeOrder, resendCode, toPaymentBody } from './orderService.js';
 
 beforeEach(() => {
   local.clearAll();
@@ -49,9 +49,14 @@ describe('payment body', () => {
     });
   });
 
-  test('UPI and cash on delivery', () => {
-    expect(toPaymentBody('upi', { upiId: ' sara@bank ' })).toEqual({ method: 'upi', upiId: 'sara@bank' });
+  test('cash on delivery', () => {
     expect(toPaymentBody('cod', {})).toEqual({ method: 'cod' });
+  });
+
+  test('only card and cash on delivery exist (Saudi Arabia: no UPI) — anything else is refused, never sent as cash', () => {
+    expect(PAYMENT_METHODS).toEqual(['card', 'cod']);
+    expect(() => toPaymentBody('upi', { upiId: 'sara@bank' })).toThrow('Unknown payment method: upi');
+    expect(() => toPaymentBody(undefined, {})).toThrow('Unknown payment method');
   });
 });
 

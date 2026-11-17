@@ -27,7 +27,7 @@ const base = {
   vat: 26.09,
   total: 200,
   promoCode: null,
-  payment: { method: 'card', brand: 'Visa', last4: '4242', upiId: null, transactionId: 'TX-1', paidAt: '2026-11-16T09:21:00.000Z' },
+  payment: { method: 'card', brand: 'Visa', last4: '4242', transactionId: 'TX-1', paidAt: '2026-11-16T09:21:00.000Z' },
   branch: { id: 'b1', name: 'Al Khobar Corniche', address: 'Corniche Rd', phone: '+966 13 555 0101', location: { lat: 26.29, lng: 50.22 } },
   distanceKm: 2.4,
   address: { line: 'Building 12', district: 'Al Rakah', city: 'Al Khobar', postcode: '34227' },

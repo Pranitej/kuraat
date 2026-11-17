@@ -23,9 +23,13 @@ export const cancelOrder = (id) => apiRequest(`${path(id)}/cancel`, { method: 'P
 /** @returns {Promise<{ sent: boolean, resendAt: string }>} */
 export const resendCode = (id) => apiRequest(`${path(id)}/resend-code`, { method: 'POST' });
 
+/** Payment methods offered (Saudi Arabia: card — incl. Mada — and cash on delivery; no UPI). */
+export const PAYMENT_METHODS = ['card', 'cod'];
+
 /** The payment part of the order request. Card details go to the server once and are never stored. */
-export function toPaymentBody(method, { card, upiId, saveCard } = {}) {
+export function toPaymentBody(method, { card, saveCard } = {}) {
   if (method === 'card') return { method: 'card', card: { number: onlyDigits(card.number), expiry: card.expiry, cvv: card.cvv }, saveCard: Boolean(saveCard) };
-  if (method === 'upi') return { method: 'upi', upiId: (upiId || '').trim() };
-  return { method: 'cod' };
+  if (method === 'cod') return { method: 'cod' };
+  // Never fall back to cash: an unknown method is a bug, not a cash-on-delivery order.
+  throw new Error(`Unknown payment method: ${method}`);
 }

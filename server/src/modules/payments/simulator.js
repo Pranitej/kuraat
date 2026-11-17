@@ -55,8 +55,9 @@ function expiryProblem(expiry, now) {
 const transactionId = () => `TXN-${randomBytes(4).toString('hex').toUpperCase()}`;
 
 /**
- * @param {{ method: 'card'|'upi'|'cod', card?: { number, expiry, cvv }, upiId?: string, amount: number }} input
- * @returns {{ method, brand, last4, expiry, upiId, transactionId }}
+ * Saudi Arabia: card (incl. Mada) or cash on delivery. Any other method is refused — never treated as cash.
+ * @param {{ method: 'card'|'cod', card?: { number, expiry, cvv }, amount: number }} input
+ * @returns {{ method, brand, last4, expiry, transactionId }}
  */
 export function authorizePayment(input, { now = new Date() } = {}) {
   if (input.method === 'card') {
@@ -70,12 +71,8 @@ export function authorizePayment(input, { now = new Date() } = {}) {
       throw paymentRequired('card_declined', 'Your bank declined this payment. Try another card or payment method.', 'card');
     }
     const e = digits(input.card.expiry);
-    return { method: 'card', brand: cardBrand(number), last4: number.slice(-4), expiry: `${e.slice(0, 2)}/${e.slice(2)}`, upiId: null, transactionId: transactionId() };
+    return { method: 'card', brand: cardBrand(number), last4: number.slice(-4), expiry: `${e.slice(0, 2)}/${e.slice(2)}`, transactionId: transactionId() };
   }
-  if (input.method === 'upi') {
-    const upiId = String(input.upiId ?? '').trim();
-    if (!/^[\w.-]{2,}@[a-zA-Z]{2,}$/.test(upiId)) throw badRequest('invalid', 'Use the format name@bank', 'upiId');
-    return { method: 'upi', brand: null, last4: null, expiry: null, upiId, transactionId: transactionId() };
-  }
-  return { method: 'cod', brand: null, last4: null, expiry: null, upiId: null, transactionId: null };
+  if (input.method === 'cod') return { method: 'cod', brand: null, last4: null, expiry: null, transactionId: null };
+  throw badRequest('invalid', 'Choose card or cash on delivery.', 'payment.method');
 }

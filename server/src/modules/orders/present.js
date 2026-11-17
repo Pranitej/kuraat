@@ -71,7 +71,6 @@ export function presentOrder(row, { payment = null, branch = null, media = null 
           method: payment.method,
           brand: payment.brand ?? null,
           last4: payment.last4 ?? null,
-          upiId: payment.upi_id ?? null,
           transactionId: payment.transaction_id ?? null,
           // Cash is paid at the door, so there is no payment time yet.
           paidAt: payment.method === 'cod' ? null : iso(payment.created_at),

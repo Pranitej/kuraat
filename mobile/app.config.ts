@@ -14,6 +14,9 @@ const APP_ID = 'com.rsof.kuraat';
 const IDS: Record<Variant, string> = { development: `${APP_ID}.dev`, preview: `${APP_ID}.preview`, production: APP_ID };
 const NAMES: Record<Variant, string> = { development: 'kuraat (dev)', preview: 'kuraat (preview)', production: 'kuraat' };
 
+// Checked here, but NOT stored in the config: the app reads EXPO_PUBLIC_API_BASE_URL from its JS
+// bundle (src/lib/env.js). Putting it in `extra` makes it part of the runtime-version fingerprint,
+// and EAS (which never sees mobile/.env) then refuses the build. Guarded by `npm run check:fingerprint`.
 const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:4000/api/v1').replace(/\/+$/, '');
 if (VARIANT !== 'development' && !API_BASE_URL.startsWith('https://')) {
   throw new Error(`EXPO_PUBLIC_API_BASE_URL must be an https:// URL for ${VARIANT} builds (got ${API_BASE_URL}).`);
@@ -71,9 +74,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ],
   experiments: { typedRoutes: true, reactCompiler: true },
   extra: {
+    // Only values that are the same here and on EAS (machine-local settings belong in EXPO_PUBLIC_* env).
     variant: VARIANT,
-    apiBaseUrl: API_BASE_URL,
-    sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || null,
     eas: { projectId: EAS_PROJECT_ID },
   },
 });

@@ -1,3 +1,3 @@
-/** Stand-in for `expo-constants` in logic tests. */
-const Constants = { expoConfig: { extra: { apiBaseUrl: 'http://localhost:4000/api/v1/', variant: 'development' } } };
+/** Stand-in for `expo-constants` in logic tests. Mirrors app.config.ts `extra` (no API address: see lib/env.js). */
+const Constants = { expoConfig: { extra: { variant: 'development' } } };
 export default Constants;

@@ -15,6 +15,7 @@
     "test:logic": "vitest run",
     "test:ui": "jest",
     "parity": "node scripts/check-parity.mjs",
+    "check:fingerprint": "node scripts/check-fingerprint.mjs",
     "doctor": "expo-doctor",
     "export:check": "expo export --platform android --platform ios --output-dir .export-check",
     "start:dev-client": "expo start --dev-client",

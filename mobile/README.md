@@ -112,10 +112,12 @@ before building — the project only builds under that account.
 ```bash
 npx eas-cli@latest whoami                # must be pranitejrsof
 npx eas-cli@latest login --device        # sign in by approving a code in the browser (works without a password prompt)
+npm run check:fingerprint               # must pass before any EAS build (see "API address" below)
 # development build (replaces Expo Go; loads JS from `npm run start:dev-client`, API from mobile/.env):
 npx eas-cli@latest build --profile development --platform android
-# internal Android test build (APK) against UAT:
-EXPO_PUBLIC_API_BASE_URL=https://<uat-api>/api/v1 npx eas-cli@latest build --profile preview --platform android
+# internal Android test build (APK) against UAT — first set EXPO_PUBLIC_API_BASE_URL for the preview
+# profile (eas.json "env", or `npx eas-cli@latest env:create`); a variable set only in your terminal does NOT reach EAS:
+npx eas-cli@latest build --profile preview --platform android
 # store builds:
 npx eas-cli@latest build --profile production --platform all
 npx eas-cli@latest submit --profile production --platform android   # then ios
@@ -130,6 +132,13 @@ npx eas-cli@latest submit --profile production --platform android   # then ios
 Versions: `version` in `app.config.ts`; build numbers and version codes are kept by EAS (`appVersionSource: remote`).
 Over-the-air JS updates (expo-updates) use the native fingerprint as runtime version, so an update never reaches a
 binary it doesn't fit.
+
+**API address and the runtime version.** EAS recomputes the fingerprint from the uploaded files, and `mobile/.env` is
+git-ignored, so it never reaches EAS. Anything machine-local must therefore stay out of the native config: the API
+address is read from `EXPO_PUBLIC_API_BASE_URL` in the JS bundle (`src/lib/env.js`), not from `app.config.ts` `extra`.
+When it was in `extra`, the first development build failed with "Runtime version mismatch" (17 Nov 2026).
+`npm run check:fingerprint` resolves the runtime version with two different addresses and fails if they differ —
+run it after any change to `app.config.ts`.
 
 ### Release checklist (outside the code)
 

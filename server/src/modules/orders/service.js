@@ -40,8 +40,11 @@ export function createOrdersService(ctx) {
     return presentOrder(row, { payment, branch, media });
   }
 
-  /** Re-reads ROF unless the row was synced less than maxAgeMs ago. Never throws for ROF errors. */
-  async function refresh(row, { maxAgeMs = 0 } = {}) {
+  /**
+   * Re-reads ROF unless the row was synced less than maxAgeMs ago. ROF errors keep the last known
+   * row — except for the refresh button (failIfUnavailable), which must say RSOF could not be reached.
+   */
+  async function refresh(row, { maxAgeMs = 0, failIfUnavailable = false } = {}) {
     const now = ctx.clock.now();
     if (row.last_synced_at && now.getTime() - new Date(row.last_synced_at).getTime() < maxAgeMs) return row;
     let snapshot;
@@ -54,11 +57,14 @@ export function createOrdersService(ctx) {
     } catch (error) {
       if (!isRofError(error)) throw error;
       ctx.logger.warn(`[orders] could not refresh KR-${row.rof_order_number} from ROF (${error.kind}): ${error.message}`);
+      if (failIfUnavailable && error.kind !== 'rejected') throw error;
       return row;
     }
 
     const step = stepOf(snapshot.status, row.fulfilment ?? 'delivery');
-    if (step === null) ctx.logger.warn(`[orders] KR-${row.rof_order_number} has unknown ROF status ${snapshot.status}; keeping step ${row.step}`);
+    if (step === null) {
+      ctx.logger.warn(`[orders] KR-${row.rof_order_number} has unknown ROF status ${JSON.stringify(snapshot.rawStatus)}; keeping step ${row.step}`);
+    }
     const number = `KR-${row.rof_order_number}`;
     const link = { kind: 'order', id: row.id };
 
@@ -70,8 +76,10 @@ export function createOrdersService(ctx) {
       const numericStep = typeof step === 'number' ? step : current.step;
       const times = { ...(current.step_times || {}), ...stepTimes(timeline, row.fulfilment ?? 'delivery') };
       const changes = {
-        rof_status: snapshot.status,
-        rof_status_at: snapshot.status !== current.rof_status ? now : current.rof_status_at,
+        // An unknown code or a blank status comes back as null: keep the last name we knew
+        // (rof_status is NOT NULL, and "keep the last step" applies to the label too).
+        rof_status: snapshot.status ?? current.rof_status,
+        rof_status_at: (snapshot.status ?? current.rof_status) !== current.rof_status ? now : current.rof_status_at,
         step: numericStep,
         cancelled,
         cancelled_at: cancelled ? current.cancelled_at || (times.cancelled ? new Date(times.cancelled) : now) : null,
@@ -123,6 +131,16 @@ export function createOrdersService(ctx) {
     return 0;
   }
 
+  /** A forced refresh that fails gives the customer's 10 s slot back, so "Try again" really tries. */
+  async function whileForced(userId, forced, work) {
+    try {
+      return await work();
+    } catch (error) {
+      if (forced) forcedAt.delete(userId);
+      throw error;
+    }
+  }
+
   async function mine(userId, id) {
     const row = await findRow(userId, id);
     if (!row) throw notFound('not_found', 'We could not find this order.');
@@ -146,7 +164,10 @@ export function createOrdersService(ctx) {
           { column: 'id', order: 'desc' },
         ])
         .limit(100);
-      const fresh = await Promise.all(rows.map((r) => (!r.cancelled && (r.step ?? 0) < 3 ? refresh(r, { maxAgeMs }) : r)));
+      const forced = refreshAsked && maxAgeMs === 0;
+      const fresh = await whileForced(userId, forced, () =>
+        Promise.all(rows.map((r) => (!r.cancelled && (r.step ?? 0) < 3 ? refresh(r, { maxAgeMs, failIfUnavailable: forced }) : r))),
+      );
       const shown = fresh.filter((r) => {
         if (tab === 'ongoing') return !r.cancelled && (r.step ?? 0) < 3;
         if (tab === 'delivered') return !r.cancelled && r.step === 3;
@@ -158,7 +179,9 @@ export function createOrdersService(ctx) {
 
     async get(userId, id, { refresh: refreshAsked = false } = {}) {
       const row = await mine(userId, id);
-      return present(await refresh(row, { maxAgeMs: maxAge(userId, refreshAsked, 15_000) }));
+      const maxAgeMs = maxAge(userId, refreshAsked, 15_000);
+      const forced = refreshAsked && maxAgeMs === 0;
+      return present(await whileForced(userId, forced, () => refresh(row, { maxAgeMs, failIfUnavailable: forced })));
     },
 
     async cancel(userId, id) {

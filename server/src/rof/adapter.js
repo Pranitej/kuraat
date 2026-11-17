@@ -150,6 +150,8 @@ export const toOrderSnapshot = (raw) => ({
   rofOrderId: raw.id,
   orderNumber: raw.orderNumber,
   status: normalizeStatus(raw.status),
+  // What ROF actually sent (for the log when the status above is unknown → null).
+  rawStatus: raw.status ?? null,
   branchId: raw.assignedToBranch ?? null,
   branchName: raw.assignBranchName ?? null,
   createdAt: raw.createdOn ?? null,

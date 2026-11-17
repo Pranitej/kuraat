@@ -133,6 +133,41 @@ describe('refresh button (design 2026-11-18 §5.4)', () => {
     expect(await listLabel('?refresh=true')).toBe('Packed, waiting for a rider');
   });
 
+  test('an unknown numeric ROF status keeps the last step and label, and the list still loads', async () => {
+    await placeTestOrder(t, me);
+    expect(await listLabel()).toBe('Sent to branch');
+    setRofStatus(22);
+    minutes(1);
+    const res = await api('get', '/orders');
+    expect(res.status).toBe(200);
+    expect(res.body[0].status).toMatchObject({ code: 'AssignedToBranch', label: 'Sent to branch', step: 0 });
+    expect(t.logs.some(([level, line]) => level === 'warn' && line.includes('22'))).toBe(true);
+  });
+
+  test('a blank ROF status keeps the last known one too', async () => {
+    await placeTestOrder(t, me);
+    await listLabel();
+    setRofStatus('');
+    minutes(1);
+    const res = await api('get', '/orders');
+    expect(res.status).toBe(200);
+    expect(res.body[0].status.label).toBe('Sent to branch');
+  });
+
+  test('refresh while ROF is down says so (503) and does not use up the 10 s slot', async () => {
+    const order = await placeTestOrder(t, me);
+    await listLabel();
+    await request(t.mockRof.app).post('/__dev/faults').send({ down: true });
+    const forced = await api('get', '/orders?refresh=true');
+    expect(forced.status).toBe(503);
+    expect(forced.body.code).toBe('rof_unavailable');
+    expect((await api('get', '/orders')).status).toBe(200);
+    expect((await api('get', `/orders/${order.id}?refresh=true`)).status).toBe(503);
+    await request(t.mockRof.app).post('/__dev/faults').send({ down: false });
+    setRofStatus('Preparing');
+    expect(await listLabel('?refresh=true')).toBe('Preparing');
+  });
+
   test('the order detail refreshes on demand too', async () => {
     const order = await placeTestOrder(t, me);
     await api('get', `/orders/${order.id}`);

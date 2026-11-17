@@ -199,7 +199,7 @@ describe('other mappings', () => {
     expect(toCreatedOrder({ id: 'o1', orderNumber: 20418, status: 'Created' })).toEqual({ rofOrderId: 'o1', orderNumber: 20418, status: 'Created' });
     expect(
       toOrderSnapshot({ id: 'o1', orderNumber: 20418, status: 'Preparing', assignedToBranch: 'b1', assignBranchName: 'Kuraat · X', createdOn: 't0' }),
-    ).toEqual({ rofOrderId: 'o1', orderNumber: 20418, status: 'Preparing', branchId: 'b1', branchName: 'Kuraat · X', createdAt: 't0' });
+    ).toEqual({ rofOrderId: 'o1', orderNumber: 20418, status: 'Preparing', rawStatus: 'Preparing', branchId: 'b1', branchName: 'Kuraat · X', createdAt: 't0' });
     expect(
       toTimeline([{ statusFrom: 'Created', statusTo: 'AssignedToBranch', statusToLabel: 'Assigned To Branch', createdOn: '2026-11-15T12:21:00Z' }]),
     ).toEqual([{ status: 'AssignedToBranch', at: '2026-11-15T12:21:00Z' }]);

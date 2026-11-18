@@ -6,6 +6,7 @@ import Animated, { Easing, cancelAnimation, useAnimatedStyle, useSharedValue, wi
 import { Check, ChevronRight, RefreshCw, Store, X } from '@/components/icons';
 import { Card, IconButton, Tag, Text, type TagTone } from '@/components/ui';
 import { useToast } from '@/context/ToastContext';
+import { useProductImage } from '@/hooks/productImage';
 import { ROUTES } from '@/lib/routes';
 import { PENDING_BRANCH, PICKUP, formatOrderDate, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
 import { colors, radii } from '@/theme/theme';
@@ -69,6 +70,17 @@ export function branchLabel(status: StatusView, order?: Pick<Order, 'fulfilment'
   return status.ongoing ? 'Will be delivered from' : 'Delivered from';
 }
 
+/**
+ * An ordered product's photo, from the product-by-id API, drawn inside a sand-coloured thumb. While it loads, when RSOF
+ * no longer has the product and when the photo fails to load, the sand box shows alone (same as the web).
+ */
+export function OrderItemImage({ productId }: { productId: string }) {
+  const src = useProductImage(productId);
+  const [failed, setFailed] = useState<string | null>(null);
+  if (!src || failed === src) return null;
+  return <Image source={{ uri: src }} style={StyleSheet.absoluteFill} contentFit="cover" onError={() => setFailed(src)} testID="order-photo" />;
+}
+
 /** Up to three thumbnails, one per unit ordered (PDF screen 20). */
 function Thumbnails({ items }: { items: Order['items'] }) {
   const units = items.flatMap((i) => Array.from({ length: i.qty }, () => i)).slice(0, 3);
@@ -76,7 +88,7 @@ function Thumbnails({ items }: { items: Order['items'] }) {
     <View style={styles.thumbs}>
       {units.map((item, idx) => (
         <View key={`${item.productId}-${idx}`} style={styles.thumb}>
-          {item.image ? <Image source={{ uri: item.image }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+          <OrderItemImage productId={item.productId} />
         </View>
       ))}
     </View>

@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Navigation, PackageSearch, PackageX, Phone, Store } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, WhatsAppIcon } from '@/components/ui';
-import { OrderTimeline, RefreshButton, StatusTag, branchLabel } from '@/components/account/OrderParts.jsx';
+import { OrderItemImage, OrderTimeline, RefreshButton, StatusTag, branchLabel } from '@/components/account/OrderParts.jsx';
 import { useOrder, useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
 import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
@@ -172,11 +172,7 @@ export default function OrderDetailPage() {
               {order.items.map((item) => (
                 <li key={item.productId}>
                   <Link to={ROUTES.product(item.productId)} className="flex items-center gap-3.5 rounded-md transition hover:bg-cream/60">
-                    {item.image ? (
-                      <img src={item.image} alt="" className="size-14 shrink-0 rounded-sm object-cover" />
-                    ) : (
-                      <span className="size-14 shrink-0 rounded-sm bg-sand" aria-hidden />
-                    )}
+                    <OrderItemImage productId={item.productId} className="size-14 shrink-0 rounded-sm" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[16px] font-semibold text-ink">{item.name}</span>
                       <span className="block text-label font-normal text-muted">Qty {item.qty}</span>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Check, Clock, MapPin, Store } from 'lucide-react';
+import { OrderItemImage } from '@/components/account/OrderParts.jsx';
 import { Button, Card, IconTile, MaroonPanel, Modal } from '@/components/ui';
 import { useOrder } from '@/context/OrderContext.jsx';
 import { PENDING_BRANCH, PICKUP, formatAddress, formatDistance, formatOrderDate, formatSAR, formatWindow, isPickup } from '@/domain';
@@ -56,11 +57,7 @@ export default function OrderConfirmedPage() {
             {order.items.map((item) => {
               return (
                 <li key={item.productId} className="flex items-center gap-3.5">
-                  {item.image ? (
-                    <img src={item.image} alt="" className="size-14 shrink-0 rounded-sm object-cover" />
-                  ) : (
-                    <span className="size-14 shrink-0 rounded-sm bg-sand" aria-hidden />
-                  )}
+                  <OrderItemImage productId={item.productId} className="size-14 shrink-0 rounded-sm" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-bold text-ink">{item.name}</p>
                     <p className="text-label font-normal text-muted">Qty {item.qty}</p>

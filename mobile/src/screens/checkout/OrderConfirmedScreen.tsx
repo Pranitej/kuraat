@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { Redirect, Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
@@ -6,6 +5,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, Clock, MapPin, Store } from '@/components/icons';
+import { OrderItemImage } from '@/components/account/OrderParts';
 import { Button, Card, Dialog, DialogLink, IconTile, MaroonPanel, Text } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useOrder } from '@/context/OrderContext';
@@ -74,7 +74,7 @@ export default function OrderConfirmedScreen() {
               {order.items.map((item) => (
                 <View key={item.productId} style={styles.item}>
                   <View style={styles.thumb}>
-                    {item.image ? <Image source={{ uri: item.image }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+                    <OrderItemImage productId={item.productId} />
                   </View>
                   <View style={styles.flex}>
                     <Text weight={700} numberOfLines={1} style={styles.itemName}>

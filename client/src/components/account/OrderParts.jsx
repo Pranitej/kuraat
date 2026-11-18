@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Check, ChevronRight, RefreshCw, Store, X } from 'lucide-react';
 import { Card, IconButton, Tag } from '@/components/ui';
 import { useToast } from '@/context/ToastContext.jsx';
+import { useProductImage } from '@/hooks/useProductImage.js';
 import { PENDING_BRANCH, PICKUP, formatOrderDate, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
@@ -49,18 +50,26 @@ export function branchLabel(status, order) {
   return status.ongoing ? 'Will be delivered from' : 'Delivered from';
 }
 
+/**
+ * An ordered product's photo, from the product-by-id API. While it loads, when RSOF no longer has the
+ * product, and when the photo itself fails to load, it is a plain sand-coloured box — never a broken-image icon.
+ * `className` carries the size (e.g. "size-12 shrink-0 rounded-sm").
+ */
+export function OrderItemImage({ productId, className }) {
+  const src = useProductImage(productId);
+  const [failed, setFailed] = useState(null);
+  if (!src || failed === src) return <span className={cn('block bg-sand', className)} aria-hidden />;
+  return <img src={src} alt="" onError={() => setFailed(src)} className={cn('block object-cover', className)} />;
+}
+
 /** Up to three thumbnails, one per unit ordered (PDF screen 20). */
 function Thumbnails({ items }) {
   const units = items.flatMap((i) => Array.from({ length: i.qty }, () => i)).slice(0, 3);
   return (
     <div className="flex gap-2">
-      {units.map((item, idx) =>
-        item.image ? (
-          <img key={`${item.productId}-${idx}`} src={item.image} alt="" className="size-12 rounded-sm object-cover" />
-        ) : (
-          <span key={`${item.productId}-${idx}`} className="size-12 rounded-sm bg-sand" aria-hidden />
-        ),
-      )}
+      {units.map((item, idx) => (
+        <OrderItemImage key={`${item.productId}-${idx}`} productId={item.productId} className="size-12 rounded-sm" />
+      ))}
     </div>
   );
 }

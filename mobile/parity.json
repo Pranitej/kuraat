@@ -38,6 +38,9 @@
     "theme/tokens.js",
     "config/routes.js",
     "config/options.js",
-    "hooks/useDeliveryQuote.js"
+    "hooks/useDeliveryQuote.js",
+    "services/productImage.js",
+    "services/productImage.test.js",
+    "hooks/useProductImage.js"
   ]
 }

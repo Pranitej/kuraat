@@ -1,8 +1,7 @@
-import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
-import { OrderTimeline, RefreshButton, StatusTag, branchLabel, type StatusView, type TimelineRow } from '@/components/account/OrderParts';
+import { OrderItemImage, OrderTimeline, RefreshButton, StatusTag, branchLabel, type StatusView, type TimelineRow } from '@/components/account/OrderParts';
 import { Screen, ScreenHeader } from '@/components/layout';
 import { Navigation, PackageSearch, PackageX, Phone, Store } from '@/components/icons';
 import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Text, WhatsAppIcon } from '@/components/ui';
@@ -221,7 +220,7 @@ export default function OrderDetailScreen() {
                 style={styles.item}
               >
                 <View style={styles.thumb}>
-                  {item.image ? <Image source={{ uri: item.image }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
+                  <OrderItemImage productId={item.productId} />
                 </View>
                 <View style={styles.flex}>
                   <Text weight={600} numberOfLines={1} style={styles.itemName}>

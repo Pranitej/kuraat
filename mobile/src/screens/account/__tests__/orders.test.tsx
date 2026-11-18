@@ -1,5 +1,6 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderScreen } from '@/test/renderScreen';
+import { clearProductImages } from '@/services/productImage.js';
 import { resetRouterMock, setMockParams } from '@/test/routerMock';
 import OrderDetailScreen from '../OrderDetailScreen';
 import OrdersScreen from '../OrdersScreen';
@@ -276,5 +277,38 @@ describe('22 · Order tracking', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Cancel order' }));
     expect(screen.getByText(/Nothing has been charged\./)).toBeTruthy();
     expect(screen.queryByText(/will refund/)).toBeNull();
+  });
+});
+
+describe('photos of the ordered products (product-by-id API)', () => {
+  beforeEach(() => clearProductImages());
+  const orders = (product: (id: string) => object) => (c: { path: string }) => {
+    if (c.path === '/orders') return { body: [ONGOING] };
+    if (c.path.startsWith('/products/')) return product(c.path.slice('/products/'.length)) as never;
+    return undefined;
+  };
+  // expo-image's host element receives `source` as a one-item list
+  const sources = () => screen.queryAllByTestId('order-photo').map((i) => (i.props as { source: { uri: string }[] }).source[0].uri);
+
+  test('the order card shows the current photo of the product, not the one saved with the order', async () => {
+    await renderScreen(<OrdersScreen />, { server: orders(() => ({ body: { id: 'p1', images: ['https://example.test/current.jpg'] } })) });
+    await screen.findByText('#KR-20418');
+    await waitFor(() => expect(sources()).toEqual(['https://example.test/current.jpg']));
+  });
+
+  test('a product RSOF no longer has leaves the sand placeholder: no image at all', async () => {
+    await renderScreen(<OrdersScreen />, { server: orders(() => ({ status: 404, body: { code: 'not_found', message: 'We could not find that.' } })) });
+    await screen.findByText('#KR-20418');
+    await waitFor(() => expect(sources()).toEqual([]));
+  });
+
+  test('a photo that fails to load falls back to the placeholder too', async () => {
+    await renderScreen(<OrdersScreen />, { server: orders(() => ({ body: { id: 'p1', images: ['https://example.test/broken.jpg'] } })) });
+    await screen.findByText('#KR-20418');
+    await waitFor(() => expect(sources()).toEqual(['https://example.test/broken.jpg']));
+    await act(async () => {
+      (screen.getAllByTestId('order-photo')[0].props as { onError: (e: object) => void }).onError({ nativeEvent: { error: 'x' } });
+    });
+    await waitFor(() => expect(sources()).toEqual([]));
   });
 });

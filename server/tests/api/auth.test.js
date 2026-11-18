@@ -39,7 +39,7 @@ describe('sign up', () => {
     expect(res.body.tokens).toMatchObject({ accessToken: expect.any(String), refreshToken: expect.any(String), expiresIn: 900 });
 
     const [address] = await t.db('addresses').where({ user_id: res.body.user.id });
-    expect(address).toMatchObject({ label: 'Home', type: 'home', is_default: 1, postcode: '31952', lat: 26.31402, phone: '551234567' });
+    expect(address).toMatchObject({ label: 'Home', type: 'home', is_default: 1, postcode: '', lat: 26.31402, phone: '551234567' });
     expect(await t.db('notifications').where({ user_id: res.body.user.id, type: 'welcome' })).toHaveLength(1);
   });
 

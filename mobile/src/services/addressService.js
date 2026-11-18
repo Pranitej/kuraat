@@ -1,5 +1,5 @@
 /** Saved addresses on the server (server/README.md → Addresses). */
-import { locateAddress, postcodeFor, toWirePhone } from '@/domain';
+import { locateAddress, toWirePhone } from '@/domain';
 import { apiRequest } from './api.js';
 
 /**
@@ -16,7 +16,7 @@ export function toAddressBody(input) {
     line,
     district,
     city,
-    postcode: postcodeFor(district, city) || undefined,
+    postcode: (input.postcode || '').trim() || undefined, // only one the customer gave — never guessed
     landmark: (input.landmark || '').trim(),
     phone: toWirePhone(input.phone),
     isDefault: Boolean(input.isDefault),

@@ -8,9 +8,10 @@ import { Button, Chip, ConfirmDialog, Field, FieldWrapper, PhoneField, SelectFie
 import { ROUTES } from '@/lib/routes';
 import { useAddresses, type AddressInput } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
+import { useBranches } from '@/context/BranchContext';
 import { useCheckout } from '@/context/CheckoutContext';
 import { useToast } from '@/context/ToastContext';
-import { ADDRESS_LABELS, CITIES, LOCATION_FAILED, validateMobile, validateRequired } from '@/domain';
+import { ADDRESS_LABELS, LOCATION_FAILED, deliveryCities, validateMobile, validateRequired } from '@/domain';
 import { getDevicePosition } from '@/lib/location';
 import { colors, radii, shadows } from '@/theme/theme';
 import type { AddressType, LatLng } from '@/types/api';
@@ -26,7 +27,7 @@ type Form = {
   isDefault: boolean;
   location: LatLng | null;
 };
-type Errors = Partial<Record<'label' | 'line' | 'district' | 'phone' | 'form', string>>;
+type Errors = Partial<Record<'label' | 'line' | 'district' | 'city' | 'phone' | 'form', string>>;
 
 /** 24 · Edit address (also "Add address"). Waits for the saved addresses before filling the form. */
 export default function EditAddressScreen() {
@@ -47,14 +48,17 @@ function AddressForm({ addressId }: { addressId?: string }) {
   const { user } = useAuth();
   const checkout = useCheckout();
   const { addresses, getById, create, update, remove } = useAddresses();
+  const { branches } = useBranches();
   const existing = isNew ? null : getById(addressId);
+  // City choices = the cities we deliver from (server branches, loaded at sign-in); a new address starts on the first.
+  const cities = deliveryCities(branches, existing?.city) as string[];
 
   const [form, setForm] = useState<Form>(() => ({
     type: existing?.type || 'home',
     label: existing?.type === 'other' ? existing.label : '',
     line: existing?.line || '',
     district: existing?.district || '',
-    city: existing?.city || 'Al Khobar',
+    city: existing?.city || '',
     landmark: existing?.landmark || '',
     phone: existing?.phone || user?.phone || '',
     isDefault: existing ? existing.isDefault : addresses.length === 0,
@@ -70,6 +74,7 @@ function AddressForm({ addressId }: { addressId?: string }) {
   const [deleting, setDeleting] = useState(false);
 
   if (!isNew && !existing) return <Redirect href={ROUTES.addresses} />;
+  const city = form.city || cities[0] || '';
 
   // Back to where the form was opened from (Delivery or Saved addresses) without stacking a copy.
   const leave = () => {
@@ -104,13 +109,14 @@ function AddressForm({ addressId }: { addressId?: string }) {
       label: form.type === 'other' ? validateRequired(form.label, 'Give this address a name') : '',
       line: validateRequired(form.line, 'Enter the building and street'),
       district: validateRequired(form.district, 'Enter the district'),
+      city: validateRequired(city, 'Choose a city'),
       phone: validateMobile(form.phone),
     };
     setErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
     setSaving(true);
     try {
-      const payload = { ...form, location: form.location || undefined } as AddressInput;
+      const payload = { ...form, city, location: form.location || undefined } as AddressInput;
       const saved = isNew ? await create(payload) : await update(existing!.id, payload);
       if (fromDelivery) checkout.patch({ addressId: saved.id });
       toast.show(isNew ? 'Address added' : 'Address saved');
@@ -204,7 +210,7 @@ function AddressForm({ addressId }: { addressId?: string }) {
             error={errors.district}
             style={styles.flex}
           />
-          <SelectField label="City" options={CITIES as string[]} value={form.city} onChange={set('city')} style={styles.flex} />
+          <SelectField label="City" options={cities} value={city} onChange={set('city')} error={errors.city} style={styles.flex} />
         </View>
 
         <Field label="Landmark (optional)" value={form.landmark} onChangeText={set('landmark')} placeholder="Near Al Rakah Park" />

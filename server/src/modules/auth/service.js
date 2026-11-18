@@ -1,6 +1,5 @@
 /** Account creation and the public user shape. */
 import { newId } from '../../lib/ids.js';
-import { postcodeFor } from '../addresses/postcodes.js';
 import { WELCOME, notify } from '../notifications/service.js';
 
 export const toPublicUser = (row) => ({
@@ -34,7 +33,7 @@ export async function createAccount(trx, ctx, { phone, name, gender, address, pa
     line: address.line,
     district: address.district || '',
     city: address.city,
-    postcode: address.postcode || postcodeFor(address.district, address.city),
+    postcode: address.postcode || '', // only a postcode the customer gave, never a guess
     landmark: '',
     phone,
     contact_name: name,

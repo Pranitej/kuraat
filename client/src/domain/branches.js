@@ -4,22 +4,30 @@
  */
 import { roundedDistance } from './geo.js';
 
-/** City list used by branch filters and the address form. */
-export const CITIES = ['Al Khobar', 'Dhahran', 'Dammam', 'Al Ahsa', 'Riyadh', 'Jeddah'];
+/** The cities the server's branches are in: each once, alphabetical. */
+function branchCities(branches = []) {
+  return [...new Set(branches.map((b) => String(b.city || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
 
 /**
- * City pills for the branches page, built from the branches we actually have — never a fixed list, so two
- * branches in two cities give "All · Dammam · Jeddah". Known cities keep the PDF's order, any other city
- * follows alphabetically. With one city (or none) there is nothing to filter, so no pills: [].
+ * The address form's City choices: the cities we deliver from (the server's delivery branches — never a
+ * fixed list). An address already saved in another city keeps that city as a choice, so editing it never
+ * changes the city behind the customer's back.
+ */
+export function deliveryCities(branches, currentCity) {
+  const cities = branchCities(branches);
+  const current = String(currentCity || '').trim();
+  return current && !cities.includes(current) ? [...cities, current] : cities;
+}
+
+/**
+ * City pills for the branches page, built from the branches we actually have, so two branches in two
+ * cities give "All · Dammam · Jeddah" (alphabetical). With one city (or none) there is nothing to
+ * filter, so no pills: [].
  */
 export function cityFilters(branches) {
-  const cities = [...new Set(branches.map((b) => String(b.city || '').trim()).filter(Boolean))];
-  if (cities.length < 2) return [];
-  const rank = (city) => {
-    const i = CITIES.indexOf(city);
-    return i === -1 ? CITIES.length : i;
-  };
-  return ['All', ...cities.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))];
+  const cities = branchCities(branches);
+  return cities.length < 2 ? [] : ['All', ...cities];
 }
 
 /** Approximate city centres for addresses entered without a map pin. */

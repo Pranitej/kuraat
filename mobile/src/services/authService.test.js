@@ -41,7 +41,7 @@ const signupForm = {
 };
 
 describe('sign-up with a WhatsApp code', () => {
-  test('sends the form with coordinates and postcode, but not the typed address text', async () => {
+  test('sends the form with coordinates (no made-up postcode), but not the typed address text', async () => {
     const calls = stubFetch(() => ({ body: challenge('signup') }));
     await requestOtp('50 111 2233', 'signup', signupForm);
     expect(calls[0]).toMatchObject({ path: '/auth/otp/request', method: 'POST' });
@@ -54,7 +54,6 @@ describe('sign-up with a WhatsApp code', () => {
         line: 'Building 3, Prince Turki St',
         district: 'Al Yarmouk',
         city: 'Al Khobar',
-        postcode: '31952',
         location: { lat: expect.any(Number), lng: expect.any(Number) },
       },
     });

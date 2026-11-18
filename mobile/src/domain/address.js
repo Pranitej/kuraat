@@ -9,30 +9,7 @@ export const ADDRESS_LABELS = [
   { id: 'other', label: 'Other' },
 ];
 
-/** Postcodes for known districts; falls back to the city's main postcode. */
-const POSTCODES = {
-  'Al Rakah': '34445',
-  'Al Yarmouk': '31952',
-  Corniche: '31952',
-  'Al Olaya': '12611',
-  'Al Faisaliyah District': '32245',
-  'Al Faisaliyah': '32245',
-  'Al Rawdah': '23434',
-};
-const CITY_POSTCODES = {
-  'Al Khobar': '31952',
-  Dhahran: '34247',
-  Dammam: '32245',
-  'Al Ahsa': '36362',
-  Riyadh: '12611',
-  Jeddah: '23434',
-};
-
-export function postcodeFor(district, city) {
-  return POSTCODES[(district || '').trim()] || CITY_POSTCODES[city] || '';
-}
-
-/** "Building 14, King Fahd Rd, Al Rakah, Al Khobar 34445" */
+/** "Building 14, King Fahd Rd, Al Rakah, Al Khobar 34445" (the postcode only when the address has one) */
 export function formatAddress(address) {
   if (!address) return '';
   const cityLine = [address.city, address.postcode].filter(Boolean).join(' ');

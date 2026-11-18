@@ -7,9 +7,10 @@ import { Button, Chip, ConfirmDialog, FieldWrapper, PhoneField, SelectField, Spi
 import MapIllustration from '@/components/branch/MapIllustration.jsx';
 import { useAddresses } from '@/context/AddressContext.jsx';
 import { useAuth } from '@/context/AuthContext.jsx';
+import { useBranches } from '@/context/BranchContext.jsx';
 import { useCheckout } from '@/context/CheckoutContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { ADDRESS_LABELS, CITIES, LOCATION_FAILED, validateMobile, validateRequired } from '@/domain';
+import { ADDRESS_LABELS, LOCATION_FAILED, deliveryCities, validateMobile, validateRequired } from '@/domain';
 import { getBrowserPosition } from '@/lib/geolocation.js';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
@@ -32,14 +33,17 @@ function AddressForm({ addressId }) {
   const { user } = useAuth();
   const checkout = useCheckout();
   const { addresses, getById, create, update, remove } = useAddresses();
+  const { branches } = useBranches();
   const existing = isNew ? null : getById(addressId);
+  // City choices = the cities we deliver from (server branches, loaded at sign-in); a new address starts on the first.
+  const cities = deliveryCities(branches, existing?.city);
 
   const [form, setForm] = useState(() => ({
     type: existing?.type || 'home',
     label: existing?.type === 'other' ? existing.label : '',
     line: existing?.line || '',
     district: existing?.district || '',
-    city: existing?.city || 'Al Khobar',
+    city: existing?.city || '',
     landmark: existing?.landmark || '',
     phone: existing?.phone || user?.phone || '',
     isDefault: existing ? existing.isDefault : addresses.length === 0,
@@ -55,6 +59,7 @@ function AddressForm({ addressId }) {
   const [deleting, setDeleting] = useState(false);
 
   if (!isNew && !existing) return <Navigate to={ROUTES.addresses} replace />;
+  const city = form.city || cities[0] || '';
 
   const set = (k) => (v) => {
     const dropsPin = k === 'city' || (!pinned && (k === 'line' || k === 'district'));
@@ -81,13 +86,14 @@ function AddressForm({ addressId }) {
       label: form.type === 'other' ? validateRequired(form.label, 'Give this address a name') : '',
       line: validateRequired(form.line, 'Enter the building and street'),
       district: validateRequired(form.district, 'Enter the district'),
+      city: validateRequired(city, 'Choose a city'),
       phone: validateMobile(form.phone),
     };
     setErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
     setSaving(true);
     try {
-      const payload = { ...form, location: form.location || undefined };
+      const payload = { ...form, city, location: form.location || undefined };
       const saved = isNew ? await create(payload) : await update(existing.id, payload);
       // Added from Delivery or Home's "Deliver to": deliver to the new address straight away.
       if (returnTo === ROUTES.delivery || returnTo === ROUTES.home) checkout.patch({ addressId: saved.id });
@@ -149,7 +155,7 @@ function AddressForm({ addressId }) {
 
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
               <TextField label="District" value={form.district} onChange={(e) => set('district')(e.target.value)} placeholder="District" error={errors.district} />
-              <SelectField label="City" options={CITIES} value={form.city} onChange={(e) => set('city')(e.target.value)} />
+              <SelectField label="City" options={cities} value={city} onChange={(e) => set('city')(e.target.value)} error={errors.city} />
             </div>
 
             <TextField label="Landmark (optional)" value={form.landmark} onChange={(e) => set('landmark')(e.target.value)} placeholder="Near Al Rakah Park" />

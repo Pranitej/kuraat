@@ -5,7 +5,7 @@
  * The pending WhatsApp verification is kept in session storage so "Edit number", the OTP screen and
  * the set-password screen survive a refresh; the server holds the code itself.
  */
-import { locateAddress, onlyDigits, postcodeFor, toWirePhone } from '@/domain';
+import { locateAddress, onlyDigits, toWirePhone } from '@/domain';
 import { session } from '../lib/storage.js';
 import { ApiError, apiRequest, clearTokens, getTokens, setTokens } from './api.js';
 
@@ -60,7 +60,7 @@ export async function deleteAccount() {
 
 /* ---------------- WhatsApp code ---------------- */
 
-/** Sign-up address as the server wants it: with a postcode and coordinates (until the real map). */
+/** Sign-up address as the server wants it: with coordinates (until the real map); a postcode only if given. */
 function signupAddress(address = {}) {
   const line = (address.line || '').trim();
   const district = (address.district || '').trim();
@@ -69,7 +69,7 @@ function signupAddress(address = {}) {
     line,
     district,
     city,
-    postcode: address.postcode || postcodeFor(district, city),
+    ...(address.postcode ? { postcode: address.postcode } : {}),
     location: address.location || locateAddress({ line, district, city }),
   };
 }

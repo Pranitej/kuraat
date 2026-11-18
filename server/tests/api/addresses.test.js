@@ -52,11 +52,11 @@ describe('address book', () => {
     });
   });
 
-  test('create fills label, postcode and contact name; isDefault moves the default', async () => {
+  test('create fills label and contact name (no made-up postcode); isDefault moves the default', async () => {
     ({ auth } = await signInDemo(t));
     const res = await api('post', '/addresses', input({ type: 'other', label: '  Gym ', isDefault: true }));
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ label: 'Gym', postcode: '31952', contactName: 'Sara Al-Mutairi', phone: '501234821', isDefault: true });
+    expect(res.body).toMatchObject({ label: 'Gym', postcode: '', contactName: 'Sara Al-Mutairi', phone: '501234821', isDefault: true });
     const list = (await api('get', '/addresses')).body;
     expect(list.filter((a) => a.isDefault).map((a) => a.label)).toEqual(['Gym']);
     expect(list[0].label).toBe('Gym');

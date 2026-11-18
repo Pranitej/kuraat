@@ -9,7 +9,6 @@ import { badRequest, conflict, notFound } from '../../http/errors.js';
 import { validate } from '../../http/validate.js';
 import { newId } from '../../lib/ids.js';
 import { findUserById } from '../auth/service.js';
-import { postcodeFor } from './postcodes.js';
 import { OUT_OF_AREA_MESSAGE, addressInputSchema, isInSaudi } from './schema.js';
 
 const MAX_ADDRESSES = 20;
@@ -61,7 +60,8 @@ export function addressRoutes(ctx) {
       line: input.line,
       district: input.district,
       city: input.city,
-      postcode: input.postcode || postcodeFor(input.district, input.city),
+      // Only a postcode the customer gave — never a guess from a fixed district/city table.
+      postcode: input.postcode || '',
       landmark: input.landmark,
       phone: input.phone,
       contact_name: user.name,

@@ -47,8 +47,11 @@ describe('24 · Add / edit address', () => {
   test('a new address from Delivery is saved, selected for the checkout, and returns there', async () => {
     setMockParams({ returnTo: '/checkout/delivery' });
     let list = [HOME];
+    // The City choices come from the server's delivery branches (no fixed city list).
+    const branch = (id: string, name: string, city: string) => ({ id, name, city, phone: '', location: { lat: 26.4, lng: 50.1 }, hours: { open: 10, close: 24 }, openNow: true });
     const { calls } = await renderScreen(<EditAddressScreen />, {
       server: (c) => {
+        if (c.path === '/branches') return { body: [branch('b2', 'Jeddah North', 'Jeddah'), branch('b1', 'Dammam Central', 'Dammam')] };
         if (c.path === '/addresses' && c.method === 'GET') return { body: list };
         if (c.path === '/addresses' && c.method === 'POST') {
           const created = { ...OFFICE, id: 'a3', ...(c.body as object) };
@@ -59,19 +62,20 @@ describe('24 · Add / edit address', () => {
       },
     });
     await fireEvent.press(await screen.findByRole('button', { name: 'Office' }));
+    await waitFor(() => expect(calls.some((c) => c.path === '/branches')).toBe(true));
     await fireEvent.changeText(screen.getByLabelText('Address'), 'Tower B, King Saud St');
-    await fireEvent.changeText(screen.getByLabelText('District'), 'Al Yarmouk');
+    await fireEvent.changeText(screen.getByLabelText('District'), 'Al Faisaliyah');
     await fireEvent.press(screen.getByRole('button', { name: 'Save address' }));
     await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
     const body = calls.find((c) => c.path === '/addresses' && c.method === 'POST')?.body as Record<string, unknown>;
     expect(body).toMatchObject({
       type: 'office',
       line: 'Tower B, King Saud St',
-      district: 'Al Yarmouk',
-      city: 'Al Khobar',
-      postcode: '31952',
+      district: 'Al Faisaliyah',
+      city: 'Dammam', // the first city we deliver to (alphabetical)
       phone: '501234821',
     });
+    expect(body.postcode).toBeUndefined(); // no made-up postcode
     expect(body.location).toEqual({ lat: expect.any(Number), lng: expect.any(Number) });
     expect(session.read('checkout')).toMatchObject({ addressId: 'a3' });
   });

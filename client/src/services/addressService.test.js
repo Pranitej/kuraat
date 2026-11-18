@@ -23,9 +23,10 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('toAddressBody', () => {
-  test('fills the postcode and coordinates for an address typed without a pin', () => {
+  test('fills coordinates for an address typed without a pin, and invents no postcode', () => {
     const body = toAddressBody(form);
-    expect(body).toMatchObject({ type: 'other', label: 'Parents’ home', line: 'Villa 8', district: 'Al Faisaliyah District', city: 'Dammam', postcode: '32245', phone: '559876543', isDefault: false });
+    expect(body).toMatchObject({ type: 'other', label: 'Parents’ home', line: 'Villa 8', district: 'Al Faisaliyah District', city: 'Dammam', phone: '559876543', isDefault: false });
+    expect(body.postcode).toBeUndefined();
     expect(body.location.lat).toBeCloseTo(26.41, 1);
     expect(body.location.lng).toBeCloseTo(50.125, 1);
   });
@@ -44,6 +45,7 @@ describe('address calls', () => {
     await deleteAddress('a1');
     await setDefaultAddress('a1');
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(['GET /addresses', 'POST /addresses', 'PATCH /addresses/a1', 'DELETE /addresses/a1', 'POST /addresses/a1/default']);
-    expect(calls[1].body).toMatchObject({ line: 'Villa 8', postcode: '32245' });
+    expect(calls[1].body).toMatchObject({ line: 'Villa 8' });
+    expect(calls[1].body.postcode).toBeUndefined();
   });
 });

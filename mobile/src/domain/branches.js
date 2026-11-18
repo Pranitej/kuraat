@@ -7,6 +7,21 @@ import { roundedDistance } from './geo.js';
 /** City list used by branch filters and the address form. */
 export const CITIES = ['Al Khobar', 'Dhahran', 'Dammam', 'Al Ahsa', 'Riyadh', 'Jeddah'];
 
+/**
+ * City pills for the branches page, built from the branches we actually have — never a fixed list, so two
+ * branches in two cities give "All · Dammam · Jeddah". Known cities keep the PDF's order, any other city
+ * follows alphabetically. With one city (or none) there is nothing to filter, so no pills: [].
+ */
+export function cityFilters(branches) {
+  const cities = [...new Set(branches.map((b) => String(b.city || '').trim()).filter(Boolean))];
+  if (cities.length < 2) return [];
+  const rank = (city) => {
+    const i = CITIES.indexOf(city);
+    return i === -1 ? CITIES.length : i;
+  };
+  return ['All', ...cities.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))];
+}
+
 /** Approximate city centres for addresses entered without a map pin. */
 export const CITY_CENTRES = {
   'Al Khobar': { lat: 26.293, lng: 50.21 },

@@ -7,12 +7,9 @@ import MapIllustration from '@/components/branch/MapIllustration.jsx';
 import { BranchListCard } from '@/components/branch/BranchCard.jsx';
 import { useAddresses } from '@/context/AddressContext.jsx';
 import { useBranches } from '@/context/BranchContext.jsx';
-import { mapPins, withDistances } from '@/domain';
+import { cityFilters, mapPins, withDistances } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
-
-/** City chips, in the order shown in the PDF. */
-const CITY_FILTERS = ['All', 'Al Khobar', 'Dammam', 'Riyadh', 'Dhahran', 'Al Ahsa', 'Jeddah'];
 
 /** 25 · Our branches */
 export default function BranchesPage() {
@@ -21,12 +18,15 @@ export default function BranchesPage() {
   const { branches } = useBranches();
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState('');
-  const [city, setCity] = useState('All');
+  const [chosenCity, setCity] = useState('All');
   const [selected, setSelected] = useState(params.get('branch'));
   const cardRefs = useRef({});
 
   const all = useMemo(() => withDistances(branches, defaultAddress?.location), [branches, defaultAddress]);
   const nearestId = defaultAddress ? all[0]?.id : null;
+  // Pills come from the branches we have; a city that is no longer there falls back to All.
+  const filters = useMemo(() => cityFilters(all), [all]);
+  const city = filters.includes(chosenCity) ? chosenCity : 'All';
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     return all.filter(
@@ -79,13 +79,15 @@ export default function BranchesPage() {
             {query && <IconButton icon={X} label="Clear search" variant="plain" size="sm" iconSize={18} onClick={() => setQuery('')} />}
           </div>
 
-          <ChipRow className="mt-3.5">
-            {CITY_FILTERS.map((c) => (
-              <Chip key={c} active={city === c} onClick={() => setCity(c)}>
-                {c}
-              </Chip>
-            ))}
-          </ChipRow>
+          {filters.length > 0 && (
+            <ChipRow className="mt-3.5">
+              {filters.map((c) => (
+                <Chip key={c} active={city === c} onClick={() => setCity(c)}>
+                  {c}
+                </Chip>
+              ))}
+            </ChipRow>
+          )}
 
           <MapIllustration
             className="mt-3.5"

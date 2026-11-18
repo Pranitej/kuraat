@@ -41,6 +41,21 @@ describe('25 · Our branches', () => {
     expect(screen.getByText('Riyadh Olaya')).toBeTruthy();
   });
 
+  test('the city pills are the cities of the branches we have, nothing more', async () => {
+    await renderScreen(<BranchesScreen />, { server });
+    await screen.findByText('Al Khobar Corniche');
+    expect(screen.getAllByRole('button').map((b) => b.props.accessibilityLabel ?? '')).toEqual(expect.arrayContaining(['All', 'Al Khobar', 'Riyadh']));
+    expect(screen.queryByRole('button', { name: 'Jeddah' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Dhahran' })).toBeNull();
+  });
+
+  test('branches in a single city: no pills at all', async () => {
+    const oneCity = (c: { path: string }) => (c.path === '/branches' ? { body: BRANCHES.map((b) => ({ ...b, city: 'Dammam' })) } : undefined);
+    await renderScreen(<BranchesScreen />, { server: oneCity });
+    await screen.findByText('Al Khobar Corniche');
+    expect(screen.queryByRole('button', { name: 'All' })).toBeNull();
+  });
+
   test('no match: empty state, and "Show all branches" resets', async () => {
     await renderScreen(<BranchesScreen />, { server });
     await screen.findByText('Al Khobar Corniche');

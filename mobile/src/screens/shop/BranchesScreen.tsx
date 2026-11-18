@@ -9,12 +9,9 @@ import { Chip, ChipRow, EmptyState, IconButton } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useBranches } from '@/context/BranchContext';
-import { mapPins, withDistances } from '@/domain';
+import { cityFilters, mapPins, withDistances } from '@/domain';
 import { FONT_FAMILY, MAX_FONT_SCALE, colors, radii } from '@/theme/theme';
 import type { Branch } from '@/types/api';
-
-/** City chips, in the order shown in the PDF. */
-const CITY_FILTERS = ['All', 'Al Khobar', 'Dammam', 'Riyadh', 'Dhahran', 'Al Ahsa', 'Jeddah'];
 
 /** 25 · Our branches */
 export default function BranchesScreen() {
@@ -22,7 +19,7 @@ export default function BranchesScreen() {
   const { defaultAddress } = useAddresses();
   const { branches } = useBranches();
   const [query, setQuery] = useState('');
-  const [city, setCity] = useState('All');
+  const [chosenCity, setCity] = useState('All');
   const [selected, setSelected] = useState<string | null>(params.branch ?? null);
   // A new ?branch= while this screen is open selects that branch (adjusting state during render).
   const [linked, setLinked] = useState(params.branch);
@@ -36,6 +33,9 @@ export default function BranchesScreen() {
 
   const all = useMemo(() => withDistances(branches, defaultAddress?.location) as Branch[], [branches, defaultAddress]);
   const nearestId = defaultAddress ? (all[0]?.id ?? null) : null;
+  // Pills come from the branches we have; a city that is no longer there falls back to All.
+  const filters: string[] = useMemo(() => cityFilters(all), [all]);
+  const city = filters.includes(chosenCity) ? chosenCity : 'All';
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     return all.filter(
@@ -86,13 +86,15 @@ export default function BranchesScreen() {
         {query ? <IconButton icon={X} label="Clear search" variant="plain" size="sm" iconSize={18} onPress={() => setQuery('')} /> : null}
       </View>
 
-      <ChipRow style={styles.chips}>
-        {CITY_FILTERS.map((c) => (
-          <Chip key={c} active={city === c} onPress={() => setCity(c)}>
-            {c}
-          </Chip>
-        ))}
-      </ChipRow>
+      {filters.length > 0 && (
+        <ChipRow style={styles.chips}>
+          {filters.map((c) => (
+            <Chip key={c} active={city === c} onPress={() => setCity(c)}>
+              {c}
+            </Chip>
+          ))}
+        </ChipRow>
+      )}
 
       <MapIllustration
         style={styles.map}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { MAP_SLOTS, mapPins, toBranchView, withDistances } from './branches.js';
+import { MAP_SLOTS, cityFilters, mapPins, toBranchView, withDistances } from './branches.js';
 
 const server = (name, lat, lng, extra = {}) => ({ id: name, name, address: '', city: '', phone: '', location: { lat, lng }, hours: { open: 10, close: 24 }, openNow: true, ...extra });
 const HOME = { lat: 26.348558, lng: 50.193673 };
@@ -40,5 +40,23 @@ describe('branch views', () => {
     const many = Array.from({ length: MAP_SLOTS.length + 1 }, (_, i) => toBranchView(server(`B${i}`, 26, 50)));
     const pins = mapPins(many);
     expect(pins.at(-1)).toMatchObject({ x: MAP_SLOTS[0].x + 4, y: MAP_SLOTS[0].y + 4 });
+  });
+});
+
+describe('cityFilters', () => {
+  const inCity = (...cities) => cities.map((city, i) => server(`b${i}`, 1, 1, { city }));
+
+  test('only the cities the branches are in, after All', () => {
+    expect(cityFilters(inCity('Jeddah', 'Dammam'))).toEqual(['All', 'Dammam', 'Jeddah']);
+  });
+
+  test('each city once, known cities in the PDF order, others alphabetical after them', () => {
+    expect(cityFilters(inCity('Jeddah', 'Tabuk', 'Dammam', 'Dammam', 'Abha', 'Al Khobar'))).toEqual(['All', 'Al Khobar', 'Dammam', 'Jeddah', 'Abha', 'Tabuk']);
+  });
+
+  test('one city, or none, means nothing to filter: no pills', () => {
+    expect(cityFilters(inCity('Dammam', 'Dammam'))).toEqual([]);
+    expect(cityFilters(inCity('', ' '))).toEqual([]);
+    expect(cityFilters([])).toEqual([]);
   });
 });

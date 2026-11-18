@@ -3,7 +3,7 @@ import { local } from '@/lib/storage.js';
 import { stubFetch } from '@/test/stubFetch.js';
 import { setTokens } from './api.js';
 import { getQuote, withIdempotencyKey } from './checkoutService.js';
-import { PAYMENT_METHODS, cancelOrder, getOrder, listOrders, placeOrder, resendCode, toPaymentBody } from './orderService.js';
+import { PAYMENT_METHODS, cancelOrder, getOrder, listOrders, methodsFor, offeredMethod, placeOrder, resendCode, toPaymentBody } from './orderService.js';
 
 beforeEach(() => {
   local.clearAll();
@@ -53,8 +53,12 @@ describe('payment body', () => {
     expect(toPaymentBody('cod', {})).toEqual({ method: 'cod' });
   });
 
-  test('only card and cash on delivery exist (Saudi Arabia: no UPI) — anything else is refused, never sent as cash', () => {
-    expect(PAYMENT_METHODS).toEqual(['card', 'cod']);
+  test('pay at branch (pickup)', () => {
+    expect(toPaymentBody('branch', {})).toEqual({ method: 'branch' });
+  });
+
+  test('only card, cash on delivery and pay at branch exist (Saudi Arabia: no UPI) — anything else is refused, never sent as cash', () => {
+    expect(PAYMENT_METHODS).toEqual(['card', 'cod', 'branch']);
     expect(() => toPaymentBody('upi', { upiId: 'sara@bank' })).toThrow('Unknown payment method: upi');
     expect(() => toPaymentBody(undefined, {})).toThrow('Unknown payment method');
   });
@@ -70,6 +74,47 @@ describe('order and quote calls', () => {
     await resendCode('o1');
     expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual(['POST /checkout/quote', 'GET /orders', 'GET /orders/o1', 'POST /orders/o1/cancel', 'POST /orders/o1/resend-code']);
     expect(calls[0].body).toEqual({ addressId: 'addr1', productIds: ['p1'] });
+    expect(quote.branch).toMatchObject({ name: 'Al Khobar Corniche', displayName: 'Kuraat · Al Khobar Corniche' });
+  });
+});
+
+describe('delivery or pickup (design 2026-11-18 §5.3)', () => {
+  test('which payment methods each way offers', () => {
+    expect(methodsFor('delivery')).toEqual(['card', 'cod']);
+    expect(methodsFor('pickup')).toEqual(['card', 'branch']);
+    expect(methodsFor(undefined)).toEqual(['card', 'cod']);
+  });
+
+  test('a remembered method that the other way does not offer falls back to card', () => {
+    expect(offeredMethod('cod', 'pickup')).toBe('card');
+    expect(offeredMethod('branch', 'delivery')).toBe('card');
+    expect(offeredMethod('upi', 'delivery')).toBe('card');
+    expect(offeredMethod('branch', 'pickup')).toBe('branch');
+    expect(offeredMethod('cod', 'delivery')).toBe('cod');
+  });
+
+  test('a pickup order is sent with its fulfilment and without an address', async () => {
+    const calls = stubFetch(() => ({ status: 201, body: { id: 'o1' } }));
+    await placeOrder({ fulfilment: 'pickup', addressId: 'addr1', deliveryPhone: '50 123 4821', payment: { method: 'branch' }, idempotencyKey: 'k-1' });
+    expect(calls[0].body).toEqual({ fulfilment: 'pickup', deliveryPhone: '501234821', payment: { method: 'branch' }, idempotencyKey: 'k-1' });
+  });
+
+  test('a delivery order still sends its address, and says delivery', async () => {
+    const calls = stubFetch(() => ({ status: 201, body: { id: 'o1' } }));
+    await placeOrder({ addressId: 'addr1', deliveryPhone: '501234821', payment: { method: 'cod' }, idempotencyKey: 'k-2' });
+    expect(calls[0].body).toEqual({ fulfilment: 'delivery', addressId: 'addr1', deliveryPhone: '501234821', payment: { method: 'cod' }, idempotencyKey: 'k-2' });
+  });
+
+  test('the pickup quote asks with the fulfilment (no address) and keeps totals; no branch is fine', async () => {
+    const calls = stubFetch(() => ({ body: { fulfilment: 'pickup', branch: null, distanceKm: null, isNearest: null, inStock: null, totals: { total: 313, delivery: 0 } } }));
+    const quote = await getQuote({ fulfilment: 'pickup', productIds: ['p1'], location: { lat: 26.28, lng: 50.2 } });
+    expect(calls[0].body).toEqual({ fulfilment: 'pickup', productIds: ['p1'], location: { lat: 26.28, lng: 50.2 } });
+    expect(quote).toMatchObject({ branch: null, totals: { total: 313, delivery: 0 } });
+  });
+
+  test('a pickup quote with a branch gives it the screen names', async () => {
+    stubFetch(() => ({ body: { fulfilment: 'pickup', branch: { id: 'b1', name: 'Kuraat · Al Khobar Corniche' }, distanceKm: 2.4, totals: { total: 313 } } }));
+    const quote = await getQuote({ fulfilment: 'pickup' });
     expect(quote.branch).toMatchObject({ name: 'Al Khobar Corniche', displayName: 'Kuraat · Al Khobar Corniche' });
   });
 });

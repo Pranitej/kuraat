@@ -26,6 +26,35 @@ export function orderStatusView(order) {
   return { id, label, group, step, cancelled, ongoing: !cancelled && step < 3, tone };
 }
 
+/** Orders from before pickup existed have no fulfilment: they are deliveries. */
+export const isPickup = (order) => order?.fulfilment === 'pickup';
+
+/** Branch pickup copy (design 2026-11-18 §5.3), shared by the web and the app. */
+export const PICKUP = {
+  switchLabel: 'How would you like your order?',
+  delivery: 'Delivery',
+  pickup: 'Branch pickup',
+  note: 'Collect your order from the branch we confirm after you order — usually the nearest one with your items. Show your order number at the counter.',
+  phoneLabel: 'Phone number for this order',
+  phoneHelper: 'We use it to reach you about your pickup.',
+  likely: 'Likely pickup branch',
+  payNow: 'Pay now',
+  payNowSub: 'Credit / debit card · Visa, Mastercard, Mada',
+  payAtBranch: 'Pay at branch',
+  payAtBranchSub: 'Pay when you collect your order',
+  payAtBranchHint: (total) => `Please pay ${total} at the pickup counter when you collect your order.`,
+  counterTitle: 'Show this at the pickup counter',
+  /** The counter searches by RSOF's plain order number (no "KR-"), by phone, or by approval number. */
+  counterHelp: (number) => `Staff can find it by the number ${String(number).replace(/^KR-/i, '')} or your phone number.`,
+  confirmedLead: 'Pick up your order from',
+  confirmedNote: 'Chosen near you. Stock is confirmed by the branch.',
+  pickupFrom: 'Pick up from',
+  pickedUpFrom: 'Picked up from',
+  collectFrom: 'Collect from',
+  confirmedCardLabel: 'Pickup',
+  paidLater: (total) => `Pay ${total} at the branch when you collect your order`,
+};
+
 /**
  * ROF assigns the branch after the order is placed (design 2026-11-18 §5.2). Until then the order
  * screens show this in the places the branch normally goes (same components, DESIGN_SYSTEM rule 12).
@@ -83,5 +112,6 @@ export function paymentLabel(payment) {
   if (!payment) return '';
   if (payment.method === 'card') return `${payment.brand} •••• ${payment.last4}`;
   if (payment.method === 'cod') return 'Cash on delivery';
+  if (payment.method === 'branch') return 'Pay at branch';
   return ''; // a method no longer offered (e.g. an old UPI test order): no label rather than a wrong one
 }

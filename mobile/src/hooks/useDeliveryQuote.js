@@ -19,25 +19,33 @@ function cachedQuote(addressId, productIds) {
  * products (nearest hub with stock), its distance and the delivery slot. Re-asked when either
  * changes; answers are reused for 30 s. `quote` is null while loading or when no branch serves
  * the address (`error` says why).
+ *
+ * Pickup (design 2026-11-18 §5.3): `fulfilment: 'pickup'` needs no address. The quote is the nearest
+ * branch to where the customer is (its `branch` may be null) and the stored cart priced without the
+ * delivery fee (`totals`) — prices must never be stale, so a pickup quote is never reused.
  */
-export function useDeliveryQuote({ addressId, productIds = [] }) {
+export function useDeliveryQuote({ addressId, productIds = [], fulfilment = 'delivery' }) {
   const key = productIds.join(',');
-  const [state, setState] = useState({ quote: null, loading: Boolean(addressId), error: null });
+  const pickup = fulfilment === 'pickup';
+  const enabled = pickup || Boolean(addressId);
+  const [state, setState] = useState({ quote: null, loading: enabled, error: null });
 
   useEffect(() => {
-    if (!addressId) {
+    if (!enabled) {
       setState({ quote: null, loading: false, error: null });
       return undefined;
     }
     let alive = true;
     setState((s) => ({ ...s, loading: true, error: null }));
-    cachedQuote(addressId, key ? key.split(',') : [])
+    const ids = key ? key.split(',') : [];
+    const request = pickup ? getQuote({ fulfilment: 'pickup', productIds: ids.length ? ids : undefined }) : cachedQuote(addressId, ids);
+    request
       .then((quote) => alive && setState({ quote, loading: false, error: null }))
       .catch((error) => alive && setState({ quote: null, loading: false, error }));
     return () => {
       alive = false;
     };
-  }, [addressId, key]);
+  }, [enabled, pickup, addressId, key]);
 
   return state;
 }

@@ -1,6 +1,6 @@
 // Runs in America/New_York (vitest.config.js): every label must still be Saudi time.
 import { describe, expect, test } from 'vitest';
-import { ORDER_FILTERS, filterOrders, orderItemCount, orderStatusView, orderTimelineView, paymentLabel } from './orders.js';
+import { ORDER_FILTERS, PICKUP, filterOrders, isPickup, orderItemCount, orderStatusView, orderTimelineView, paymentLabel } from './orders.js';
 
 const NOW = new Date('2026-11-15T09:30:00Z'); // 12:30 in Saudi Arabia
 const step = (id, title, state, time, extra = {}) => ({ id, title, state, time, timeEnd: null, estimated: false, ...extra });
@@ -103,5 +103,24 @@ describe('small helpers', () => {
     expect(paymentLabel({ method: 'card', brand: 'Visa', last4: '4242' })).toBe('Visa •••• 4242');
     expect(paymentLabel({ method: 'cod' })).toBe('Cash on delivery');
     expect(paymentLabel({ method: 'upi', upiId: 'sara@bank' })).toBe('');
+  });
+});
+
+describe('pickup (design 2026-11-18 §5.3)', () => {
+  test('isPickup: only orders the server marks as pickup; old orders are delivery', () => {
+    expect(isPickup({ fulfilment: 'pickup' })).toBe(true);
+    expect(isPickup({ fulfilment: 'delivery' })).toBe(false);
+    expect(isPickup({})).toBe(false);
+    expect(isPickup(null)).toBe(false);
+  });
+
+  test('pay at branch has its own label', () => {
+    expect(paymentLabel({ method: 'branch' })).toBe('Pay at branch');
+    expect(paymentLabel({ method: 'cod' })).toBe('Cash on delivery');
+  });
+
+  test('the counter help names the plain RSOF number and the phone', () => {
+    expect(PICKUP.counterHelp('KR-20418')).toBe('Staff can find it by the number 20418 or your phone number.');
+    expect(PICKUP.counterHelp('20418')).toBe('Staff can find it by the number 20418 or your phone number.');
   });
 });

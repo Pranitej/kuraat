@@ -3,13 +3,16 @@ import { toBranchView } from '@/domain';
 import { apiRequest } from './api.js';
 
 /**
- * Which branch will deliver to the address (stock-aware), how far it is and the delivery slot.
- * Without productIds the server uses the stored cart.
- * @returns {Promise<{ branch, distanceKm, isNearest, inStock, window: { start, end } }>}
+ * Delivery: which branch will deliver to the address (stock-aware), how far it is and the delivery
+ * slot. Pickup (design 2026-11-18 §5.3): needs no address — the nearest branch to where the customer
+ * is (it may be null) and the cart priced without the delivery fee (`totals`). Without productIds
+ * the server uses the stored cart.
+ * @returns {Promise<{ branch, distanceKm, isNearest, inStock, window?: { start, end }, totals?: object }>}
  */
-export async function getQuote({ addressId, productIds }) {
-  const quote = await apiRequest('/checkout/quote', { method: 'POST', body: { addressId, productIds } });
-  return { ...quote, branch: toBranchView(quote.branch) };
+export async function getQuote({ fulfilment = 'delivery', addressId, productIds, location }) {
+  const body = fulfilment === 'pickup' ? { fulfilment, productIds, location } : { addressId, productIds };
+  const quote = await apiRequest('/checkout/quote', { method: 'POST', body });
+  return { ...quote, branch: quote.branch ? toBranchView(quote.branch) : null };
 }
 
 /**

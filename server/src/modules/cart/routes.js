@@ -38,6 +38,7 @@ export async function priceForUser(ctx, userId, cart, { fulfilment = 'delivery' 
     getProduct: (id) => ctx.catalog.getProduct(id, { fresh: true }),
     isFirstOrder: await isFirstOrder(ctx.db, userId),
     pricesIncludeVat: ctx.config.pricesIncludeVat,
+    promos: ctx.config.promos,
   });
 }
 

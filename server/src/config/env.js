@@ -3,6 +3,7 @@
  * validated here, so a missing or wrong value fails at start-up with a clear message.
  */
 import { z } from 'zod';
+import { PROMO_CODES } from './business.js';
 
 const blankToUndefined = (value) => (value === '' ? undefined : value);
 const text = () => z.preprocess(blankToUndefined, z.string().trim().min(1));
@@ -36,6 +37,7 @@ const schema = z.object({
   PASSWORD_HASH_COST: z.preprocess(blankToUndefined, z.coerce.number().int().min(4).max(15).default(12)),
   AUTH_RATE_LIMIT_PER_MINUTE: integer(20),
   OTP_ALLOW_TEST_IN_PRODUCTION: flag(false),
+  PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION: flag(false),
   /** Express "trust proxy": e.g. 1 behind one reverse proxy / load balancer. Unset = do not trust. */
   TRUST_PROXY: optionalText(),
 });
@@ -43,6 +45,10 @@ const schema = z.object({
 const TEST_OTP_IN_PRODUCTION =
   'OTP_MODE=test lets anyone sign in to any account with the test code. In production use it only for UAT, ' +
   'by also setting OTP_ALLOW_TEST_IN_PRODUCTION=true.';
+
+const SIMULATED_PAYMENTS_IN_PRODUCTION =
+  'Card payments are simulated (no payment gateway is connected yet): any valid-looking test card is "paid" and no money moves. ' +
+  'In production start only for a demo or UAT, by also setting PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION=true.';
 
 /** Validated settings object used across the server. */
 export function loadConfig(env = process.env) {
@@ -54,6 +60,9 @@ export function loadConfig(env = process.env) {
   const e = result.data;
   if (e.NODE_ENV === 'production' && e.OTP_MODE === 'test' && !e.OTP_ALLOW_TEST_IN_PRODUCTION) {
     throw new Error(`Invalid configuration: ${TEST_OTP_IN_PRODUCTION}`);
+  }
+  if (e.NODE_ENV === 'production' && !e.PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION) {
+    throw new Error(`Invalid configuration: ${SIMULATED_PAYMENTS_IN_PRODUCTION}`);
   }
   return {
     port: e.PORT,
@@ -73,6 +82,7 @@ export function loadConfig(env = process.env) {
       timeoutMs: e.ROF_TIMEOUT_MS,
     },
     otp: { mode: e.OTP_MODE, testCode: e.OTP_TEST_CODE },
+    promos: PROMO_CODES,
     pricesIncludeVat: e.PRICES_INCLUDE_VAT,
     pollIntervalMs: e.ORDER_POLL_INTERVAL_MS,
     passwordHashCost: e.PASSWORD_HASH_COST,

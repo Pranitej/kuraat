@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { computeTotals, findPromo, priceCart } from '../../src/modules/cart/pricing.js';
+import { computeTotals, findPromo as findPromoIn, priceCart as priceCartIn } from '../../src/modules/cart/pricing.js';
+import { TEST_PROMOS } from '../helpers/promos.js';
+
+const findPromo = (code) => findPromoIn(code, TEST_PROMOS);
+const priceCart = (cart, deps) => priceCartIn(cart, { promos: TEST_PROMOS, ...deps });
 
 const lines = [
   { price: 185, qty: 1 }, // Truffle Box · Classic
@@ -89,5 +93,13 @@ describe('priceCart', () => {
 
     const unknown = await priceCart({ items, promoCode: 'nope' }, { getProduct, isFirstOrder: true });
     expect(unknown.promo).toEqual({ code: 'NOPE', label: null, valid: false, error: "This code isn't valid." });
+  });
+});
+
+describe('live promo codes', () => {
+  test('none are live: the old test codes are refused on real orders', async () => {
+    const { PROMO_CODES } = await import('../../src/config/business.js');
+    expect(PROMO_CODES).toEqual({});
+    expect(findPromoIn('KURAAT10')).toBeNull();
   });
 });

@@ -5,12 +5,13 @@ import { BRANCH_IDS, PRODUCT_IDS } from '../support/rof-double/seed.js';
 import { RofError } from '../../src/rof/errors.js';
 import { signInDemo } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
+import { TEST_PROMOS } from '../helpers/promos.js';
 
 let t;
 let me;
 let homeId;
 beforeEach(async () => {
-  t = await createTestContext({ withRof: true, rofTimeoutMs: 800 });
+  t = await createTestContext({ withRof: true, rofTimeoutMs: 800, configOverrides: { promos: TEST_PROMOS } });
   await t.reset();
   me = await signInDemo(t);
   homeId = (await api('get', '/addresses')).body.find((a) => a.label === 'Home').id;

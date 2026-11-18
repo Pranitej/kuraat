@@ -74,7 +74,7 @@ describe('finding 3 — test login codes in production', () => {
   };
   test('refuses to start in production with OTP_MODE=test unless explicitly allowed (UAT)', () => {
     expect(() => loadConfig(env)).toThrow(/OTP_MODE=test/);
-    expect(loadConfig({ ...env, OTP_ALLOW_TEST_IN_PRODUCTION: 'true' }).otp.mode).toBe('test');
+    expect(loadConfig({ ...env, OTP_ALLOW_TEST_IN_PRODUCTION: 'true', PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION: 'true' }).otp.mode).toBe('test');
   });
 });
 

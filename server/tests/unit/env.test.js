@@ -54,3 +54,27 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...valid, JWT_ACCESS_SECRET: 'short' })).toThrow(/JWT_ACCESS_SECRET/);
   });
 });
+
+describe('production guards (nothing fake goes live by accident)', () => {
+  const prod = { ...valid, NODE_ENV: 'production' };
+
+  test('test login codes are refused in production unless acknowledged', () => {
+    expect(() => loadConfig({ ...prod, PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION: 'true' })).toThrow(/OTP_MODE=test/);
+  });
+
+  test('simulated card payments are refused in production unless acknowledged', () => {
+    expect(() => loadConfig({ ...prod, OTP_MODE: 'whatsapp' })).toThrow(/PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION/);
+  });
+
+  test('both acknowledged (a demo / UAT launch) starts', () => {
+    expect(() => loadConfig({ ...prod, OTP_ALLOW_TEST_IN_PRODUCTION: 'true', PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION: 'true' })).not.toThrow();
+  });
+
+  test('outside production neither guard applies', () => {
+    expect(() => loadConfig(valid)).not.toThrow();
+  });
+
+  test('no promo codes are live in the config', () => {
+    expect(loadConfig(valid).promos).toEqual({});
+  });
+});

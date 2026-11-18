@@ -10,11 +10,14 @@ export const VAT_RATE = 0.15;
 export const DELIVERY_FEE = 15;
 export const MAX_ITEM_QTY = 20;
 
-export const PROMO_CODES = {
-  KURAAT10: { code: 'KURAAT10', type: 'percent', value: 10, label: '10% off your sweets' },
-  WELCOME15: { code: 'WELCOME15', type: 'percent', value: 15, label: '15% off your first order', firstOrderOnly: true },
-  FREEDELIVERY: { code: 'FREEDELIVERY', type: 'delivery', value: 0, label: 'Free delivery' },
-};
+/**
+ * Promo codes that are live. NONE: the apps have no promo field (removed 18 Nov 2026), and the old test codes
+ * (KURAAT10, WELCOME15, FREEDELIVERY) must not work on real orders, so any code sent to the API is refused as
+ * "not valid". To launch a code, add it here, e.g.
+ *   SUMMER10: { code: 'SUMMER10', type: 'percent', value: 10, label: '10% off your sweets' }
+ * (type 'percent' or 'delivery'; add firstOrderOnly: true for a first-order code). Tests inject their own.
+ */
+export const PROMO_CODES = {};
 
 /** Opening hours (24 h clock, Saudi time). close 24 = midnight. */
 export const DEFAULT_BRANCH_HOURS = { open: 10, close: 24 };

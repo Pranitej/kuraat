@@ -68,6 +68,7 @@ Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test
 | `AUTH_RATE_LIMIT_PER_MINUTE` | `20` | Per IP, for `/auth/*` |
 | `TRUST_PROXY` | unset | Set to `1` when running behind one reverse proxy / load balancer (so limits use the customer IP) |
 | `OTP_ALLOW_TEST_IN_PRODUCTION` | `false` | With `NODE_ENV=production` the server refuses `OTP_MODE=test` unless this is `true` — set it for UAT only |
+| `PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION` | `false` | Card payments are simulated (no gateway yet). With `NODE_ENV=production` the server refuses to start unless this is `true` — a demo/UAT acknowledgement that no real money moves |
 
 Business rules ROF does not hold (fees, promo codes, opening hours, delivery slots, max detour) are in
 [`src/config/business.js`](src/config/business.js).

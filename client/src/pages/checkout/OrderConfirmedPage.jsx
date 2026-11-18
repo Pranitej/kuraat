@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Check, Clock, MapPin, Store } from 'lucide-react';
 import { Button, Card, IconTile, MaroonPanel, Modal } from '@/components/ui';
 import { useOrder } from '@/context/OrderContext.jsx';
-import { PENDING_BRANCH, formatAddress, formatDistance, formatOrderDate, formatSAR, formatWindow } from '@/domain';
+import { PENDING_BRANCH, PICKUP, formatAddress, formatDistance, formatOrderDate, formatSAR, formatWindow, isPickup } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { session } from '@/lib/storage.js';
 import { useDocumentTitle } from '@/hooks';
@@ -21,6 +21,7 @@ export default function OrderConfirmedPage() {
   if (!order) return <Navigate to={ROUTES.orders} replace />;
   // ROF assigns the branch (design 2026-11-18 §5.2); it may not have done so yet.
   const branch = order.branch;
+  const pickup = isPickup(order);
   const closePopup = () => {
     session.write(popupKey, true);
     setPopup(false);
@@ -41,10 +42,12 @@ export default function OrderConfirmedPage() {
       <div className="relative -mt-7 rounded-t-sheet bg-cream">
         <div className="mx-auto max-w-column px-5 pt-6 lg:max-w-[640px]">
           <div className="flex items-center gap-3.5 rounded-lg bg-sand px-4 py-3.5">
-            <IconTile icon={Clock} tone="white" />
+            <IconTile icon={pickup ? Store : Clock} tone="white" />
             <div>
-              <p className="text-label font-normal text-muted">Estimated delivery</p>
-              <p className="text-[18px] font-bold leading-6 text-ink">{formatWindow(order.window.start, order.window.end)}</p>
+              <p className="text-label font-normal text-muted">{pickup ? PICKUP.confirmedCardLabel : 'Estimated delivery'}</p>
+              <p className="text-[18px] font-bold leading-6 text-ink">
+                {pickup ? `Show #${order.number} at the pickup counter` : formatWindow(order.window.start, order.window.end)}
+              </p>
             </div>
           </div>
 
@@ -71,8 +74,10 @@ export default function OrderConfirmedPage() {
           <Card className="mt-5 flex gap-3.5 p-4">
             <IconTile icon={MapPin} size={40} iconSize={19} />
             <div className="min-w-0">
-              <p className="text-label font-normal text-muted">Delivering to</p>
-              <p className="text-[15px] font-semibold leading-[21px] text-ink">{formatAddress(order.address)}</p>
+              <p className="text-label font-normal text-muted">{pickup ? PICKUP.collectFrom : 'Delivering to'}</p>
+              <p className="text-[15px] font-semibold leading-[21px] text-ink">
+                {pickup ? (branch ? branch.name : PENDING_BRANCH.title) : formatAddress(order.address)}
+              </p>
             </div>
           </Card>
 
@@ -88,7 +93,7 @@ export default function OrderConfirmedPage() {
       <Modal open={popup} onClose={closePopup} labelledBy="branch-popup-title">
         <div className="flex flex-col items-center text-center">
           <IconTile icon={Store} size={72} iconSize={30} />
-          <p className="mt-5 text-body text-muted">Your order will be delivered from</p>
+          <p className="mt-5 text-body text-muted">{pickup ? PICKUP.confirmedLead : 'Your order will be delivered from'}</p>
           <h2 id="branch-popup-title" className="mt-1 text-[22px] font-bold leading-7 text-ink">
             {branch ? branch.name : PENDING_BRANCH.popupTitle}
           </h2>
@@ -100,11 +105,13 @@ export default function OrderConfirmedPage() {
           <div className="mt-5 flex w-full gap-3 rounded-lg bg-sand px-4 py-3.5 text-left text-[15px] leading-[22px] text-copy">
             <MapPin size={20} strokeWidth={1.8} className="mt-px shrink-0 text-maroon" aria-hidden />
             <p>
-              {!branch
-                ? PENDING_BRANCH.popupNote
-                : order.distanceKm != null
-                  ? `Chosen for your delivery address, ${formatDistance(order.distanceKm)} away. Stock confirmed at this branch.`
-                  : 'Chosen for your delivery address. Stock confirmed at this branch.'}
+              {pickup
+                ? PICKUP.confirmedNote
+                : !branch
+                  ? PENDING_BRANCH.popupNote
+                  : order.distanceKm != null
+                    ? `Chosen for your delivery address, ${formatDistance(order.distanceKm)} away. Stock confirmed at this branch.`
+                    : 'Chosen for your delivery address. Stock confirmed at this branch.'}
             </p>
           </div>
           <Button block className="mt-6" onClick={closePopup} data-autofocus>

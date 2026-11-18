@@ -6,7 +6,7 @@ import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Whats
 import { OrderTimeline, RefreshButton, StatusTag, branchLabel } from '@/components/account/OrderParts.jsx';
 import { useOrder, useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { PENDING_BRANCH, directionsUrl, formatAddress, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
+import { PENDING_BRANCH, PICKUP, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useCountdown, useDocumentTitle } from '@/hooks';
 
@@ -77,6 +77,7 @@ export default function OrderDetailPage() {
   const status = orderStatusView(order);
   const steps = orderTimelineView(order, now);
   const branch = order.branch;
+  const pickup = isPickup(order);
 
   const doCancel = async () => {
     setCancelling(true);
@@ -114,6 +115,15 @@ export default function OrderDetailPage() {
             {status.id === 'out_for_delivery' && <DeliveryCodeNote order={order} onResend={resendCode} />}
           </Card>
 
+          {pickup && status.ongoing && (
+            // Branch pickup: the number to show at the counter (the dashboard's pickup counter searches by order number or phone).
+            <Card className="p-4 text-center">
+              <p className="text-label font-normal text-muted">{PICKUP.counterTitle}</p>
+              <p className="tabular mt-1 text-[28px] font-bold leading-9 text-maroon">#{order.number}</p>
+              <p className="mt-1 text-small text-muted">{PICKUP.counterHelp(order.number)}</p>
+            </Card>
+          )}
+
           {branch && (
             <MaroonPanel className="rounded-xl p-4">
               <div className="flex items-center gap-3">
@@ -121,7 +131,7 @@ export default function OrderDetailPage() {
                   <Store size={20} strokeWidth={1.8} />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-label font-normal text-white/80">{branchLabel(status)}</p>
+                  <p className="text-label font-normal text-white/80">{branchLabel(status, order)}</p>
                   <Link to={ROUTES.branch(branch.id)} className="block truncate text-[18px] font-bold leading-6 hover:underline">
                     {branch.name}
                   </Link>
@@ -152,7 +162,7 @@ export default function OrderDetailPage() {
                   <Store size={20} strokeWidth={1.8} />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-label font-normal text-white/80">{branchLabel(status)}</p>
+                  <p className="text-label font-normal text-white/80">{branchLabel(status, order)}</p>
                   <p className="truncate text-[18px] font-bold leading-6">{PENDING_BRANCH.title}</p>
                 </div>
               </div>
@@ -184,7 +194,7 @@ export default function OrderDetailPage() {
             <div className="my-3.5 h-px bg-divider" />
             <div className="flex flex-col gap-2.5">
               {order.discount > 0 && <SummaryRow label={`Discount (${order.promoCode})`} value={`− ${formatSAR(order.discount)}`} />}
-              <SummaryRow label="Delivery" value={order.deliveryFee === 0 ? 'Free' : formatSAR(order.deliveryFee)} />
+              {!pickup && <SummaryRow label="Delivery" value={order.deliveryFee === 0 ? 'Free' : formatSAR(order.deliveryFee)} />}
               <SummaryRow label="Total (incl. VAT)" value={formatSAR(order.total)} />
             </div>
           </Card>
@@ -192,7 +202,7 @@ export default function OrderDetailPage() {
           <Card className="p-4">
             <dl className="flex flex-col gap-3">
               {[
-                ['Deliver to', formatAddress(order.address)],
+                pickup ? [PICKUP.collectFrom, branch?.name ?? PENDING_BRANCH.title] : ['Deliver to', formatAddress(order.address)],
                 ['Phone', formatPhone(order.deliveryPhone)],
                 ['Payment', paymentLabel(order.payment)],
               ].map(([label, value]) => (

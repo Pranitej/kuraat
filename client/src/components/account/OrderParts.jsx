@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Check, ChevronRight, RefreshCw, Store, X } from 'lucide-react';
 import { Card, IconButton, Tag } from '@/components/ui';
 import { useToast } from '@/context/ToastContext.jsx';
-import { PENDING_BRANCH, formatOrderDate, formatSAR, orderItemCount, orderStatusView } from '@/domain';
+import { PENDING_BRANCH, PICKUP, formatOrderDate, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
 
@@ -34,7 +34,7 @@ export function RefreshButton({ onRefresh, label = 'Refresh status' }) {
 
 /** status: an orderStatusView(). */
 export function StatusTag({ status, className }) {
-  const icon = status.cancelled ? X : status.id === 'delivered' ? Check : undefined;
+  const icon = status.cancelled ? X : status.id === 'delivered' || status.id === 'picked_up' ? Check : undefined;
   return (
     <Tag tone={status.tone} icon={icon} className={cn('h-7 px-3 text-[13px]', className)}>
       {status.label}
@@ -42,9 +42,10 @@ export function StatusTag({ status, className }) {
   );
 }
 
-/** "Will be delivered from" / "Delivered from" / "Ordered from" (cancelled). */
-export function branchLabel(status) {
+/** "Will be delivered from" / "Delivered from" / "Ordered from" (cancelled); pickup: "Pick up from" / "Picked up from". */
+export function branchLabel(status, order) {
   if (status.cancelled) return 'Ordered from';
+  if (isPickup(order)) return status.ongoing ? PICKUP.pickupFrom : PICKUP.pickedUpFrom;
   return status.ongoing ? 'Will be delivered from' : 'Delivered from';
 }
 
@@ -92,7 +93,7 @@ export function OrderCard({ order, now }) {
         <Link to={ROUTES.branch(order.branch.id)} className="mt-3.5 flex items-center gap-3 rounded-lg bg-sand px-4 py-3 transition hover:bg-[#EFD5C7]">
           <Store size={20} strokeWidth={1.8} className="shrink-0 text-maroon" aria-hidden />
           <span className="min-w-0 flex-1">
-            <span className="block text-label font-normal text-muted">{branchLabel(status)}</span>
+            <span className="block text-label font-normal text-muted">{branchLabel(status, order)}</span>
             <span className="block truncate text-[15px] font-bold text-ink">{order.branch.name}</span>
           </span>
           <ChevronRight size={20} strokeWidth={1.8} className="shrink-0 text-ink" aria-hidden />
@@ -103,7 +104,7 @@ export function OrderCard({ order, now }) {
         <div className="mt-3.5 flex items-center gap-3 rounded-lg bg-sand px-4 py-3">
           <Store size={20} strokeWidth={1.8} className="shrink-0 text-maroon" aria-hidden />
           <span className="min-w-0 flex-1">
-            <span className="block text-label font-normal text-muted">{branchLabel(status)}</span>
+            <span className="block text-label font-normal text-muted">{branchLabel(status, order)}</span>
             <span className="block truncate text-[15px] font-bold text-ink">{PENDING_BRANCH.title}</span>
           </span>
         </div>

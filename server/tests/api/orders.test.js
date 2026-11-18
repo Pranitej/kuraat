@@ -2,7 +2,7 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { signInDemo, signUp } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
-import { advance, placeTestOrder } from '../helpers/orders.js';
+import { advance, placePickupTestOrder, placeTestOrder } from '../helpers/orders.js';
 
 let t;
 let me;
@@ -174,6 +174,37 @@ describe('refresh button (design 2026-11-18 §5.4)', () => {
     setRofStatus('Preparing');
     expect((await api('get', `/orders/${order.id}`)).body.status.label).toBe('Sent to branch');
     expect((await api('get', `/orders/${order.id}?refresh=true`)).body.status.label).toBe('Preparing');
+  });
+});
+
+describe('pickup orders through RSOF (design 2026-11-18 §5.3)', () => {
+  test('the fake ROF walks a pickup order to PickUpByCustomer, never to a courier', async () => {
+    const order = await placePickupTestOrder(t, me);
+    const names = [];
+    for (let i = 0; i < 4; i += 1) names.push((await advance(t, order.number)).body.status);
+    expect(names).toEqual(['BranchAccepted', 'Preparing', 'Prepared', 'PickUpByCustomer']);
+  });
+
+  test('Prepared is "Ready for pickup" (step 3 of the pickup tracker); PickUpByCustomer is "Picked up"', async () => {
+    const order = await placePickupTestOrder(t, me);
+    await advance(t, order.number, 'Prepared');
+    let res = await api('get', `/orders/${order.id}?refresh=true`);
+    expect(res.body.status).toMatchObject({ id: 'ready_for_pickup', code: 'Prepared', label: 'Ready for pickup', group: 'ready', step: 2 });
+    expect(res.body.steps.map((x) => x.state)).toEqual(['done', 'done', 'current', 'todo']);
+    expect(res.body.canCancel).toBe(false);
+    t.clock.advance(11_000);
+    await advance(t, order.number, 'PickUpByCustomer');
+    res = await api('get', `/orders/${order.id}?refresh=true`);
+    expect(res.body.status).toMatchObject({ id: 'picked_up', label: 'Picked up', group: 'completed', step: 3 });
+    expect(res.body.steps.every((x) => x.state === 'done')).toBe(true);
+    expect(res.body.steps[3].time).toBeTruthy();
+  });
+
+  test('a delivery order still reads "Packed, waiting for a rider" on Prepared (unchanged)', async () => {
+    const order = await placeTestOrder(t, me);
+    await advance(t, order.number, 'Prepared');
+    const res = await api('get', `/orders/${order.id}?refresh=true`);
+    expect(res.body.status).toMatchObject({ id: 'preparing', label: 'Packed, waiting for a rider', step: 1 });
   });
 });
 

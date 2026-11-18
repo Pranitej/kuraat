@@ -44,6 +44,9 @@ export const HAPPY_PATH = [
   'Delivered',
 ];
 
+/** A pickup order ends at the counter instead of with a courier. */
+export const HAPPY_PATH_PICKUP = ['Created', 'AssignedToBranch', 'BranchAccepted', 'Preparing', 'Prepared', 'PickUpByCustomer'];
+
 export function registerOrderRoutes(app, { store, now, ok, fail, availableToSell }) {
   const db = store.data;
   const iso = () => now().toISOString();
@@ -273,8 +276,9 @@ export function registerOrderRoutes(app, { store, now, ok, fail, availableToSell
     if (!order.assignedToBranch) return { error: 'Assign a branch first (the app does this when the order is placed)' };
     let to = target;
     if (!to) {
-      const i = HAPPY_PATH.indexOf(order.status);
-      to = HAPPY_PATH[i + 1] ?? 'Delivered';
+      const path = order.fulfillmentType === 'Pickup' ? HAPPY_PATH_PICKUP : HAPPY_PATH;
+      const i = path.indexOf(order.status);
+      to = path[i + 1] ?? path.at(-1);
     }
     if (!STATUS_NAMES.includes(to)) return { error: `Unknown status ${to}` };
     if (to === 'Canceled') releaseStock(order);

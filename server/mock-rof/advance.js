@@ -3,7 +3,8 @@
  *
  * Plays "branch staff" for the fake ROF: moves an order to the next status on the normal delivery
  * path (AssignedToBranch → BranchAccepted → Preparing → Prepared → AssignedToTechnician →
- * OutForDelivery → Delivered), or straight to the status given (e.g. Canceled).
+ * OutForDelivery → Delivered; pickup orders go Prepared → PickUpByCustomer instead), or straight to
+ * the status given (e.g. Canceled).
  * The fake ROF must be running (npm run mock-rof).
  */
 const [orderNumber, status] = process.argv.slice(2);

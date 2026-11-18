@@ -20,3 +20,12 @@ export const advance = (t, number, status) =>
   request(t.mockRof.app)
     .post(`/__dev/orders/${String(number).replace('KR-', '')}/advance`)
     .send(status ? { status } : {});
+
+/** A pickup order paid at the branch (the pin comes from the customer's default address). */
+export async function placePickupTestOrder(t, me, { items = [{ productId: PRODUCT_IDS.classic, qty: 1 }], payment = { method: 'branch' } } = {}) {
+  const api = (method, path, body) => request(t.app)[method](`/api/v1${path}`).set('Authorization', me.auth).send(body);
+  await api('put', '/cart', { items });
+  const res = await api('post', '/orders', { fulfilment: 'pickup', deliveryPhone: '501234821', payment, idempotencyKey: randomUUID() });
+  if (res.status !== 201) throw new Error(`place pickup order ${res.status} ${JSON.stringify(res.body)}`);
+  return res.body;
+}

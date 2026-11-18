@@ -122,4 +122,60 @@ describe('checkout quote', () => {
     const res = await api('post', '/checkout/quote', { addressId: '00000000-0000-4000-8000-000000000000' });
     expect(res.status).toBe(404);
   });
+
+  describe('pickup (design 2026-11-18 §5.3)', () => {
+    const AL_RAKAH = { lat: 26.2874, lng: 50.2085 };
+
+    test('a location in the request: the nearest hub as an estimate and the cart priced without the delivery fee', async () => {
+      await api('put', '/cart', pdfCart);
+      const res = await api('post', '/checkout/quote', { fulfilment: 'pickup', location: AL_RAKAH });
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        fulfilment: 'pickup',
+        branch: { id: BRANCH_IDS.corniche },
+        distanceKm: expect.any(Number),
+        isNearest: true,
+        totals: { subtotal: 313, delivery: 0, total: 313, vat: 40.83 },
+      });
+      expect(res.body).not.toHaveProperty('window');
+    });
+
+    test('without a location in the request the last known one is used', async () => {
+      await api('put', '/cart', pdfCart);
+      await t.db('users').where({ id: me.user.id }).update({ last_lat: AL_RAKAH.lat, last_lng: AL_RAKAH.lng });
+      const res = await api('post', '/checkout/quote', { fulfilment: 'pickup' });
+      expect(res.body.branch.id).toBe(BRANCH_IDS.corniche);
+    });
+
+    test('with no location at all the default address is used', async () => {
+      await api('put', '/cart', pdfCart);
+      const res = await api('post', '/checkout/quote', { fulfilment: 'pickup' });
+      expect(res.body.branch.id).toBe(BRANCH_IDS.corniche);
+    });
+
+    test('nothing known about where the customer is: no branch estimate, totals still priced', async () => {
+      await api('put', '/cart', pdfCart);
+      await t.db('addresses').where({ user_id: me.user.id }).delete();
+      const res = await api('post', '/checkout/quote', { fulfilment: 'pickup' });
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ fulfilment: 'pickup', branch: null, distanceKm: null, totals: { total: 313 } });
+    });
+
+    test('a delivery quote still needs an address, and has no totals of its own', async () => {
+      await api('put', '/cart', pdfCart);
+      const missing = await api('post', '/checkout/quote', { fulfilment: 'delivery' });
+      expect(missing.status).toBe(400);
+      expect(missing.body).toMatchObject({ code: 'invalid', field: 'addressId' });
+      const addressId = (await api('get', '/addresses')).body.find((a) => a.label === 'Home').id;
+      const ok = await api('post', '/checkout/quote', { fulfilment: 'delivery', addressId });
+      expect(ok.status).toBe(200);
+      expect(ok.body).not.toHaveProperty('totals');
+      expect(ok.body.window).toBeTruthy();
+    });
+
+    test('an out-of-range location is refused', async () => {
+      const res = await api('post', '/checkout/quote', { fulfilment: 'pickup', location: { lat: 200, lng: 0 } });
+      expect(res.status).toBe(400);
+    });
+  });
 });

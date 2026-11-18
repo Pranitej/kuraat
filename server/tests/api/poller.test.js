@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { createOrderPoller } from '../../src/jobs/orderPoller.js';
 import { signInDemo } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
-import { advance, placeTestOrder } from '../helpers/orders.js';
+import { advance, placePickupTestOrder, placeTestOrder } from '../helpers/orders.js';
 
 let t;
 let me;
@@ -74,5 +74,22 @@ describe('order status poller', () => {
     t.clock.advance(60_000);
     await expect(poller.tick()).resolves.toBeUndefined();
     expect(t.logs.some(([level]) => level === 'warn')).toBe(true);
+  });
+
+  test('a pickup order is announced as ready for pickup and picked up, never "on its way" or "delivered"', async () => {
+    const order = await placePickupTestOrder(t, me);
+    const poller = createOrderPoller({ ctx: t.ctx, intervalMs: 60_000 });
+    await advance(t, order.number, 'Prepared');
+    t.clock.advance(60_000);
+    await poller.tick();
+    await poller.tick();
+    await advance(t, order.number, 'PickUpByCustomer');
+    t.clock.advance(60_000);
+    await poller.tick();
+    const notes = await t.db('notifications').whereIn('type', ['ready_for_pickup', 'picked_up', 'out_for_delivery', 'delivered']).orderBy('created_at');
+    expect(notes.map((n) => [n.type, n.title, n.body])).toEqual([
+      ['ready_for_pickup', `Order #${order.number} is ready for pickup`, 'Collect it from Kuraat · Al Khobar Corniche.'],
+      ['picked_up', `Order #${order.number} picked up`, 'Picked up from Kuraat · Al Khobar Corniche. Enjoy!'],
+    ]);
   });
 });

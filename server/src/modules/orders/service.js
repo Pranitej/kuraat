@@ -91,13 +91,17 @@ export function createOrdersService(ctx) {
         updated_at: now,
       };
 
-      // One notification per milestone; a jump straight to Delivered skips "on its way".
+      // One notification per milestone; a jump straight to the end skips the middle one. A pickup
+      // order is "ready for pickup" and "picked up" — it never has a courier.
+      const pickup = current.fulfilment === 'pickup';
+      const middle = pickup ? 'ready_for_pickup' : 'out_for_delivery';
+      const last = pickup ? 'picked_up' : 'delivered';
       const notified = [...(current.notified || [])];
       const due = [];
       if (cancelled && !notified.includes('cancelled')) due.push('cancelled');
-      if (!cancelled && numericStep === 3 && !notified.includes('delivered')) due.push('delivered');
-      if (!cancelled && numericStep === 2 && !notified.includes('out_for_delivery')) due.push('out_for_delivery');
-      if (due.includes('delivered') && !notified.includes('out_for_delivery')) notified.push('out_for_delivery');
+      if (!cancelled && numericStep === 3 && !notified.includes(last)) due.push(last);
+      if (!cancelled && numericStep === 2 && !notified.includes(middle)) due.push(middle);
+      if (due.includes(last) && !notified.includes(middle)) notified.push(middle);
       notified.push(...due);
 
       const branchName = changes.branch_name || 'the branch';
@@ -105,7 +109,11 @@ export function createOrdersService(ctx) {
         .where({ id: row.id })
         .update({ ...changes, step_times: JSON.stringify(times), notified: JSON.stringify(notified) });
       for (const type of due) {
-        if (type === 'out_for_delivery') {
+        if (type === 'ready_for_pickup') {
+          await notify(trx, row.user_id, { type, title: `Order #${number} is ready for pickup`, body: `Collect it from ${branchName}.`, link }, now);
+        } else if (type === 'picked_up') {
+          await notify(trx, row.user_id, { type, title: `Order #${number} picked up`, body: `Picked up from ${branchName}. Enjoy!`, link }, now);
+        } else if (type === 'out_for_delivery') {
           await notify(trx, row.user_id, { type, title: `Order #${number} is on its way`, body: `Your courier has left ${branchName}.`, link }, now);
         } else if (type === 'delivered') {
           await notify(trx, row.user_id, { type, title: `Order #${number} delivered`, body: `Delivered from ${branchName}. Enjoy!`, link }, now);

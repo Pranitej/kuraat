@@ -38,6 +38,22 @@ const ADDRESS = {
   isDefault: true,
 };
 
+
+const PICKUP_QUOTE = {
+  fulfilment: 'pickup',
+  branch: { id: 'b1', name: 'Kuraat · Al Khobar Corniche', address: 'Corniche Rd', city: 'Al Khobar', phone: '+966 13 555 0101', location: { lat: 26.29, lng: 50.22 } },
+  distanceKm: 2.4,
+  isNearest: true,
+  inStock: null,
+  totals: { count: 3, subtotal: 370, discount: 0, delivery: 0, total: 370, vat: 48.26 },
+};
+const pickupServer = (c: { path: string; method: string }) => {
+  if (c.path === '/cart' && c.method === 'GET') return { body: TWO };
+  if (c.path === '/addresses') return { body: [ADDRESS] };
+  if (c.path === '/checkout/quote') return { body: PICKUP_QUOTE };
+  return undefined;
+};
+
 beforeEach(() => {
   resetRouterMock();
   session.clearAll();
@@ -116,5 +132,52 @@ describe('13 · Delivery details', () => {
     await fireEvent.changeText(screen.getByLabelText('Phone number for this delivery'), '12');
     await fireEvent.press(screen.getByRole('button', { name: 'Continue to payment' }));
     expect(mockRouter.push).not.toHaveBeenCalled();
+  });
+
+  describe('delivery or branch pickup (design 2026-11-18 §5.3)', () => {
+    test('the switch offers Delivery and Branch pickup; Pickup hides the address list and shows the note and the phone', async () => {
+      await renderScreen(<DeliveryScreen />, { server: pickupServer });
+      expect(await screen.findByRole('radio', { name: /Home/ })).toBeTruthy();
+      expect(screen.getByRole('radio', { name: 'Delivery' })).toBeTruthy();
+      await fireEvent.press(screen.getByRole('radio', { name: 'Branch pickup' }));
+      expect(screen.queryByRole('radio', { name: /Home/ })).toBeNull();
+      expect(screen.getByText(/Collect your order from the branch we confirm after you order/)).toBeTruthy();
+      expect(screen.getByLabelText('Phone number for this order')).toBeTruthy();
+      expect(await screen.findByText('Likely pickup branch')).toBeTruthy();
+      expect(screen.getByText('Kuraat · Al Khobar Corniche')).toBeTruthy();
+    });
+
+    test('Continue from Pickup goes to Payment with no address and remembers the choice', async () => {
+      await renderScreen(<DeliveryScreen />, { server: pickupServer });
+      await screen.findByRole('radio', { name: /Home/ });
+      await fireEvent.press(screen.getByRole('radio', { name: 'Branch pickup' }));
+      await fireEvent.press(screen.getByRole('button', { name: 'Continue to payment' }));
+      expect(mockRouter.push).toHaveBeenCalledWith('/checkout/payment');
+      expect(session.read('checkout')).toMatchObject({ fulfilment: 'pickup', deliveryPhone: '501234821' });
+    });
+
+    test('a wrong phone is still flagged for pickup', async () => {
+      await renderScreen(<DeliveryScreen />, { server: pickupServer });
+      await screen.findByRole('radio', { name: /Home/ });
+      await fireEvent.press(screen.getByRole('radio', { name: 'Branch pickup' }));
+      await fireEvent.changeText(screen.getByLabelText('Phone number for this order'), '12');
+      await fireEvent.press(screen.getByRole('button', { name: 'Continue to payment' }));
+      expect(mockRouter.push).not.toHaveBeenCalled();
+    });
+
+    test('a remembered cash-on-delivery choice falls back to card when switching to Pickup', async () => {
+      session.write('checkout', { fulfilment: 'delivery', addressId: 'a1', deliveryPhone: '501234821', paymentMethod: 'cod', idempotencyKey: null, lastOrderId: null });
+      await renderScreen(<DeliveryScreen />, { server: pickupServer });
+      await screen.findByRole('radio', { name: /Home/ });
+      await fireEvent.press(screen.getByRole('radio', { name: 'Branch pickup' }));
+      expect(session.read('checkout')).toMatchObject({ fulfilment: 'pickup', paymentMethod: 'card' });
+    });
+
+    test('a draft from before pickup existed is a delivery order', async () => {
+      session.write('checkout', { addressId: 'a1', deliveryPhone: '501234821', paymentMethod: 'card', idempotencyKey: null, lastOrderId: null });
+      await renderScreen(<DeliveryScreen />, { server: pickupServer });
+      expect(await screen.findByRole('radio', { name: /Home/ })).toBeChecked();
+      expect(screen.getByRole('radio', { name: 'Delivery' }).props.accessibilityState).toMatchObject({ checked: true });
+    });
   });
 });

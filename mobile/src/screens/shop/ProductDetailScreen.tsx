@@ -162,7 +162,7 @@ export default function ProductDetailScreen() {
     gallery.current?.scrollToIndex({ index: i, animated: true });
   };
 
-  const deliveryMeta = delivery
+  const deliveryMeta = delivery?.branch && delivery.window
     ? [
         delivery.isNearest ? 'Closest to you' : `${delivery.distanceKm} km away`,
         quoteStockLabel(delivery.inStock),
@@ -278,7 +278,7 @@ export default function ProductDetailScreen() {
             style={styles.delivery}
             branch={delivery.branch}
             meta={deliveryMeta}
-            onPress={() => router.push(ROUTES.branch(delivery.branch.id))}
+            onPress={() => router.push(ROUTES.branch(delivery.branch!.id))}
           />
         ) : null}
 

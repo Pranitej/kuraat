@@ -2,7 +2,7 @@ import { randomUUID } from 'expo-crypto';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { session } from '@/lib/storage.js';
 import { withIdempotencyKey as withIdempotencyKeyJs } from '@/services/checkoutService.js';
-import type { PaymentMethod } from '@/types/api';
+import type { Fulfilment, PaymentMethod } from '@/types/api';
 import { useAuth } from './AuthContext';
 
 const KEY = 'checkout';
@@ -10,13 +10,14 @@ const KEY = 'checkout';
 const withIdempotencyKey = withIdempotencyKeyJs as unknown as (draft: Draft, makeKey: () => string) => Draft;
 
 type Draft = {
+  fulfilment: Fulfilment;
   addressId: string | null;
   deliveryPhone: string;
   paymentMethod: PaymentMethod;
   idempotencyKey: string | null;
   lastOrderId: string | null;
 };
-const EMPTY: Draft = { addressId: null, deliveryPhone: '', paymentMethod: 'card', idempotencyKey: null, lastOrderId: null };
+const EMPTY: Draft = { fulfilment: 'delivery', addressId: null, deliveryPhone: '', paymentMethod: 'card', idempotencyKey: null, lastOrderId: null };
 
 export type CheckoutValue = Draft & {
   patch: (changes: Partial<Draft>) => void;
@@ -28,7 +29,7 @@ export type CheckoutValue = Draft & {
 const CheckoutContext = createContext<CheckoutValue | null>(null);
 
 /**
- * Checkout draft (address, delivery phone, payment method, idempotency key, last order), kept for
+ * Checkout draft (delivery or pickup, address, phone, payment method, idempotency key, last order), kept for
  * this app launch so every "Pay" retry sends the same key and can never create a second order.
  */
 export function CheckoutProvider({ children }: { children: ReactNode }) {

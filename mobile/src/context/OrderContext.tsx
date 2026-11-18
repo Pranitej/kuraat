@@ -14,7 +14,9 @@ const whenActive = (fn: () => void) => () => {
 };
 
 export type PlaceOrderInput = {
-  addressId: string;
+  /** 'pickup' orders have no delivery address (design 2026-11-18 §5.3). */
+  fulfilment?: 'delivery' | 'pickup';
+  addressId?: string;
   deliveryPhone: string;
   /** Built by the shared toPaymentBody (orderService.js). */
   payment: { method: string } & Record<string, unknown>;

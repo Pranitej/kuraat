@@ -4,16 +4,18 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { CheckoutSteps } from '@/components/checkout/CheckoutParts';
 import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
-import { Banknote, CreditCard, Lock, TriangleAlert, type LucideIcon } from '@/components/icons';
+import { Banknote, CreditCard, Lock, Store, TriangleAlert, type LucideIcon } from '@/components/icons';
 import { DeliveryFromCard } from '@/components/shop/DeliveryFromCard';
 import { Button, Field, RadioDot, Text, Toggle } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
+import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useCheckout } from '@/context/CheckoutContext';
 import { useOrders } from '@/context/OrderContext';
 import { useToast } from '@/context/ToastContext';
 import {
+  PICKUP,
   formatCardNumber,
   formatExpiry,
   formatSAR,
@@ -24,34 +26,40 @@ import {
 } from '@/domain';
 import { useDeliveryQuote } from '@/hooks/quote';
 import { success as successHaptic } from '@/lib/haptics';
-import { PAYMENT_METHODS, toPaymentBody } from '@/services/orderService.js';
+import { offeredMethod, toPaymentBody } from '@/services/orderService.js';
 import { colors, radii } from '@/theme/theme';
 import type { PaymentMethod } from '@/types/api';
 
-// Saudi Arabia: card (incl. Mada) and cash on delivery. UPI (shown in the PDF) was removed — it is India-only.
-const METHODS: { id: PaymentMethod; title: string; subtitle: string; icon: LucideIcon }[] = [
+// Saudi Arabia: card (incl. Mada) and cash on delivery; branch pickup pays now (card) or at the branch.
+// UPI (shown in the PDF) was removed — it is India-only.
+type MethodRow = { id: PaymentMethod; title: string; subtitle: string; icon: LucideIcon };
+const DELIVERY_METHODS: MethodRow[] = [
   { id: 'card', title: 'Credit / debit card', subtitle: 'Visa, Mastercard, Mada', icon: CreditCard },
   { id: 'cod', title: 'Cash on delivery', subtitle: 'Pay when your order arrives', icon: Banknote },
+];
+const PICKUP_METHODS: MethodRow[] = [
+  { id: 'card', title: PICKUP.payNow, subtitle: PICKUP.payNowSub, icon: CreditCard },
+  { id: 'branch', title: PICKUP.payAtBranch, subtitle: PICKUP.payAtBranchSub, icon: Store },
 ];
 
 /** Server field names → this form's error slots. */
 const FIELD_ERRORS: Record<string, keyof Errors> = { 'card.number': 'number', 'card.expiry': 'expiry', 'card.cvv': 'cvv' };
 type Errors = Partial<Record<'number' | 'expiry' | 'cvv' | 'form', string>>;
 
-/** The method remembered in the checkout draft, if it is still offered. */
-const offered = (method: string | undefined): PaymentMethod => (PAYMENT_METHODS.includes(method as PaymentMethod) ? (method as PaymentMethod) : 'card');
-
 /** 14 · Payment */
 export default function PaymentScreen() {
   const router = useRouter();
   const toast = useToast();
   const cart = useCart();
+  const { user } = useAuth();
   const { addresses, defaultAddress, loaded: addressesLoaded } = useAddresses();
   const { placeOrder } = useOrders();
   const checkout = useCheckout();
-  const address = addresses.find((a) => a.id === checkout.addressId) || defaultAddress;
+  const pickup = checkout.fulfilment === 'pickup';
+  const METHODS = pickup ? PICKUP_METHODS : DELIVERY_METHODS;
+  const address = pickup ? null : addresses.find((a) => a.id === checkout.addressId) || defaultAddress;
   const productIds = useMemo(() => cart.items.map((i) => i.productId), [cart.items]);
-  const { quote: delivery } = useDeliveryQuote({ addressId: address?.id, productIds });
+  const { quote: delivery } = useDeliveryQuote({ addressId: address?.id, productIds, fulfilment: pickup ? 'pickup' : 'delivery' });
   const { ensureIdempotencyKey } = checkout;
 
   // One key per checkout, made when the payment screen opens and reused on every retry.
@@ -59,7 +67,8 @@ export default function PaymentScreen() {
     ensureIdempotencyKey();
   }, [ensureIdempotencyKey]);
 
-  const [method, setMethod] = useState<PaymentMethod>(() => offered(checkout.paymentMethod));
+  // The remembered method if this way of getting the order still offers it (a draft may even say "upi").
+  const [method, setMethod] = useState<PaymentMethod>(() => offeredMethod(checkout.paymentMethod, checkout.fulfilment) as PaymentMethod);
   const [card, setCard] = useState({ number: '', expiry: '', cvv: '' });
   const [save, setSave] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
@@ -70,9 +79,10 @@ export default function PaymentScreen() {
   const waiting = (!cart.items.length && (cart.status === 'loading' || cart.status === 'idle')) || !addressesLoaded;
   if (!processing && waiting) return <Screen>{null}</Screen>;
   if (!cart.items.length && !processing) return <Redirect href={ROUTES.cart} />;
-  if (!address && !processing) return <Redirect href={ROUTES.delivery} />;
+  if (!pickup && !address && !processing) return <Redirect href={ROUTES.delivery} />;
 
-  const { totals } = cart;
+  // Pickup has no delivery fee: its totals come priced from the server with the quote.
+  const totals = pickup ? delivery?.totals : cart.totals;
   const choose = (id: PaymentMethod) => {
     setMethod(id);
     setErrors({});
@@ -80,6 +90,7 @@ export default function PaymentScreen() {
   };
 
   const validate = () => {
+    if (!totals) return false;
     let errs: Errors = {};
     if (method === 'card')
       errs = { number: validateCardNumber(card.number), expiry: validateExpiry(card.expiry), cvv: validateCvv(card.cvv) };
@@ -88,21 +99,22 @@ export default function PaymentScreen() {
   };
 
   const pay = async () => {
-    if (paying.current || !address || !validate()) return;
+    if (paying.current || (!pickup && !address) || !validate()) return;
     paying.current = true;
     setProcessing(true);
     setErrors({});
     try {
       await cart.flush(); // the server places the cart it has
       const order = await placeOrder({
-        addressId: address.id,
-        deliveryPhone: checkout.deliveryPhone || address.phone,
+        fulfilment: pickup ? 'pickup' : 'delivery',
+        addressId: address?.id,
+        deliveryPhone: checkout.deliveryPhone || address?.phone || user?.phone || '',
         payment: toPaymentBody(method, { card, saveCard: save }),
         idempotencyKey: ensureIdempotencyKey(),
       });
       successHaptic();
       cart.reload(); // the server emptied it
-      checkout.reset({ lastOrderId: order.id, paymentMethod: method });
+      checkout.reset({ lastOrderId: order.id, paymentMethod: method, fulfilment: pickup ? 'pickup' : 'delivery' });
       router.replace(ROUTES.paymentSuccess(order.id));
     } catch (err) {
       const e = err as { code?: string; field?: string; message: string };
@@ -115,7 +127,8 @@ export default function PaymentScreen() {
     }
   };
 
-  const payLabel = method === 'cod' ? `Place order · ${formatSAR(totals.total)}` : `Pay ${formatSAR(totals.total)}`;
+  const later = method === 'cod' || method === 'branch';
+  const payLabel = !totals ? 'Pay' : later ? `Place order · ${formatSAR(totals.total)}` : `Pay ${formatSAR(totals.total)}`;
 
   return (
     <Screen
@@ -123,15 +136,17 @@ export default function PaymentScreen() {
       keyboard
       bottomBar={
         <BottomBar>
-          <View style={styles.totalRow}>
-            <Text color="muted">
-              Total · {totals.count} {totals.count === 1 ? 'item' : 'items'}
-            </Text>
-            <Text weight={700} style={styles.total}>
-              {formatSAR(totals.total)}
-            </Text>
-          </View>
-          <Button block leftIcon={method === 'cod' ? undefined : Lock} loading={processing} onPress={pay}>
+          {totals ? (
+            <View style={styles.totalRow}>
+              <Text color="muted">
+                Total · {totals.count} {totals.count === 1 ? 'item' : 'items'}
+              </Text>
+              <Text weight={700} style={styles.total}>
+                {formatSAR(totals.total)}
+              </Text>
+            </View>
+          ) : null}
+          <Button block leftIcon={later ? undefined : Lock} loading={processing} disabled={!totals} onPress={pay}>
             {payLabel}
           </Button>
         </BottomBar>
@@ -225,10 +240,18 @@ export default function PaymentScreen() {
                 </Animated.View>
               ) : null}
 
-              {checked && m.id === 'cod' ? (
+              {checked && m.id === 'cod' && totals ? (
                 <Animated.View entering={FadeIn.duration(180)} style={styles.methodBody}>
                   <Text variant="small" color="muted">
                     Please keep {formatSAR(totals.total)} ready. The courier carries change and a card machine.
+                  </Text>
+                </Animated.View>
+              ) : null}
+
+              {checked && m.id === 'branch' && totals ? (
+                <Animated.View entering={FadeIn.duration(180)} style={styles.methodBody}>
+                  <Text variant="small" color="muted">
+                    {PICKUP.payAtBranchHint(formatSAR(totals.total))}
                   </Text>
                 </Animated.View>
               ) : null}
@@ -237,8 +260,15 @@ export default function PaymentScreen() {
         })}
       </View>
 
-      {delivery ? (
-        <DeliveryFromCard style={styles.delivery} icon="store" branch={delivery.branch} distanceKm={delivery.distanceKm} showDistance />
+      {delivery?.branch ? (
+        <DeliveryFromCard
+          style={styles.delivery}
+          icon="store"
+          label={pickup ? PICKUP.likely : undefined}
+          branch={delivery.branch}
+          distanceKm={delivery.distanceKm}
+          showDistance
+        />
       ) : null}
     </Screen>
   );

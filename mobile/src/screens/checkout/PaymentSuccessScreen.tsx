@@ -8,7 +8,7 @@ import { Check } from '@/components/icons';
 import { Button, Card, CirclePattern, ProgressBar, Text, WhatsAppIcon } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useOrder } from '@/context/OrderContext';
-import { PENDING_BRANCH, formatDateTime, formatSAR, paymentLabel } from '@/domain';
+import { PICKUP, PENDING_BRANCH, formatDateTime, formatSAR, paymentLabel } from '@/domain';
 import { useBackToHome } from '@/hooks';
 import { colors, layout } from '@/theme/theme';
 
@@ -36,13 +36,14 @@ export default function PaymentSuccessScreen() {
 
   if (!order && loading) return <View style={styles.root} />;
   if (!order || !order.payment) return <Redirect href={ROUTES.orders} />;
-  const cod = order.payment.method === 'cod';
+  // Cash on delivery and pay at the branch: placed now, paid later.
+  const later = order.payment.method === 'cod' || order.payment.method === 'branch';
 
-  const rows: [string, string][] = cod
+  const rows: [string, string][] = later
     ? [
         ['Order number', `#${order.number}`],
         ['Date', formatDateTime(order.createdAt)],
-        ['Method', 'Cash on delivery'],
+        ['Method', paymentLabel(order.payment)],
         ['Amount due', formatSAR(order.total)],
       ]
     : [
@@ -68,12 +69,14 @@ export default function PaymentSuccessScreen() {
           </Animated.View>
         </View>
         <Text variant="title" align="center" accessibilityRole="header" style={styles.title}>
-          {cod ? 'Order placed' : 'Payment successful'}
+          {later ? 'Order placed' : 'Payment successful'}
         </Text>
         <Text color="muted" align="center" style={styles.subtitle}>
-          {cod
-            ? `Pay ${formatSAR(order.total)} in cash when your order arrives`
-            : `${formatSAR(order.total)} paid with ${paymentLabel(order.payment)}`}
+          {order.payment.method === 'branch'
+            ? PICKUP.paidLater(formatSAR(order.total))
+            : later
+              ? `Pay ${formatSAR(order.total)} in cash when your order arrives`
+              : `${formatSAR(order.total)} paid with ${paymentLabel(order.payment)}`}
         </Text>
 
         <Card style={styles.card}>
@@ -90,7 +93,7 @@ export default function PaymentSuccessScreen() {
         <View style={styles.receipt}>
           <WhatsAppIcon size={20} color={colors.muted} />
           <Text color="copy">
-            {cod ? 'Your order details have been sent to your WhatsApp' : 'A receipt has been sent to your WhatsApp'}
+            {later ? 'Your order details have been sent to your WhatsApp' : 'A receipt has been sent to your WhatsApp'}
           </Text>
         </View>
 

@@ -12,6 +12,7 @@ export const getOrder = (id, { refresh = false } = {}) => apiRequest(refresh ? `
  * Pays (simulated in UAT) and places the order for the server cart. Same key → same order, so a
  * retry after a time-out is safe. Waits up to 60 s: the server may try RSOF more than once.
  * A pickup order (design 2026-11-18 §5.3) has no delivery address, so none is sent.
+ * @param {{ fulfilment?: 'delivery' | 'pickup', addressId?: string, deliveryPhone: string, payment: object, idempotencyKey: string }} input
  */
 export const placeOrder = ({ fulfilment = 'delivery', addressId, deliveryPhone, payment, idempotencyKey }) =>
   apiRequest('/orders', {

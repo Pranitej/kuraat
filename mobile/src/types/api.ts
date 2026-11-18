@@ -110,12 +110,18 @@ export type Totals = { count: number; subtotal: number; discount: number; delive
 
 export type PricedCart = { items: PricedLine[]; promo: Promo | null; totals: Totals };
 
+/**
+ * Delivery: the branch that would deliver and the slot. Pickup (design 2026-11-18 §5.3): the nearest
+ * branch to the customer (may be null) and the stored cart priced without the delivery fee.
+ */
 export type Quote = {
-  branch: Branch;
+  fulfilment?: 'delivery' | 'pickup';
+  branch: Branch | null;
   distanceKm: number | null;
-  isNearest: boolean;
-  inStock: boolean;
-  window: { start: string; end: string };
+  isNearest: boolean | null;
+  inStock: boolean | null;
+  window?: { start: string; end: string };
+  totals?: Totals;
 };
 
 /** Filter groups from the server's status table (server/src/rof/status.js). */
@@ -126,6 +132,8 @@ export type OrderStatus = { id: string; code: string | null; label: string; grou
 export type Order = {
   id: string;
   number: string;
+  /** Orders from before pickup existed have none: they are deliveries. */
+  fulfilment?: 'delivery' | 'pickup';
   status: OrderStatus;
   steps: {
     id: string;
@@ -151,17 +159,21 @@ export type Order = {
   } | null;
   branch: (Partial<Omit<Branch, 'phone' | 'location'>> & { id: string; name: string; phone?: string; location?: LatLng }) | null;
   distanceKm: number | null;
-  address: Partial<Address> & { city?: string };
+  /** null for a pickup order. */
+  address: (Partial<Address> & { city?: string }) | null;
   deliveryPhone: string;
-  window: { start: string; end: string };
+  /** nulls for a pickup order. */
+  window: { start: string | null; end: string | null };
   canCancel: boolean;
   canResendCode: boolean;
   createdAt: string;
   cancelledAt: string | null;
 };
 
-/** Saudi Arabia: card (incl. Mada) or cash on delivery. */
-export type PaymentMethod = 'card' | 'cod';
+/** Saudi Arabia: card (incl. Mada), cash on delivery, or (pickup) pay at the branch. */
+export type PaymentMethod = 'card' | 'cod' | 'branch';
+
+export type Fulfilment = 'delivery' | 'pickup';
 
 /** Server error as the shared ApiError carries it. */
 export type ApiErrorLike = Error & { code: string; field: string | null; status: number };

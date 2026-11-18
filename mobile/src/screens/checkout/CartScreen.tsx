@@ -121,7 +121,7 @@ export default function CartScreen() {
           <CartItemCard
             key={line.productId}
             line={line}
-            branchName={delivery?.branch.shortName}
+            branchName={delivery?.branch?.shortName}
             onQty={(q) => setQty(line.productId, q)}
             onRemove={() => removeLine(line)}
           />
@@ -136,7 +136,7 @@ export default function CartScreen() {
         <InfoBanner icon={Store} style={styles.banner}>
           <Text color="copy" style={styles.bannerText}>
             {before}
-            <Text weight={700}>{delivery.branch.displayName}</Text>
+            <Text weight={700}>{delivery.branch?.displayName}</Text>
             {after}
           </Text>
         </InfoBanner>

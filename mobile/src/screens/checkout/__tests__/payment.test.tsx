@@ -6,6 +6,7 @@ import { renderScreen } from '@/test/renderScreen';
 import { mockRouter, resetRouterMock, setMockParams } from '@/test/routerMock';
 import OrderConfirmedScreen from '../OrderConfirmedScreen';
 import PaymentScreen from '../PaymentScreen';
+import PaymentSuccessScreen from '../PaymentSuccessScreen';
 
 jest.mock('expo-router', () => require('@/test/routerMock').expoRouterMock);
 
@@ -177,6 +178,68 @@ describe('14 · Payment', () => {
     expect(screen.queryByText(/UPI/)).toBeNull();
     expect(screen.getByRole('radio', { name: /Credit \/ debit card/ }).props.accessibilityState).toMatchObject({ checked: true });
     expect(screen.getByLabelText('Card number')).toBeTruthy();
+  });
+});
+
+describe('14 · Payment — branch pickup (design 2026-11-18 §5.3)', () => {
+  const PICKUP_TOTALS = { count: 1, subtotal: 185, discount: 0, delivery: 0, total: 185, vat: 24.13 };
+  const PICKUP_ORDER = { ...ORDER, fulfilment: 'pickup', address: null, window: { start: null, end: null }, deliveryFee: 0, total: 185, payment: { method: 'branch', brand: null, last4: null, transactionId: null, paidAt: null } };
+  const pickupShop = (onOrder: (c: FetchCall) => { status?: number; body?: unknown } | undefined) => (c: FetchCall) => {
+    if (c.path === '/checkout/quote') return { body: { fulfilment: 'pickup', branch: { id: 'b1', name: 'Kuraat · Al Khobar Corniche' }, distanceKm: 2.4, isNearest: true, inStock: null, totals: PICKUP_TOTALS } };
+    return shop(onOrder)(c);
+  };
+  beforeEach(() => {
+    session.write('checkout', { fulfilment: 'pickup', addressId: null, deliveryPhone: '501234821', paymentMethod: 'card', idempotencyKey: null, lastOrderId: null });
+  });
+
+  test('pickup offers Pay now and Pay at branch — never cash on delivery', async () => {
+    await renderScreen(<PaymentScreen />, { server: pickupShop(() => ({ status: 201, body: PICKUP_ORDER })) });
+    await screen.findByText('Payment method');
+    expect(screen.getAllByRole('radio').map((r) => r.props.accessibilityLabel)).toEqual([
+      'Pay now, Credit / debit card · Visa, Mastercard, Mada',
+      'Pay at branch, Pay when you collect your order',
+    ]);
+    expect(screen.queryByRole('radio', { name: /Cash on delivery/ })).toBeNull();
+  });
+
+  test('Pay at branch places a pickup order without an address, priced without the delivery fee', async () => {
+    const { calls } = await renderScreen(<PaymentScreen />, { server: pickupShop(() => ({ status: 201, body: PICKUP_ORDER })) });
+    await screen.findByText('Payment method');
+    await fireEvent.press(screen.getByRole('radio', { name: /Pay at branch/ }));
+    expect(screen.getByText('Please pay SAR 185.00 at the pickup counter when you collect your order.')).toBeTruthy();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Place order · SAR 185.00' }));
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/checkout/success/o1'));
+    const body = calls.find((c) => c.path === '/orders' && c.method === 'POST')?.body as Record<string, unknown>;
+    expect(body).toMatchObject({ fulfilment: 'pickup', payment: { method: 'branch' }, deliveryPhone: '501234821' });
+    expect(body).not.toHaveProperty('addressId');
+  });
+
+  test('delivery still posts its address and says delivery', async () => {
+    session.write('checkout', { fulfilment: 'delivery', addressId: 'a1', deliveryPhone: '501234821', paymentMethod: 'cod', idempotencyKey: null, lastOrderId: null });
+    const { calls } = await renderScreen(<PaymentScreen />, { server: pickupShop(() => ({ status: 201, body: ORDER })) });
+    await screen.findByText('Payment method');
+    await fireEvent.press(await screen.findByRole('button', { name: 'Place order · SAR 200.00' }));
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalled());
+    expect(calls.find((c) => c.path === '/orders' && c.method === 'POST')?.body).toMatchObject({ fulfilment: 'delivery', addressId: 'a1', payment: { method: 'cod' } });
+  });
+
+  test('a delivery draft that remembered "pay at branch" starts on card', async () => {
+    session.write('checkout', { fulfilment: 'delivery', addressId: 'a1', deliveryPhone: '501234821', paymentMethod: 'branch', idempotencyKey: null, lastOrderId: null });
+    await renderScreen(<PaymentScreen />, { server: pickupShop(() => ({ status: 201, body: ORDER })) });
+    await screen.findByText('Payment method');
+    expect(screen.getByRole('radio', { name: /Credit \/ debit card/ }).props.accessibilityState).toMatchObject({ checked: true });
+  });
+});
+
+describe('15 · Payment successful — pay at branch', () => {
+  test('says the order is placed and what to pay at the branch', async () => {
+    setMockParams({ orderId: 'o1' });
+    const order = { ...ORDER, fulfilment: 'pickup', address: null, total: 185, payment: { method: 'branch', brand: null, last4: null, transactionId: null, paidAt: null } };
+    await renderScreen(<PaymentSuccessScreen />, { server: (c) => (c.path === '/orders/o1' ? { body: order } : shop(() => undefined)(c)) });
+    expect(await screen.findByText('Order placed')).toBeTruthy();
+    expect(screen.getByText('Pay SAR 185.00 at the branch when you collect your order')).toBeTruthy();
+    expect(screen.getByText('Pay at branch')).toBeTruthy();
+    expect(screen.getByText('Amount due')).toBeTruthy();
   });
 });
 

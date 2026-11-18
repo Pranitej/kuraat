@@ -140,6 +140,7 @@ function moneyRemark(payment, total) {
   if (!payment) return null;
   if (payment.method === 'cod') return `Collect SAR ${Number(total).toFixed(2)} (cash on delivery)`;
   if (payment.method === 'card') return 'Paid by card';
+  if (payment.method === 'branch') return `Collect SAR ${Number(total).toFixed(2)} (pay at branch)`;
   return null;
 }
 
@@ -147,29 +148,32 @@ function moneyRemark(payment, total) {
  * Body for POST /api/orders/manual (guide §7.1; design 2026-11-18 §5.2). orderType 0 = a normal
  * customer order (ItemOrder — RSOF's default, sent explicitly).
  */
-export function toRofOrderPayload({ user, address, deliveryPhone, items, payment = null, total = null }) {
+export function toRofOrderPayload({ user, address, deliveryPhone, items, payment = null, total = null, fulfilment = 'delivery', city = null }) {
+  const pickup = fulfilment === 'pickup';
   const remarks = [];
-  if (!isBlank(address.landmark)) remarks.push(`Landmark: ${address.landmark.trim()}`);
+  if (!pickup && !isBlank(address.landmark)) remarks.push(`Landmark: ${address.landmark.trim()}`);
   if (deliveryPhone !== user.phone) remarks.push(`Account phone: +966 ${formatLocalPhone(user.phone)}`);
   const money = moneyRemark(payment, total);
   if (money) remarks.push(money);
+  // A pickup order has no street address: ROF still wants one, so it gets a plain label (and the
+  // customer's usual city when we know it, which also gives the province).
+  const orderCity = pickup ? city : address.city;
   const payload = {
     customerName: user.name,
     // The delivery code and WhatsApp updates go to this number (guide §7.1).
     phoneNumber: toRofPhone(deliveryPhone),
     customerEmail: isBlank(user.email) ? undefined : user.email,
-    address: formatAddressLine(address),
-    city: address.city,
+    address: pickup ? 'Branch pickup' : formatAddressLine(address),
+    city: isBlank(orderCity) ? undefined : orderCity,
     country: 'Saudi Arabia',
-    province: provinceFor(address.city) ?? undefined,
+    province: provinceFor(orderCity) ?? undefined,
     remarks: remarks.length ? remarks.join(' · ') : null,
     source: 'MobileApp',
-    fulfillmentType: 'Delivery',
+    fulfillmentType: pickup ? 'Pickup' : 'Delivery',
     orderType: 0,
     items: items.map((i) => ({ productId: i.productId, quantity: i.qty })),
   };
-  if (payload.customerEmail === undefined) delete payload.customerEmail;
-  if (payload.province === undefined) delete payload.province;
+  for (const key of ['customerEmail', 'city', 'province']) if (payload[key] === undefined) delete payload[key];
   return payload;
 }
 

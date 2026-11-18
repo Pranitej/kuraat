@@ -277,6 +277,31 @@ describe('order payload for POST /api/orders/manual (guide §7.1, spec §6.7 ste
   });
 });
 
+describe('pickup payload (design 2026-11-18 §5.3)', () => {
+  const user = { name: 'Sara Al-Mutairi', email: 'sara.m@example.com', phone: '501234821' };
+  const items = [{ productId: 'p1', qty: 1 }];
+
+  test('Pickup fulfilment, a "Branch pickup" address and the amount to collect at the branch', () => {
+    const payload = toRofOrderPayload({ user, address: null, city: 'Al Khobar', deliveryPhone: '501234821', items, payment: { method: 'branch' }, total: 313, fulfilment: 'pickup' });
+    expect(payload).toMatchObject({
+      fulfillmentType: 'Pickup',
+      address: 'Branch pickup',
+      city: 'Al Khobar',
+      country: 'Saudi Arabia',
+      province: 'Eastern Province',
+      orderType: 0,
+      remarks: 'Collect SAR 313.00 (pay at branch)',
+    });
+  });
+
+  test('pickup paid by card says so; with no city nothing is guessed', () => {
+    const payload = toRofOrderPayload({ user, address: null, deliveryPhone: '559876543', items, payment: { method: 'card' }, total: 313, fulfilment: 'pickup' });
+    expect(payload.remarks).toBe('Account phone: +966 50 123 4821 · Paid by card');
+    expect(payload).not.toHaveProperty('city');
+    expect(payload).not.toHaveProperty('province');
+  });
+});
+
 describe('provinceFor', () => {
   test.each([
     ['Riyadh', 'Riyadh Province'],

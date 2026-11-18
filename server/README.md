@@ -91,7 +91,7 @@ All bodies are JSON. Signed-in routes need `Authorization: Bearer <accessToken>`
 | Shop | `GET /categories` · `GET /products?categoryId&search` · `GET /products/:id` · `GET /branches` |
 | Favourites, cards | `GET/PUT /favorites` · `GET /cards` · `DELETE /cards/:id` |
 | Cart & checkout | `GET/PUT /cart` `{ items: [{ productId, qty }], promoCode? }` · `POST /checkout/quote` `{ addressId, productIds? }` |
-| Orders | `POST /orders` `{ addressId, deliveryPhone, payment, idempotencyKey }` · `GET /orders?tab=ongoing·delivered·all&refresh=true` · `GET /orders/:id?refresh=true` (`refresh=true` = re-read ROF now, at most once per 10 s per customer) · `POST /orders/:id/cancel` · `POST /orders/:id/resend-code` |
+| Orders | `POST /orders` `{ fulfilment?: 'delivery'·'pickup', addressId (delivery only), deliveryPhone, payment, idempotencyKey }` (delivery pays card or cash; pickup — no address, no delivery fee — pays card or `{ method: 'branch' }`) · `GET /orders?tab=ongoing·delivered·all&refresh=true` · `GET /orders/:id?refresh=true` (`refresh=true` = re-read ROF now, at most once per 10 s per customer) · `POST /orders/:id/cancel` · `POST /orders/:id/resend-code` |
 | Notifications | `GET /notifications` · `POST /notifications/:id/read` · `POST /notifications/read-all` |
 
 Products: `{ id, name, description[], price, categoryId, categoryName, images[], inStock, maxQuantity, meta,

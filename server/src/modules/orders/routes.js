@@ -6,7 +6,10 @@ import { validate } from '../../http/validate.js';
 import { phoneSchema } from '../auth/phone.js';
 import { placeOrder } from './place.js';
 
-/** Saudi Arabia: card (incl. Mada) or cash on delivery. UPI is India-only and is not offered. */
+/**
+ * Saudi Arabia: card (incl. Mada), cash on delivery (delivery orders) or pay at the branch (pickup
+ * orders). UPI is India-only and is not offered.
+ */
 const paymentSchema = z.discriminatedUnion(
   'method',
   [
@@ -16,17 +19,30 @@ const paymentSchema = z.discriminatedUnion(
       saveCard: z.boolean().optional(),
     }),
     z.object({ method: z.literal('cod') }),
+    z.object({ method: z.literal('branch') }),
   ],
   { error: (issue) => (issue.code === 'invalid_union' ? 'Choose card or cash on delivery.' : undefined) },
 );
 
-const placeSchema = z.object({
-  addressId: z.string().min(1),
-  deliveryPhone: phoneSchema,
-  promoCode: z.string().max(40).nullable().optional(),
-  payment: paymentSchema,
-  idempotencyKey: z.uuid('Start the checkout again.'),
-});
+const placeSchema = z
+  .object({
+    fulfilment: z.enum(['delivery', 'pickup']).default('delivery'),
+    addressId: z.string().min(1).optional(),
+    deliveryPhone: phoneSchema,
+    promoCode: z.string().max(40).nullable().optional(),
+    payment: paymentSchema,
+    idempotencyKey: z.uuid('Start the checkout again.'),
+  })
+  // Delivery needs an address and pays by card or cash; pickup has no address and pays by card or at the branch.
+  .superRefine((order, ctx) => {
+    const pickup = order.fulfilment === 'pickup';
+    if (pickup && order.addressId) ctx.addIssue({ code: 'custom', path: ['addressId'], message: 'A pickup order has no delivery address.' });
+    if (!pickup && !order.addressId) ctx.addIssue({ code: 'custom', path: ['addressId'], message: 'Choose a delivery address.' });
+    const allowed = pickup ? ['card', 'branch'] : ['card', 'cod'];
+    if (!allowed.includes(order.payment.method)) {
+      ctx.addIssue({ code: 'custom', path: ['payment', 'method'], message: pickup ? 'Choose card or pay at branch.' : 'Choose card or cash on delivery.' });
+    }
+  });
 
 export function orderRoutes(ctx) {
   const router = express.Router();

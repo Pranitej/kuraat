@@ -16,7 +16,8 @@ const RESEND_SECONDS = 60;
 const sar = (n) => `SAR ${Number(n).toFixed(2)}`;
 
 function cancellationBody(payment) {
-  if (!payment || payment.method === 'cod') return 'Your order was cancelled.';
+  // Cash on delivery and pay-at-the-branch were never charged: nothing to refund.
+  if (!payment || payment.method === 'cod' || payment.method === 'branch') return 'Your order was cancelled.';
   // Cards only today; "your original payment method" covers payments made before UPI was removed.
   const via = payment.method === 'card' ? `${payment.brand} •••• ${payment.last4}` : 'your original payment method';
   return `Your order was cancelled. ${sar(payment.amount)} will be refunded to ${via}.`;
@@ -25,7 +26,7 @@ function cancellationBody(payment) {
 /** ROF never refunds (guide §9.4): our backend does — simulated in UAT. */
 async function refundFor(trx, payment, now) {
   if (!payment || !['captured', 'authorized'].includes(payment.status)) return;
-  await trx('payments').where({ id: payment.id }).update({ status: payment.method === 'cod' ? 'voided' : 'refunded', updated_at: now });
+  await trx('payments').where({ id: payment.id }).update({ status: payment.method === 'cod' || payment.method === 'branch' ? 'voided' : 'refunded', updated_at: now });
 }
 
 export function createOrdersService(ctx) {

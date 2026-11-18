@@ -277,4 +277,104 @@ describe('placing an order', () => {
     expect(res.body.branch).toMatchObject({ id: BRANCH_IDS.warehouse, name: expect.any(String), address: expect.any(String), location: { lat: expect.any(Number), lng: expect.any(Number) } });
     expect(res.body.distanceKm).toEqual(expect.any(Number));
   });
+
+  describe('branch pickup (design 2026-11-18 §5.3)', () => {
+    const placePickup = (overrides = {}) =>
+      api('post', '/orders', { fulfilment: 'pickup', deliveryPhone: '501234821', payment: { method: 'branch' }, idempotencyKey: randomUUID(), ...overrides });
+    const setLocation = (lat, lng) => t.db('users').where({ id: me.user.id }).update({ last_lat: lat, last_lng: lng });
+
+    test('pay at branch: no fee, no address, ROF gets Pickup and the pin from the last known location', async () => {
+      await api('put', '/cart', pdfCart);
+      await setLocation(26.2874, 50.2085);
+      const res = await placePickup();
+      expect(res.status).toBe(201);
+      expect(res.body).toMatchObject({
+        fulfilment: 'pickup',
+        address: null,
+        window: { start: null, end: null },
+        deliveryFee: 0,
+        total: 313,
+        payment: { method: 'branch', brand: null, last4: null, transactionId: null, paidAt: null },
+        branch: { id: BRANCH_IDS.corniche },
+        status: { code: 'AssignedToBranch', label: 'Sent to branch' },
+      });
+      expect(res.body.steps.map((x) => x.title)).toEqual(['Order confirmed', 'Preparing at the branch', 'Ready for pickup', 'Picked up']);
+      expect(rofOrders()[0]).toMatchObject({
+        fulfillmentType: 'Pickup',
+        address: 'Branch pickup',
+        city: 'Al Khobar',
+        remarks: 'Collect SAR 313.00 (pay at branch)',
+        latitude: 26.2874,
+        longitude: 50.2085,
+      });
+      expect((await payment()).method).toBe('branch');
+      expect((await payment()).status).toBe('captured');
+      const row = await t.db('orders').first();
+      expect([row.fulfilment, row.address, row.window_start, row.delivery_fee]).toEqual(['pickup', null, null, 0]);
+      const note = await t.db('notifications').where({ type: 'order' }).first();
+      expect(note.body).toBe('Collect it from Kuraat · Al Khobar Corniche.');
+      expect(await t.db('notifications').where({ type: 'payment' })).toHaveLength(0);
+    });
+
+    test('pay now by card: same order, card payment captured', async () => {
+      await api('put', '/cart', pdfCart);
+      await setLocation(26.2874, 50.2085);
+      const res = await placePickup({ payment: visa });
+      expect(res.status).toBe(201);
+      expect(res.body.payment).toMatchObject({ method: 'card', brand: 'Visa', last4: '4242' });
+      expect(rofOrders()[0].remarks).toBe('Paid by card');
+    });
+
+    test('with no saved location the default address gives the pin', async () => {
+      await api('put', '/cart', pdfCart);
+      const res = await placePickup();
+      expect(res.status).toBe(201);
+      expect(rofOrders()[0].latitude).toBe(26.348558);
+    });
+
+    test('no location and no address at all → still placed, no pin call, branch pending', async () => {
+      await api('put', '/cart', pdfCart);
+      await t.db('addresses').where({ user_id: me.user.id }).delete();
+      const res = await placePickup();
+      expect(res.status).toBe(201);
+      expect(res.body.branch).toBeNull();
+      expect(rofOrders()[0].latitude).toBeNull();
+      expect(rofOrders()[0]).not.toHaveProperty('city', 'Al Khobar');
+      expect((await t.db('orders').first()).location_shared).toBeNull();
+    });
+
+    test.each([
+      ['pickup with an address', { addressId: 'whatever' }, 'addressId'],
+      ['pickup paid cash on delivery', { payment: { method: 'cod' } }, 'payment.method'],
+    ])('%s → 400 invalid on %s, nothing charged and no ROF order', async (_name, overrides, field) => {
+      await api('put', '/cart', pdfCart);
+      const res = await placePickup(overrides);
+      expect(res.status).toBe(400);
+      expect(res.body).toMatchObject({ code: 'invalid', field });
+      expect(await t.db('payments')).toHaveLength(0);
+      expect(rofOrders()).toHaveLength(0);
+    });
+
+    test('delivery without an address, or paying at the branch, is refused too', async () => {
+      await api('put', '/cart', pdfCart);
+      const noAddress = await api('post', '/orders', { deliveryPhone: '501234821', payment: visa, idempotencyKey: randomUUID() });
+      expect(noAddress.status).toBe(400);
+      expect(noAddress.body).toMatchObject({ code: 'invalid', field: 'addressId' });
+      const atBranch = await place({ payment: { method: 'branch' } });
+      expect(atBranch.status).toBe(400);
+      expect(atBranch.body).toMatchObject({ code: 'invalid', field: 'payment.method' });
+      expect(await t.db('payments')).toHaveLength(0);
+      expect(rofOrders()).toHaveLength(0);
+    });
+
+    test('cancelling a pay-at-branch order voids the payment — nothing was charged', async () => {
+      await api('put', '/cart', pdfCart);
+      await setLocation(26.2874, 50.2085);
+      const placed = await placePickup();
+      const res = await api('post', `/orders/${placed.body.id}/cancel`);
+      expect(res.status).toBe(200);
+      expect((await payment()).status).toBe('voided');
+      expect((await t.db('notifications').where({ type: 'cancelled' }).first()).body).toBe('Your order was cancelled.');
+    });
+  });
 });

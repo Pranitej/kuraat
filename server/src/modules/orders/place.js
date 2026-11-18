@@ -14,7 +14,7 @@ import { AppError, badRequest, conflict, notFound, unavailable } from '../../htt
 import { newId } from '../../lib/ids.js';
 import { toCreatedOrder, toRofOrderPayload } from '../../rof/adapter.js';
 import { isRofError } from '../../rof/errors.js';
-import { toAddress } from '../addresses/routes.js';
+import { listAddresses, toAddress } from '../addresses/routes.js';
 import { findUserById } from '../auth/service.js';
 import { saveCard } from '../cards/routes.js';
 import { loadCart, priceForUser, saveCart } from '../cart/routes.js';
@@ -78,7 +78,7 @@ async function upsertPayment(ctx, userId, key, fields) {
 const setPayment = (ctx, id, fields) => ctx.db('payments').where({ id }).update({ ...fields, updated_at: ctx.clock.now() });
 
 /**
- * @param {{ addressId, deliveryPhone, promoCode?, payment: { method: 'card'|'cod', card?, saveCard? }, idempotencyKey }} input
+ * @param {{ fulfilment?: 'delivery'|'pickup', addressId?, deliveryPhone, promoCode?, payment: { method: 'card'|'cod'|'branch', card?, saveCard? }, idempotencyKey }} input
  * @returns {Promise<{ order: object, created: boolean }>}
  */
 export async function placeOrder(ctx, userId, input) {
@@ -94,19 +94,23 @@ export async function placeOrder(ctx, userId, input) {
   // 2 — cart, address, prices
   const cart = await loadCart(ctx.db, userId);
   if (!cart.items.length) throw badRequest('empty_cart', 'Your cart is empty.');
-  const addressRow = await ctx.db('addresses').where({ user_id: userId, id: input.addressId }).first();
-  if (!addressRow) throw notFound('not_found', 'This address no longer exists.');
+  const pickup = input.fulfilment === 'pickup';
+  // A pickup order has no delivery address; delivery needs the address it goes to.
+  const addressRow = pickup ? null : await ctx.db('addresses').where({ user_id: userId, id: input.addressId }).first();
+  if (!pickup && !addressRow) throw notFound('not_found', 'This address no longer exists.');
   const promoCode = input.promoCode !== undefined ? input.promoCode : cart.promoCode;
-  const priced = await priceForUser(ctx, userId, { items: cart.items, promoCode });
+  const priced = await priceForUser(ctx, userId, { items: cart.items, promoCode }, { fulfilment: pickup ? 'pickup' : 'delivery' });
   const problem = cartProblem(priced);
   if (problem) throw conflict('cart_changed', problem);
   const items = priced.items.map((l) => ({ productId: l.productId, qty: l.qty }));
 
   // 3 — coverage: ROF picks the branch (design 2026-11-18 §5.2), but we still only take orders for
   // addresses a hub serves.
-  const address = toAddress(addressRow);
-  const { candidates } = await deliveryCandidates(ctx, address.location, items);
-  if (!candidates.length) throw conflict('no_branch', "We don't have a branch that delivers to this address yet.");
+  const address = pickup ? null : toAddress(addressRow);
+  if (!pickup) {
+    const { candidates } = await deliveryCandidates(ctx, address.location, items);
+    if (!candidates.length) throw conflict('no_branch', "We don't have a branch that delivers to this address yet.");
+  }
 
   // 4 — payment
   const amount = priced.totals.total;
@@ -135,10 +139,26 @@ export async function placeOrder(ctx, userId, input) {
 
   // 5 — create in ROF (exactly once for this payment)
   const user = await findUserById(ctx.db, userId);
+  // Pickup: where the customer is — their last known location, else their default address — gives ROF's
+  // auto-assignment a pin and the order a city; with neither, staff assign the branch by hand.
+  const usual = pickup ? await listAddresses(ctx.db, userId).first() : null;
+  const pickupAddress = usual ? toAddress(usual) : null;
+  const pin = pickup ? (user.last_lat != null && user.last_lng != null ? { lat: Number(user.last_lat), lng: Number(user.last_lng) } : pickupAddress?.location ?? null) : address.location;
   let created;
   try {
     created = toCreatedOrder(
-      await ctx.rof.createOrder(toRofOrderPayload({ user, address, deliveryPhone: input.deliveryPhone, items, payment: paid, total: amount })),
+      await ctx.rof.createOrder(
+        toRofOrderPayload({
+          user,
+          address,
+          deliveryPhone: input.deliveryPhone,
+          items,
+          payment: paid,
+          total: amount,
+          fulfilment: pickup ? 'pickup' : 'delivery',
+          city: pickupAddress?.city ?? null,
+        }),
+      ),
     );
   } catch (error) {
     if (isRofError(error, 'rejected')) {
@@ -153,19 +173,20 @@ export async function placeOrder(ctx, userId, input) {
   // 6 — remember the ROF order immediately
   const now = ctx.clock.now();
   const orderId = newId();
-  const est = estimates(now);
+  const est = pickup ? {} : estimates(now); // no delivery slot or step estimates for pickup
   const lineRows = priced.items.map((l) => ({ productId: l.productId, name: l.product.name, qty: l.qty, price: l.product.price, image: l.product.image }));
   await ctx.db.transaction(async (trx) => {
     await trx('orders').insert({
       id: orderId,
       user_id: userId,
+      fulfilment: pickup ? 'pickup' : 'delivery',
       rof_order_id: created.rofOrderId,
       rof_order_number: created.orderNumber,
       rof_status: created.status || 'Created',
       rof_status_at: now,
       step: 0,
       cancelled: false,
-      address: JSON.stringify(address),
+      address: address ? JSON.stringify(address) : null,
       delivery_phone: input.deliveryPhone,
       lines: JSON.stringify(lineRows),
       subtotal: priced.totals.subtotal,
@@ -174,8 +195,8 @@ export async function placeOrder(ctx, userId, input) {
       vat: priced.totals.vat,
       total: priced.totals.total,
       promo_code: priced.promo?.valid ? priced.promo.code : null,
-      window_start: new Date(est.windowStart),
-      window_end: new Date(est.windowEnd),
+      window_start: pickup ? null : new Date(est.windowStart),
+      window_end: pickup ? null : new Date(est.windowEnd),
       estimates: JSON.stringify(est),
       step_times: JSON.stringify({ 0: now.toISOString() }),
       notified: JSON.stringify([]),
@@ -187,9 +208,10 @@ export async function placeOrder(ctx, userId, input) {
 
   // 7 — the customer's pin: ROF assigns the nearest branch with stock from it. A failure never
   // fails the order (it is placed and paid); RSOF staff can still assign a branch by hand.
-  let locationShared = true;
+  let locationShared = pin ? true : null;
   try {
-    await ctx.rof.shareOrderLocation(created.rofOrderId, address.location);
+    if (pin) await ctx.rof.shareOrderLocation(created.rofOrderId, pin);
+    else ctx.logger.info(`[orders] KR-${created.orderNumber} is a pickup order with no known location — RSOF staff must assign a branch`);
   } catch (error) {
     // Whatever went wrong, the order is placed and the payment is held: never fail or lock it here.
     locationShared = false;
@@ -214,10 +236,14 @@ export async function placeOrder(ctx, userId, input) {
   const link = { kind: 'order', id: orderId };
   const branchName = synced?.branch_name;
   await ctx.db.transaction(async (trx) => {
-    if (paid.method !== 'cod') {
+    if (paid.method === 'card') {
       await notify(trx, userId, { type: 'payment', title: 'Payment received', body: `${sar(amount)} paid with ${paymentLabel(paid)}.`, link }, doneAt);
     }
-    const body = branchName ? `It will be delivered from ${branchName}.` : "Your order screen shows the branch once it's confirmed.";
+    const body = branchName
+      ? pickup
+        ? `Collect it from ${branchName}.`
+        : `It will be delivered from ${branchName}.`
+      : "Your order screen shows the branch once it's confirmed.";
     await notify(trx, userId, { type: 'order', title: `Order #${number} confirmed`, body, link }, new Date(doneAt.getTime() + 1));
   });
   await saveCart(ctx.db, userId, { items: [], promoCode: null }, doneAt);

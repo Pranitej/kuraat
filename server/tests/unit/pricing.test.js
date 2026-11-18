@@ -19,12 +19,28 @@ describe('computeTotals (prices include 15 % VAT)', () => {
     expect(computeTotals(lines, findPromo(' FREEDELIVERY '))).toMatchObject({ discount: 0, delivery: 0, total: 313 });
   });
 
+  test('pickup has no delivery fee: 313 total, VAT recomputed from the smaller total (design 2026-11-18 §5.3)', () => {
+    expect(computeTotals(lines, null, { fulfilment: 'pickup' })).toEqual({ count: 3, subtotal: 313, discount: 0, delivery: 0, total: 313, vat: 40.83 });
+  });
+
+  test('delivery stays 328 when the fulfilment is stated', () => {
+    expect(computeTotals(lines, null, { fulfilment: 'delivery' })).toMatchObject({ delivery: 15, total: 328, vat: 42.78 });
+  });
+
   test('empty cart costs nothing', () => {
     expect(computeTotals([], null)).toEqual({ count: 0, subtotal: 0, discount: 0, delivery: 0, total: 0, vat: 0 });
   });
 
   test('pricesIncludeVat false: VAT 49.20 added on top → total 377.20', () => {
     expect(computeTotals(lines, null, { pricesIncludeVat: false })).toMatchObject({ vat: 49.2, total: 377.2 });
+  });
+});
+
+describe('priceCart for pickup', () => {
+  test('passes the fulfilment through to the totals', async () => {
+    const getProduct = async () => ({ id: 'p1', name: 'A', price: 100, images: [], meta: null, inStock: true, maxQuantity: 9 });
+    const cart = await priceCart({ items: [{ productId: 'p1', qty: 2 }] }, { getProduct, isFirstOrder: false, fulfilment: 'pickup' });
+    expect(cart.totals).toMatchObject({ subtotal: 200, delivery: 0, total: 200 });
   });
 });
 

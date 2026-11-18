@@ -37,6 +37,24 @@ describe('schema', () => {
     expect(await t.db.schema.hasColumn('orders', 'location_shared')).toBe(true);
   });
 
+  test('migration 004: pickup columns, nullable address/window, branch payments', async () => {
+    expect(await t.db.schema.hasColumn('orders', 'fulfilment')).toBe(true);
+    const { userId } = await seedDemo(t.db, { now: t.clock.now(), hashCost: 4 });
+    const now = t.clock.now();
+    const orderId = '00000000-0000-4000-8000-0000000000b1';
+    await t.db('orders').insert({
+      id: orderId, user_id: userId, rof_order_id: 'r-1', rof_order_number: 1, rof_status: 'Created', fulfilment: 'pickup',
+      address: null, delivery_phone: '501234821', lines: '[]', subtotal: 1, discount: 0, delivery_fee: 0, vat: 0, total: 1,
+      window_start: null, window_end: null, estimates: '{}', created_at: now, updated_at: now,
+    });
+    await t.db('payments').insert({
+      id: '00000000-0000-4000-8000-0000000000b2', user_id: userId, order_id: orderId, idempotency_key: '00000000-0000-4000-8000-0000000000b3',
+      method: 'branch', status: 'captured', amount: 1, created_at: now, updated_at: now,
+    });
+    expect((await t.db('orders').where({ id: orderId }).first()).fulfilment).toBe('pickup');
+    expect((await t.db('payments').first()).method).toBe('branch');
+  });
+
   test('money columns are DECIMAL(10,2) and come back as numbers', async () => {
     const { userId } = await seedDemo(t.db, { now: t.clock.now(), hashCost: 4 });
     await t.db('payments').insert({

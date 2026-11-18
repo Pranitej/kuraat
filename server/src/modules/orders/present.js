@@ -5,12 +5,20 @@
 import { roundedDistance } from '../../lib/geo.js';
 import { FALLBACK_BY_STEP, canCancel, canResendCode, statusInfo } from '../../rof/status.js';
 
-const STEPS = [
+const DELIVERY_STEPS = [
   ['confirmed', 'Order confirmed'],
   ['preparing', 'Preparing at the branch'],
   ['out_for_delivery', 'Out for delivery'],
   ['delivered', 'Delivered'],
 ];
+// Branch pickup (design 2026-11-18 §5.3): the third step is the order waiting at the counter.
+const PICKUP_STEPS = [
+  ['confirmed', 'Order confirmed'],
+  ['preparing', 'Preparing at the branch'],
+  ['ready_for_pickup', 'Ready for pickup'],
+  ['picked_up', 'Picked up'],
+];
+const stepsFor = (row) => (row.fulfilment === 'pickup' ? PICKUP_STEPS : DELIVERY_STEPS);
 
 const iso = (v) => (v ? new Date(v).toISOString() : null);
 
@@ -25,8 +33,10 @@ function steps(row) {
   const step = row.step ?? 0;
   const times = row.step_times || {};
   const est = row.estimates || {};
-  const estimates = [null, est.preparingAt, est.outForDeliveryAt, est.windowStart];
-  return STEPS.map(([id, title], i) => {
+  // We have no ready time for a pickup order: only real times, no estimates.
+  const pickup = row.fulfilment === 'pickup';
+  const estimates = pickup ? [] : [null, est.preparingAt, est.outForDeliveryAt, est.windowStart];
+  return stepsFor(row).map(([id, title], i) => {
     const reached = times[i] !== undefined || (!cancelled && step >= i);
     let state = 'todo';
     if (cancelled) state = reached ? 'done' : 'todo';
@@ -37,8 +47,8 @@ function steps(row) {
     let estimated = false;
     let timeEnd = null;
     if (!time && i === 0) time = iso(row.created_at);
-    if (!time && !reached && !cancelled) {
-      time = estimates[i] ?? null;
+    if (!time && !reached && !cancelled && estimates[i]) {
+      time = estimates[i];
       estimated = true;
       if (i === 3) timeEnd = est.windowEnd ?? null;
     }
@@ -57,7 +67,7 @@ function presentStatus(row) {
   if (cancelled) return { id: 'cancelled', code, label: 'Cancelled', group: 'cancelled', step, cancelled };
   const info = statusInfo(code, row.fulfilment ?? 'delivery');
   const { label, group } = info && info.step !== 'cancelled' ? info : FALLBACK_BY_STEP[step];
-  return { id: STEPS[step][0], code, label, group, step, cancelled };
+  return { id: stepsFor(row)[step][0], code, label, group, step, cancelled };
 }
 
 /**
@@ -70,6 +80,7 @@ export function presentOrder(row, { payment = null, branch = null, media = null 
   return {
     id: row.id,
     number: `KR-${row.rof_order_number}`,
+    fulfilment: row.fulfilment ?? 'delivery',
     status: presentStatus(row),
     steps: steps(row),
     items: (row.lines || []).map((l) => ({ productId: l.productId, name: l.name, qty: l.qty, price: l.price, image: rebase(l.image, media) })),
@@ -85,16 +96,16 @@ export function presentOrder(row, { payment = null, branch = null, media = null 
           brand: payment.brand ?? null,
           last4: payment.last4 ?? null,
           transactionId: payment.transaction_id ?? null,
-          // Cash is paid at the door, so there is no payment time yet.
-          paidAt: payment.method === 'cod' ? null : iso(payment.created_at),
+          // Cash on delivery and pay-at-the-branch are paid later, so there is no payment time yet.
+          paidAt: payment.method === 'cod' || payment.method === 'branch' ? null : iso(payment.created_at),
         }
       : null,
     branch: branch ?? (row.branch_id ? { id: row.branch_id, name: row.branch_name } : null),
     // ROF picks the branch now (design 2026-11-18 §5.2): measure from the delivery address to it.
     distanceKm: row.distance_km ?? (branch?.location && row.address?.location ? roundedDistance(row.address.location, branch.location) : null),
-    address: row.address,
+    address: row.address ?? null,
     deliveryPhone: row.delivery_phone,
-    window: { start: iso(row.window_start), end: iso(row.window_end) },
+    window: { start: iso(row.window_start), end: iso(row.window_end) }, // nulls for pickup
     canCancel: !cancelled && canCancel(row.rof_status),
     canResendCode: !cancelled && canResendCode(row.rof_status),
     createdAt: iso(row.created_at),

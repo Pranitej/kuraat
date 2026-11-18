@@ -32,8 +32,9 @@ export async function isFirstOrder(db, userId) {
 }
 
 /** Prices a cart with fresh ROF product data. */
-export async function priceForUser(ctx, userId, cart) {
+export async function priceForUser(ctx, userId, cart, { fulfilment = 'delivery' } = {}) {
   return priceCart(cart, {
+    fulfilment,
     getProduct: (id) => ctx.catalog.getProduct(id, { fresh: true }),
     isFirstOrder: await isFirstOrder(ctx.db, userId),
     pricesIncludeVat: ctx.config.pricesIncludeVat,

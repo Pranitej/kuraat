@@ -5,6 +5,10 @@ const now = new Date('2026-11-15T09:21:00Z');
 const card = (overrides = {}) => ({ number: '4242 4242 4242 4242', expiry: '12/29', cvv: '123', ...overrides });
 
 describe('payment simulator (no real money — UAT default)', () => {
+  test('pay at the branch (pickup): nothing is charged now, no card, no transaction id', () => {
+    expect(authorizePayment({ method: 'branch', amount: 313 }, { now })).toEqual({ method: 'branch', brand: null, last4: null, expiry: null, transactionId: null });
+  });
+
   test('a valid card is authorised with brand, last 4 and a transaction id', () => {
     const result = authorizePayment({ method: 'card', card: card(), amount: 328 }, { now });
     expect(result).toEqual({ method: 'card', brand: 'Visa', last4: '4242', expiry: '12/29', transactionId: expect.stringMatching(/^TXN-[0-9A-F]{8}$/) });

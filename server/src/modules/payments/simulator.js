@@ -55,8 +55,8 @@ function expiryProblem(expiry, now) {
 const transactionId = () => `TXN-${randomBytes(4).toString('hex').toUpperCase()}`;
 
 /**
- * Saudi Arabia: card (incl. Mada) or cash on delivery. Any other method is refused — never treated as cash.
- * @param {{ method: 'card'|'cod', card?: { number, expiry, cvv }, amount: number }} input
+ * Saudi Arabia: card (incl. Mada), cash on delivery, or (pickup) pay at the branch. Any other method is refused — never treated as cash.
+ * @param {{ method: 'card'|'cod'|'branch', card?: { number, expiry, cvv }, amount: number }} input
  * @returns {{ method, brand, last4, expiry, transactionId }}
  */
 export function authorizePayment(input, { now = new Date() } = {}) {
@@ -73,6 +73,7 @@ export function authorizePayment(input, { now = new Date() } = {}) {
     const e = digits(input.card.expiry);
     return { method: 'card', brand: cardBrand(number), last4: number.slice(-4), expiry: `${e.slice(0, 2)}/${e.slice(2)}`, transactionId: transactionId() };
   }
-  if (input.method === 'cod') return { method: 'cod', brand: null, last4: null, expiry: null, transactionId: null };
+  // Cash on delivery and pay-at-the-branch (pickup): nothing is charged now.
+  if (input.method === 'cod' || input.method === 'branch') return { method: input.method, brand: null, last4: null, expiry: null, transactionId: null };
   throw badRequest('invalid', 'Choose card or cash on delivery.', 'payment.method');
 }

@@ -38,6 +38,45 @@ describe('order status for the apps (design 2026-11-18 §5.1)', () => {
   });
 });
 
+describe('pickup orders (design 2026-11-18 §5.3)', () => {
+  const pickup = { ...row([]), fulfilment: 'pickup', address: null, window_start: null, window_end: null, estimates: {}, rof_status: 'Prepared', step: 2 };
+
+  test('step titles say ready for pickup and picked up; no estimated times', () => {
+    const order = presentOrder({ ...pickup, rof_status: 'Created', step: 0 });
+    expect(order.fulfilment).toBe('pickup');
+    expect(order.steps.map((x) => [x.id, x.title])).toEqual([
+      ['confirmed', 'Order confirmed'],
+      ['preparing', 'Preparing at the branch'],
+      ['ready_for_pickup', 'Ready for pickup'],
+      ['picked_up', 'Picked up'],
+    ]);
+    expect(order.steps.slice(1).every((x) => x.time === null && x.estimated === false)).toBe(true);
+  });
+
+  test('Prepared is the ready-for-pickup step; no address, no window', () => {
+    const order = presentOrder(pickup);
+    expect(order.status).toMatchObject({ id: 'ready_for_pickup', label: 'Ready for pickup', group: 'ready', step: 2 });
+    expect(order.steps[2].state).toBe('current');
+    expect(order.address).toBeNull();
+    expect(order.window).toEqual({ start: null, end: null });
+  });
+
+  test('picked up: every step done', () => {
+    const order = presentOrder({ ...pickup, rof_status: 'PickUpByCustomer', step: 3 });
+    expect(order.status).toMatchObject({ id: 'picked_up', label: 'Picked up', group: 'completed' });
+    expect(order.steps.every((x) => x.state === 'done')).toBe(true);
+  });
+
+  test('pay at the branch has no payment time yet', () => {
+    const order = presentOrder(pickup, { payment: { method: 'branch', created_at: '2026-11-16T09:21:00.000Z' } });
+    expect(order.payment).toMatchObject({ method: 'branch', paidAt: null });
+  });
+
+  test('an old row without fulfilment is a delivery order', () => {
+    expect(presentOrder(row([])).fulfilment).toBe('delivery');
+  });
+});
+
 describe('order photos', () => {
   const media = { from: 'http://localhost:8080', to: 'http://192.168.1.10:8080' };
 

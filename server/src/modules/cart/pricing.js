@@ -13,11 +13,12 @@ export const findPromo = (code) => PROMO_CODES[normalizePromoCode(code)] || null
  * @param {{ price: number, qty: number }[]} lines
  * @param {object|null} promo  a PROMO_CODES entry that is valid for this customer
  */
-export function computeTotals(lines, promo, { pricesIncludeVat = true } = {}) {
+export function computeTotals(lines, promo, { pricesIncludeVat = true, fulfilment = 'delivery' } = {}) {
   const count = lines.reduce((s, l) => s + l.qty, 0);
   const subtotal = round2(lines.reduce((s, l) => s + l.price * l.qty, 0));
   let discount = 0;
-  let delivery = count > 0 ? DELIVERY_FEE : 0;
+  // Branch pickup has no delivery fee (design 2026-11-18 §5.3).
+  let delivery = count > 0 && fulfilment !== 'pickup' ? DELIVERY_FEE : 0;
   if (promo && count > 0) {
     if (promo.type === 'percent') discount = round2((subtotal * promo.value) / 100);
     if (promo.type === 'delivery') delivery = 0;
@@ -49,9 +50,9 @@ function promoResult(code, isFirstOrder) {
  * Line warnings: 'unavailable' (gone/inactive) · 'out_of_stock' · 'qty_reduced' (capped at stock) ·
  * 'price_changed' (differs from the price the customer last saw). Unavailable lines are left out of totals.
  * @param {{ items: { productId, qty, lastPrice? }[], promoCode?: string|null }} cart
- * @param {{ getProduct: (id) => Promise<object|null>, isFirstOrder: boolean, pricesIncludeVat?: boolean }} deps
+ * @param {{ getProduct: (id) => Promise<object|null>, isFirstOrder: boolean, pricesIncludeVat?: boolean, fulfilment?: 'delivery'|'pickup' }} deps
  */
-export async function priceCart({ items, promoCode }, { getProduct, isFirstOrder, pricesIncludeVat = true }) {
+export async function priceCart({ items, promoCode }, { getProduct, isFirstOrder, pricesIncludeVat = true, fulfilment = 'delivery' }) {
   const products = await Promise.all(items.map((i) => getProduct(i.productId)));
   const lines = items.map((item, i) => {
     const product = products[i];
@@ -78,5 +79,5 @@ export async function priceCart({ items, promoCode }, { getProduct, isFirstOrder
   });
   const { promo, applied } = promoResult(promoCode, isFirstOrder);
   const priced = lines.filter((l) => l.available).map((l) => ({ price: l.product.price, qty: l.qty }));
-  return { items: lines, promo, totals: computeTotals(priced, applied, { pricesIncludeVat }) };
+  return { items: lines, promo, totals: computeTotals(priced, applied, { pricesIncludeVat, fulfilment }) };
 }

@@ -73,11 +73,13 @@ describe('catalogue', () => {
 });
 
 describe('branches', () => {
-  test('6 hub branches with hours and openNow; internal fields and the warehouse are dropped', async () => {
+  test('every active branch is listed (6 hubs + the warehouse) with type, isHub, hours and openNow; internal fields are dropped', async () => {
     const res = await get('/branches');
     expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(6);
-    expect(res.body.find((b) => b.id === BRANCH_IDS.warehouse)).toBeUndefined();
+    expect(res.body).toHaveLength(7);
+    // Only hubs deliver: the others are in the directory but flagged isHub false.
+    expect(res.body.filter((b) => b.isHub)).toHaveLength(6);
+    expect(res.body.find((b) => b.id === BRANCH_IDS.warehouse)).toMatchObject({ type: 'warehouse', isHub: false });
     expect(res.body.find((b) => b.id === BRANCH_IDS.corniche)).toEqual({
       id: BRANCH_IDS.corniche,
       name: 'Kuraat · Al Khobar Corniche',
@@ -85,6 +87,8 @@ describe('branches', () => {
       city: 'Al Khobar',
       phone: '+966 13 555 0110',
       location: { lat: 26.305709, lng: 50.227336 },
+      type: 'hub', // RSOF's branchType, shown on the branch card
+      isHub: true,
       hours: { open: 10, close: 24 },
       openNow: true,
     });

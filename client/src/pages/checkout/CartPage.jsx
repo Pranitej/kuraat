@@ -120,7 +120,7 @@ export default function CartPage() {
           <CartItemCard
             key={line.productId}
             line={line}
-            branchName={delivery?.branch.shortName}
+            branchName={delivery?.branch?.shortName}
             onQty={(q) => setQty(line.productId, q)}
             onRemove={() => removeLine(line)}
           />
@@ -133,7 +133,7 @@ export default function CartPage() {
         </div>
       )}
 
-      {delivery && (
+      {delivery?.branch && (
         <InfoBanner icon={Store} className="mt-3 lg:mt-4">
           {before}
           <strong className="font-bold text-ink">{delivery.branch.displayName}</strong>

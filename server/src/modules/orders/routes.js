@@ -3,7 +3,6 @@ import express from 'express';
 import { z } from 'zod';
 import { requireAuth } from '../../http/auth.js';
 import { validate } from '../../http/validate.js';
-import { phoneSchema } from '../auth/phone.js';
 import { placeOrder } from './place.js';
 
 /**
@@ -30,8 +29,6 @@ const placeSchema = z
     // Which app placed the order; RSOF staff see it as the order's source. Older app builds send none = mobile.
     channel: z.enum(['web', 'mobile']).default('mobile'),
     addressId: z.string().min(1).optional(),
-    deliveryPhone: phoneSchema,
-    promoCode: z.string().max(40).nullable().optional(),
     payment: paymentSchema,
     idempotencyKey: z.uuid('Start the checkout again.'),
   })

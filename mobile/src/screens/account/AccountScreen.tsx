@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
-import { Check, ChevronRight, Mail, MapPin, Pencil, Phone, Trash2, User } from '@/components/icons';
+import { Check, ChevronRight, Mail, MapPin, Pencil, Trash2, User } from '@/components/icons';
 import {
   Avatar,
   Button,
@@ -21,13 +21,13 @@ import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { formatAddress, formatPhone, validateEmail, validateMobile, validateName } from '@/domain';
+import { formatAddress, formatPhone, validateEmail, validateName } from '@/domain';
 import { pickAvatar } from '@/lib/photo';
 import { FONT_FAMILY, MAX_FONT_SCALE, colors, radii, shadows } from '@/theme/theme';
 import type { Gender, User as UserType } from '@/types/api';
 
-type Form = { name: string; phone: string; email: string; gender: Gender | null; avatar: string | null };
-type Errors = Partial<Record<'name' | 'phone' | 'email' | 'form', string>>;
+type Form = { name: string; email: string; gender: Gender | null; avatar: string | null };
+type Errors = Partial<Record<'name' | 'email' | 'form', string>>;
 
 /** 18 · Account (and the store-required "Delete account") */
 export default function AccountScreen() {
@@ -37,17 +37,14 @@ export default function AccountScreen() {
   const { defaultAddress } = useAddresses();
   const u = user as UserType;
 
-  const initial: Form = { name: u.name, phone: u.phone, email: u.email || '', gender: u.gender, avatar: u.avatar };
+  const initial: Form = { name: u.name, email: u.email || '', gender: u.gender, avatar: u.avatar };
   const [form, setForm] = useState<Form>(initial);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
-  const [confirmPhone, setConfirmPhone] = useState(false);
-  const [sendingCode, setSendingCode] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [sendingDeleteCode, setSendingDeleteCode] = useState(false);
 
-  const dirty = (['name', 'email', 'gender', 'avatar', 'phone'] as const).some((k) => (form[k] || '') !== (initial[k] || ''));
-  const phoneChanged = form.phone !== u.phone;
+  const dirty = (['name', 'email', 'gender', 'avatar'] as const).some((k) => (form[k] || '') !== (initial[k] || ''));
   const set =
     <K extends keyof Form>(k: K) =>
     (v: Form[K]) => {
@@ -70,13 +67,9 @@ export default function AccountScreen() {
   };
 
   const save = async () => {
-    const errs: Errors = { name: validateName(form.name), email: validateEmail(form.email), phone: validateMobile(form.phone) };
+    const errs: Errors = { name: validateName(form.name), email: validateEmail(form.email) };
     setErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
-    if (phoneChanged) {
-      setConfirmPhone(true);
-      return;
-    }
     if (!dirty) {
       toast.show('Your details are up to date', { tone: 'info' });
       return;
@@ -89,22 +82,6 @@ export default function AccountScreen() {
       fail(err);
     } finally {
       setSaving(false);
-    }
-  };
-
-  const verifyNewNumber = async () => {
-    setSendingCode(true);
-    try {
-      // Save the other fields first, then verify the new number on WhatsApp
-      await updateProfile(profileChanges() as never);
-      await requestOtp(form.phone, 'change-phone');
-      setConfirmPhone(false);
-      router.push(ROUTES.verify);
-    } catch (err) {
-      setConfirmPhone(false);
-      fail(err);
-    } finally {
-      setSendingCode(false);
     }
   };
 
@@ -130,7 +107,7 @@ export default function AccountScreen() {
       bottomBar={
         <BottomBar>
           <Button block loading={saving} onPress={save}>
-            {phoneChanged ? 'Verify number & save' : 'Save changes'}
+            Save changes
           </Button>
         </BottomBar>
       }
@@ -168,13 +145,14 @@ export default function AccountScreen() {
           error={errors.name}
         />
 
+        {/* The number is fixed when the account is created: orders are found by it. */}
         <PhoneField
           label="Mobile number (WhatsApp)"
-          value={form.phone}
-          onChange={set('phone')}
-          error={errors.phone}
-          helper="Changing your number needs a new WhatsApp code."
-          trailing={phoneChanged ? <Tag>Needs code</Tag> : <Tag icon={Check}>Verified</Tag>}
+          value={u.phone}
+          onChange={() => {}}
+          disabled
+          helper="Your mobile number cannot be changed."
+          trailing={<Tag icon={Check}>Verified</Tag>}
         />
 
         <Field
@@ -232,17 +210,6 @@ export default function AccountScreen() {
           </Text>
         </Pressable>
       </View>
-
-      <ConfirmDialog
-        open={confirmPhone}
-        onClose={() => setConfirmPhone(false)}
-        onConfirm={verifyNewNumber}
-        loading={sendingCode}
-        icon={Phone}
-        title="Verify your new number"
-        message={`We will send a 6-digit code on WhatsApp to ${formatPhone(form.phone)}.`}
-        confirmLabel="Send code"
-      />
 
       <ConfirmDialog
         open={confirmDelete}

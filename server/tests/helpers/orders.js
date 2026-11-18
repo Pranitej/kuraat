@@ -10,7 +10,7 @@ export async function placeTestOrder(t, me, { items = [{ productId: PRODUCT_IDS.
   await api('put', '/cart', { items });
   const addresses = await request(t.app).get('/api/v1/addresses').set('Authorization', me.auth);
   const home = addresses.body.find((a) => a.isDefault);
-  const res = await api('post', '/orders', { addressId: home.id, deliveryPhone: '501234821', payment, idempotencyKey: randomUUID() });
+  const res = await api('post', '/orders', { addressId: home.id, payment, idempotencyKey: randomUUID() });
   if (res.status !== 201) throw new Error(`place order ${res.status} ${JSON.stringify(res.body)}`);
   return res.body;
 }
@@ -25,7 +25,7 @@ export const advance = (t, number, status) =>
 export async function placePickupTestOrder(t, me, { items = [{ productId: PRODUCT_IDS.classic, qty: 1 }], payment = { method: 'branch' } } = {}) {
   const api = (method, path, body) => request(t.app)[method](`/api/v1${path}`).set('Authorization', me.auth).send(body);
   await api('put', '/cart', { items });
-  const res = await api('post', '/orders', { fulfilment: 'pickup', deliveryPhone: '501234821', payment, idempotencyKey: randomUUID() });
+  const res = await api('post', '/orders', { fulfilment: 'pickup', payment, idempotencyKey: randomUUID() });
   if (res.status !== 201) throw new Error(`place pickup order ${res.status} ${JSON.stringify(res.body)}`);
   return res.body;
 }

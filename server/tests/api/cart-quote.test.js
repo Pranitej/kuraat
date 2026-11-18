@@ -3,12 +3,11 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { BRANCH_IDS, PRODUCT_IDS } from '../support/rof-double/seed.js';
 import { signInDemo } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
-import { TEST_PROMOS } from '../helpers/promos.js';
 
 let t;
 let me;
 beforeEach(async () => {
-  t = await createTestContext({ withRof: true, configOverrides: { promos: TEST_PROMOS } });
+  t = await createTestContext({ withRof: true });
   await t.reset();
   me = await signInDemo(t);
 });
@@ -28,35 +27,23 @@ const pdfCart = { items: [{ productId: PRODUCT_IDS.classic, qty: 1 }, { productI
 describe('cart', () => {
   test('starts empty', async () => {
     const res = await api('get', '/cart');
-    expect(res.body).toEqual({ items: [], promo: null, totals: { count: 0, subtotal: 0, discount: 0, delivery: 0, total: 0, vat: 0 } });
+    expect(res.body).toEqual({ items: [], totals: { count: 0, subtotal: 0, total: 0 } });
   });
 
   test('PUT stores and prices the PDF cart; GET returns the same', async () => {
-    const put = await api('put', '/cart', { ...pdfCart, promoCode: null });
+    const put = await api('put', '/cart', pdfCart);
     expect(put.status).toBe(200);
-    expect(put.body.totals).toEqual({ count: 3, subtotal: 313, discount: 0, delivery: 15, total: 328, vat: 42.78 });
+    expect(put.body.totals).toEqual({ count: 3, subtotal: 313, total: 313 }); // RSOF prices only: no delivery fee, VAT or discount
     expect(put.body.items[0]).toMatchObject({ productId: PRODUCT_IDS.classic, qty: 1, available: true, warning: null, lineTotal: 185 });
-    expect((await api('get', '/cart')).body.totals.total).toBe(328);
+    expect((await api('get', '/cart')).body.totals.total).toBe(313);
   });
 
-  test('promo codes are applied and remembered; WELCOME15 works on a first order', async () => {
-    const res = await api('put', '/cart', { ...pdfCart, promoCode: 'welcome15' });
-    expect(res.body.promo).toMatchObject({ code: 'WELCOME15', valid: true });
-    expect(res.body.totals.discount).toBe(46.95);
-    expect((await api('get', '/cart')).body.promo.code).toBe('WELCOME15');
-  });
-
-  test('an invalid promo code is reported but not kept in the stored cart', async () => {
-    const put = await api('put', '/cart', { ...pdfCart, promoCode: 'nope' });
-    expect(put.body.promo).toMatchObject({ code: 'NOPE', valid: false, error: "This code isn't valid." });
-    expect(put.body.totals.discount).toBe(0);
-    expect((await api('get', '/cart')).body.promo).toBeNull();
-  });
-
-  test('a valid code replaced by an invalid one leaves no code stored', async () => {
-    await api('put', '/cart', { ...pdfCart, promoCode: 'KURAAT10' });
-    await api('put', '/cart', { ...pdfCart, promoCode: 'NOPE' });
-    expect((await api('get', '/cart')).body.promo).toBeNull();
+  test('there are no promo codes: an older app that still sends one gets the plain prices', async () => {
+    const res = await api('put', '/cart', { ...pdfCart, promoCode: 'KURAAT10' });
+    expect(res.status).toBe(200);
+    expect(res.body.totals).toEqual({ count: 3, subtotal: 313, total: 313 });
+    expect(res.body).not.toHaveProperty('promo');
+    expect((await api('get', '/cart')).body).not.toHaveProperty('promo');
   });
 
   test('a deactivated product shows as unavailable and leaves the totals', async () => {
@@ -65,7 +52,7 @@ describe('cart', () => {
     afterCartWindow();
     const res = await api('get', '/cart');
     expect(res.body.items[1]).toMatchObject({ available: false, warning: 'unavailable', product: null });
-    expect(res.body.totals).toMatchObject({ count: 1, subtotal: 185, total: 200 });
+    expect(res.body.totals).toEqual({ count: 1, subtotal: 185, total: 185 });
   });
 
   test('quantity is capped at stock (qty_reduced) and price changes are flagged', async () => {
@@ -150,6 +137,14 @@ describe('checkout quote', () => {
     expect(res.body.branch.id).toBe(BRANCH_IDS.dhahran);
   });
 
+  test('an address without a shared location has no nearest branch, but the quote still works', async () => {
+    const addressId = await homeId();
+    await t.db('addresses').where({ id: addressId }).update({ lat: null, lng: null });
+    const res = await api('post', '/checkout/quote', { addressId });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ branch: null, distanceKm: null, isNearest: null, inStock: null, window: { start: expect.any(String), end: expect.any(String) } });
+  });
+
   test("unknown or someone else's address → 404", async () => {
     const res = await api('post', '/checkout/quote', { addressId: '00000000-0000-4000-8000-000000000000' });
     expect(res.status).toBe(404);
@@ -167,7 +162,7 @@ describe('checkout quote', () => {
         branch: { id: BRANCH_IDS.corniche },
         distanceKm: expect.any(Number),
         isNearest: true,
-        totals: { subtotal: 313, delivery: 0, total: 313, vat: 40.83 },
+        totals: { subtotal: 313, total: 313 },
       });
       expect(res.body).not.toHaveProperty('window');
     });
@@ -212,7 +207,7 @@ describe('checkout quote', () => {
       };
       const res = await api('post', '/checkout/quote', { fulfilment: 'pickup', location: AL_RAKAH });
       expect(res.status).toBe(200);
-      expect(res.body).toMatchObject({ fulfilment: 'pickup', branch: null, distanceKm: null, totals: { total: 313, delivery: 0 } });
+      expect(res.body).toMatchObject({ fulfilment: 'pickup', branch: null, distanceKm: null, totals: { total: 313 } });
       expect(t.logs.some(([level, line]) => level !== 'info' && line.includes('branch list unavailable'))).toBe(true);
     });
 

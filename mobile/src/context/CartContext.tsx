@@ -7,20 +7,20 @@ import { useAuth } from './AuthContext';
 import { useCatalog } from './CatalogContext';
 
 type CartSync = {
-  schedule: (state: { items: CartItem[]; promoCode: string | null }) => void;
+  schedule: (state: { items: CartItem[] }) => void;
   flush: () => Promise<void>;
   isPending: () => boolean;
   cancel: () => void;
 };
 const createCartSync = createCartSyncJs as unknown as (options: {
-  put: (state: { items: CartItem[]; promoCode: string | null }) => Promise<PricedCart>;
+  put: (state: { items: CartItem[] }) => Promise<PricedCart>;
   delayMs?: number;
   onResult?: (answer: PricedCart) => void;
   onError?: (error: unknown) => void;
 }) => CartSync;
 
 const MAX_QTY = 20;
-const EMPTY_TOTALS: Totals = { count: 0, subtotal: 0, discount: 0, delivery: 0, total: 0, vat: 0 };
+const EMPTY_TOTALS: Totals = { count: 0, subtotal: 0, total: 0 };
 const toItems = (priced: PricedCart): CartItem[] => priced.items.map((l) => ({ productId: l.productId, qty: l.qty }));
 /** Warnings worth keeping on screen after the cart has been re-saved with the new values. */
 const NOTICES = ['qty_reduced', 'price_changed'];
@@ -53,8 +53,8 @@ const CartContext = createContext<CartValue | null>(null);
 /**
  * The cart lives on the server, which prices it from RSOF (same rules as the web's CartContext).
  * Taps change the local items at once and are saved in the background (cartSync: 300 ms of quiet,
- * one save at a time, latest state wins); totals and warnings come from the server's answer. There
- * are no promo codes: every save sends none, which also clears one saved before they were removed.
+ * one save at a time, latest state wins); totals and warnings come from the server's answer. The
+ * total is RSOF's product prices: no delivery fee, VAT line or promo code.
  */
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -107,11 +107,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setStatus('ready');
       const changed = answer.items.filter((l) => l.warning && NOTICES.includes(l.warning));
       setNotices(Object.fromEntries(changed.map((l) => [l.productId, l.warning])));
-      // Save the adjusted cart (or drop a code saved before promo codes were removed) so checkout
-      // accepts it; the notices stay until the next change.
-      if (changed.length || answer.promo) {
+      // Save the adjusted cart so checkout accepts it; the notices stay until the next change.
+      if (changed.length) {
         setSyncing(true);
-        sync.schedule({ items: next, promoCode: null });
+        sync.schedule({ items: next });
       }
     } catch (e) {
       setError(e);
@@ -130,7 +129,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setNotices({});
       setError(null);
       setSyncing(true);
-      sync.schedule({ items: nextItems, promoCode: null });
+      sync.schedule({ items: nextItems });
     },
     [sync],
   );

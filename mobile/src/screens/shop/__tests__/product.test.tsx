@@ -21,7 +21,6 @@ describe('09/10 · Product detail', () => {
     await waitFor(() =>
       expect(calls.find((c) => c.path === '/cart' && c.method === 'PUT')?.body).toEqual({
         items: [{ productId: 'p1', qty: 2 }],
-        promoCode: null,
       }),
     );
   });

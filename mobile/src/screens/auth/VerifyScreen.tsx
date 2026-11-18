@@ -18,15 +18,14 @@ const ORIGIN: Record<OtpPurpose, Href> = {
   signup: ROUTES.signUp,
   signin: ROUTES.signIn,
   reset: ROUTES.signIn,
-  'change-phone': ROUTES.account,
   'delete-account': ROUTES.account,
 };
 
-/** 04 · WhatsApp OTP — "Verify your number" (sign-up, sign-in, reset, phone change, delete account). */
+/** 04 · WhatsApp OTP — "Verify your number" (sign-up, sign-in, reset, delete account). */
 export default function VerifyScreen() {
   const router = useRouter();
   const toast = useToast();
-  const { getPendingOtp, verifyOtp, resendOtp, updateProfile, deleteAccount, user } = useAuth();
+  const { getPendingOtp, verifyOtp, resendOtp, deleteAccount, user } = useAuth();
   const [pending, setPending] = useState(() => getPendingOtp());
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -51,11 +50,6 @@ export default function VerifyScreen() {
           router.replace(ROUTES.home);
         } else if (result.next === 'set-password') {
           router.replace(ROUTES.setPassword);
-        } else if (result.next === 'account') {
-          await updateProfile({ phone: pending.phone });
-          toast.show('Your mobile number has been updated');
-          if (router.canGoBack()) router.back();
-          else router.replace(ROUTES.account);
         } else if (result.next === 'delete-account') {
           await deleteAccount();
           toast.show('Your account has been deleted');
@@ -67,7 +61,7 @@ export default function VerifyScreen() {
         setVerifying(false);
       }
     },
-    [verifying, pending, verifyOtp, toast, router, updateProfile, deleteAccount],
+    [verifying, pending, verifyOtp, toast, router, deleteAccount],
   );
 
   if (!pending) return <Redirect href={user ? ROUTES.home : ROUTES.welcome} />;

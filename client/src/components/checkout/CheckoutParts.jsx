@@ -85,21 +85,19 @@ export function CartItemCard({ line, branchName, onQty, onRemove }) {
   );
 }
 
-/** Totals card: subtotal, delivery (not for pickup), total, VAT. */
-export function OrderSummary({ totals, className, children, title, fulfilment = 'delivery' }) {
+/** Totals card: the items and their total (RSOF's product prices only). */
+export function OrderSummary({ totals, className, children, title }) {
   return (
     <Card className={cn('p-4', className)}>
       {title && <h2 className="mb-3 text-h3 text-ink">{title}</h2>}
       <div className="flex flex-col gap-3">
         <SummaryRow label={`Subtotal (${totals.count} ${totals.count === 1 ? 'item' : 'items'})`} value={formatSAR(totals.subtotal)} />
-        {fulfilment !== 'pickup' && <SummaryRow label="Delivery" value={totals.delivery === 0 ? 'Free' : formatSAR(totals.delivery)} />}
       </div>
       <div className="my-3.5 h-[2px] rounded-pill bg-divider" />
       <div className="flex items-baseline justify-between gap-4">
         <span className="text-[16px] font-bold text-ink">Total</span>
         <span className="tabular text-[22px] font-bold text-maroon">{formatSAR(totals.total)}</span>
       </div>
-      <p className="mt-1 text-right text-caption text-muted">Includes VAT {formatSAR(totals.vat)}</p>
       {children}
     </Card>
   );

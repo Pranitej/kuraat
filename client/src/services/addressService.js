@@ -1,5 +1,4 @@
 /** Saved addresses on the server (server/README.md → Addresses). */
-import { locateAddress, toWirePhone } from '@/domain';
 import { apiRequest } from './api.js';
 
 /**
@@ -18,9 +17,9 @@ export function toAddressBody(input) {
     city,
     postcode: (input.postcode || '').trim() || undefined, // only one the customer gave — never guessed
     landmark: (input.landmark || '').trim(),
-    phone: toWirePhone(input.phone),
     isDefault: Boolean(input.isDefault),
-    location: input.location || locateAddress({ line, district, city }),
+    // Only a position the customer really shared; a typed address has none (the location is optional).
+    ...(input.location ? { location: input.location } : {}),
   };
 }
 

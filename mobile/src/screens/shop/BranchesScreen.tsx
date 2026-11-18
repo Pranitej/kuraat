@@ -17,7 +17,7 @@ import type { Branch } from '@/types/api';
 export default function BranchesScreen() {
   const params = useLocalSearchParams<{ branch?: string }>();
   const { defaultAddress } = useAddresses();
-  const { branches } = useBranches();
+  const { allBranches: branches } = useBranches(); // the directory lists every branch, hubs and master
   const [query, setQuery] = useState('');
   const [chosenCity, setCity] = useState('All');
   const [selected, setSelected] = useState<string | null>(params.branch ?? null);

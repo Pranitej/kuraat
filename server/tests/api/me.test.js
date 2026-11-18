@@ -46,31 +46,23 @@ describe('/me', () => {
     expect(bad.body).toMatchObject({ code: 'invalid', field: 'avatar' });
   });
 
-  test('phone change needs a verified change-phone code for that number', async () => {
-    const { auth } = await signInDemo(t);
-    const direct = await api('patch', '/me', auth, { phone: '561234567' });
-    expect(direct.body).toMatchObject({ code: 'unverified_phone', field: 'phone' });
-
-    const otp = await api('post', '/auth/otp/request', auth, { phone: '561234567', purpose: 'change-phone' });
-    const verified = await api('post', '/auth/otp/verify', auth, { challengeId: otp.body.challengeId, code: TEST_CODE });
-    expect(verified.body.next).toBe('account');
-    const res = await api('patch', '/me', auth, { phone: '561234567', verificationToken: verified.body.verificationToken });
-    expect(res.status).toBe(200);
-    expect(res.body.phone).toBe('561234567');
+  test('the mobile number is fixed once the account exists: a different one is refused, the same one is accepted', async () => {
+    const { auth, user } = await signInDemo(t);
+    const changed = await api('patch', '/me', auth, { phone: '561234567' });
+    expect(changed.status).toBe(400);
+    expect(changed.body).toMatchObject({ code: 'phone_locked', field: 'phone' });
+    expect((await api('get', '/me', auth)).body.phone).toBe(user.phone);
+    // An older app sends the unchanged number back with the rest of the profile.
+    const same = await api('patch', '/me', auth, { phone: user.phone, name: 'Sara M' });
+    expect(same.status).toBe(200);
+    expect(same.body).toMatchObject({ phone: user.phone, name: 'Sara M' });
   });
 
-  test('change-phone to a registered number → 409 phone_taken', async () => {
-    const other = await signUp(t.app, { phone: '561234567' });
-    expect(other.user.phone).toBe('561234567');
+  test('there is no change-phone code any more', async () => {
     const { auth } = await signInDemo(t);
-    const otp = await api('post', '/auth/otp/request', auth, { phone: '561234567', purpose: 'change-phone' });
-    expect(otp.status).toBe(409);
-    expect(otp.body.code).toBe('phone_taken');
-  });
-
-  test('change-phone needs a signed-in user', async () => {
-    const res = await api('post', '/auth/otp/request', null, { phone: '561234567', purpose: 'change-phone' });
-    expect(res.status).toBe(401);
+    const res = await api('post', '/auth/otp/request', auth, { phone: '561234567', purpose: 'change-phone' });
+    expect(res.status).toBe(400);
+    expect(res.body.code).toBe('invalid');
   });
 });
 

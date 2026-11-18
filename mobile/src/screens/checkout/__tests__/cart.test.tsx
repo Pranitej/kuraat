@@ -16,10 +16,9 @@ const line = (productId: string, name: string, qty: number, warning: string | nu
   maxQuantity: 20,
   warning,
 });
-const cart = (lines: ReturnType<typeof line>[], promo: unknown = null) => ({
+const cart = (lines: ReturnType<typeof line>[]) => ({
   items: lines,
-  promo,
-  totals: { count: lines.reduce((s, l) => s + l.qty, 0), subtotal: 370, discount: 0, delivery: 15, total: 385, vat: 50.22 },
+  totals: { count: lines.reduce((s, l) => s + l.qty, 0), subtotal: 370, total: 370 },
 });
 const TWO = cart([line('p1', 'Truffle Box · Classic', 1), line('p2', 'Butter Croissant Box', 2)]);
 
@@ -45,7 +44,7 @@ const PICKUP_QUOTE = {
   distanceKm: 2.4,
   isNearest: true,
   inStock: null,
-  totals: { count: 3, subtotal: 370, discount: 0, delivery: 0, total: 370, vat: 48.26 },
+  totals: { count: 3, subtotal: 370, total: 370 },
 };
 const pickupServer = (c: { path: string; method: string }) => {
   if (c.path === '/cart' && c.method === 'GET') return { body: TWO };
@@ -106,7 +105,7 @@ describe('13 · Delivery details', () => {
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/cart'));
   });
 
-  test('the default address is chosen; Continue keeps address + phone and opens Payment', async () => {
+  test('the default address is chosen; Continue keeps the address and opens Payment', async () => {
     await renderScreen(<DeliveryScreen />, {
       server: (c) => {
         if (c.path === '/cart' && c.method === 'GET') return { body: TWO };
@@ -117,10 +116,10 @@ describe('13 · Delivery details', () => {
     expect(await screen.findByRole('radio', { name: /Home/ })).toBeChecked();
     await fireEvent.press(screen.getByRole('button', { name: 'Continue to payment' }));
     expect(mockRouter.push).toHaveBeenCalledWith('/checkout/payment');
-    expect(session.read('checkout')).toMatchObject({ addressId: 'a1', deliveryPhone: '501234821' });
+    expect(session.read('checkout')).toMatchObject({ addressId: 'a1' });
   });
 
-  test('a wrong delivery phone is flagged', async () => {
+  test('the delivery phone is the account number and cannot be edited', async () => {
     await renderScreen(<DeliveryScreen />, {
       server: (c) => {
         if (c.path === '/cart' && c.method === 'GET') return { body: TWO };
@@ -129,9 +128,12 @@ describe('13 · Delivery details', () => {
       },
     });
     await screen.findByRole('radio', { name: /Home/ });
-    await fireEvent.changeText(screen.getByLabelText('Phone number for this delivery'), '12');
+    const field = screen.getByLabelText('Phone number for this delivery');
+    expect(field.props.editable).toBe(false);
+    expect(screen.getByDisplayValue('50 123 4821')).toBeTruthy(); // the demo account's number
     await fireEvent.press(screen.getByRole('button', { name: 'Continue to payment' }));
-    expect(mockRouter.push).not.toHaveBeenCalled();
+    expect(mockRouter.push).toHaveBeenCalledWith('/checkout/payment');
+    expect(session.read('checkout')).not.toHaveProperty('deliveryPhone');
   });
 
   describe('delivery or branch pickup (design 2026-11-18 §5.3)', () => {
@@ -153,20 +155,18 @@ describe('13 · Delivery details', () => {
       await fireEvent.press(screen.getByRole('radio', { name: 'Branch pickup' }));
       await fireEvent.press(screen.getByRole('button', { name: 'Continue to payment' }));
       expect(mockRouter.push).toHaveBeenCalledWith('/checkout/payment');
-      expect(session.read('checkout')).toMatchObject({ fulfilment: 'pickup', deliveryPhone: '501234821' });
+      expect(session.read('checkout')).toMatchObject({ fulfilment: 'pickup' });
     });
 
-    test('a wrong phone is still flagged for pickup', async () => {
+    test('the pickup phone is the account number and cannot be edited', async () => {
       await renderScreen(<DeliveryScreen />, { server: pickupServer });
       await screen.findByRole('radio', { name: /Home/ });
       await fireEvent.press(screen.getByRole('radio', { name: 'Branch pickup' }));
-      await fireEvent.changeText(screen.getByLabelText('Phone number for this order'), '12');
-      await fireEvent.press(screen.getByRole('button', { name: 'Continue to payment' }));
-      expect(mockRouter.push).not.toHaveBeenCalled();
+      expect(screen.getByLabelText('Phone number for this order').props.editable).toBe(false);
     });
 
     test('a remembered cash-on-delivery choice falls back to card when switching to Pickup', async () => {
-      session.write('checkout', { fulfilment: 'delivery', addressId: 'a1', deliveryPhone: '501234821', paymentMethod: 'cod', idempotencyKey: null, lastOrderId: null });
+      session.write('checkout', { fulfilment: 'delivery', addressId: 'a1', paymentMethod: 'cod', idempotencyKey: null, lastOrderId: null });
       await renderScreen(<DeliveryScreen />, { server: pickupServer });
       await screen.findByRole('radio', { name: /Home/ });
       await fireEvent.press(screen.getByRole('radio', { name: 'Branch pickup' }));
@@ -174,7 +174,7 @@ describe('13 · Delivery details', () => {
     });
 
     test('a draft from before pickup existed is a delivery order', async () => {
-      session.write('checkout', { addressId: 'a1', deliveryPhone: '501234821', paymentMethod: 'card', idempotencyKey: null, lastOrderId: null });
+      session.write('checkout', { addressId: 'a1', paymentMethod: 'card', idempotencyKey: null, lastOrderId: null });
       await renderScreen(<DeliveryScreen />, { server: pickupServer });
       expect(await screen.findByRole('radio', { name: /Home/ })).toBeChecked();
       expect(screen.getByRole('radio', { name: 'Delivery' }).props.accessibilityState).toMatchObject({ checked: true });

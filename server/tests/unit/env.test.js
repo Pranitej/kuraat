@@ -19,7 +19,6 @@ describe('loadConfig', () => {
     expect(c.otp).toEqual({ mode: 'test', testCode: '123456' });
     expect(c.rof).toMatchObject({ baseUrl: 'http://localhost:8080', inventoryCheck: false, timeoutMs: 10000 });
     expect(c.jwt).toMatchObject({ accessTtlSec: 900, refreshTtlDays: 30 });
-    expect(c.pricesIncludeVat).toBe(true);
     expect(c.pollIntervalMs).toBe(60000);
     expect(c.authRateLimitPerMinute).toBe(20);
   });
@@ -35,9 +34,8 @@ describe('loadConfig', () => {
   });
 
   test('parses booleans from text', () => {
-    const c = loadConfig({ ...valid, ROF_INVENTORY_CHECK: 'true', PRICES_INCLUDE_VAT: 'false' });
+    const c = loadConfig({ ...valid, ROF_INVENTORY_CHECK: 'true' });
     expect(c.rof.inventoryCheck).toBe(true);
-    expect(c.pricesIncludeVat).toBe(false);
   });
 
   test('password hash cost defaults to 12 and accepts 4–15', () => {
@@ -74,7 +72,9 @@ describe('production guards (nothing fake goes live by accident)', () => {
     expect(() => loadConfig(valid)).not.toThrow();
   });
 
-  test('no promo codes are live in the config', () => {
-    expect(loadConfig(valid).promos).toEqual({});
+  test('no promo codes, VAT setting or delivery fee exist in the config', () => {
+    const c = loadConfig(valid);
+    expect(c).not.toHaveProperty('promos');
+    expect(c).not.toHaveProperty('pricesIncludeVat');
   });
 });

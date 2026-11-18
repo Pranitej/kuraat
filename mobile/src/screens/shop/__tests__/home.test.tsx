@@ -44,7 +44,6 @@ describe('07 · Home', () => {
     await waitFor(() =>
       expect(calls.find((c) => c.path === '/cart' && c.method === 'PUT')?.body).toEqual({
         items: [{ productId: 'p1', qty: 1 }],
-        promoCode: null,
       }),
     );
     expect(screen.getByLabelText('Cart, 1 items')).toBeTruthy();
@@ -67,24 +66,12 @@ describe('07/08 · Home footer', () => {
   });
 });
 
-describe('07 · Home — location once per session (design 2026-11-18 §5.6)', () => {
-  const locationPuts = (calls: { path: string; method: string }[]) => calls.filter((c) => c.path === '/me/location' && c.method === 'PUT');
-
-  test('saves the device location once; Home again in the same session sends nothing', async () => {
-    const first = await renderScreen(<HomeScreen />);
-    await waitFor(() => expect(locationPuts(first.calls)).toHaveLength(1));
-    expect(first.calls.find((c) => c.path === '/me/location')?.body).toEqual({ lat: 26.2874, lng: 50.2085 });
-    const second = await renderScreen(<HomeScreen />);
-    expect(await screen.findAllByText('Truffle Box · Classic')).toBeTruthy();
-    expect(locationPuts(second.calls)).toHaveLength(0);
-  });
-
-  test('permission refused: nothing sent, no position asked, Home shows as usual', async () => {
-    jest.mocked(Location.requestForegroundPermissionsAsync).mockResolvedValueOnce({ status: 'denied', granted: false, canAskAgain: false } as never);
+describe('07 · Home — no location prompt at login', () => {
+  test('Home does not ask for the device location or send one: it is asked when adding an address or signing up', async () => {
     const { calls } = await renderScreen(<HomeScreen />);
     expect(await screen.findByText('Truffle Box · Classic')).toBeTruthy();
-    await waitFor(() => expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1));
+    expect(Location.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
     expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
-    expect(locationPuts(calls)).toHaveLength(0);
+    expect(calls.filter((c) => c.path === '/me/location')).toHaveLength(0);
   });
 });

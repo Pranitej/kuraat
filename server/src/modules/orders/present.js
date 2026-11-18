@@ -3,7 +3,7 @@
  * folded into the four tracking steps of the design (+ a cancelled state).
  */
 import { roundedDistance } from '../../lib/geo.js';
-import { FALLBACK_BY_STEP, canCancel, canResendCode, statusInfo } from '../../rof/status.js';
+import { FALLBACK_BY_STEP, canCancel, canResendCode, statusInfo, stepOf, stepTimes } from '../../rof/status.js';
 
 const DELIVERY_STEPS = [
   ['confirmed', 'Order confirmed'],
@@ -28,31 +28,24 @@ function rebase(url, media) {
   return url.startsWith(`${media.from}/`) ? media.to + url.slice(media.from.length) : url;
 }
 
+/**
+ * Each step carries only a REAL time: when the order was placed, or when RSOF's timeline reached the
+ * step. A step not reached yet has no time — the old "Estimated …" times were made up by our own fixed
+ * rules (RSOF sends no estimates), so they are no longer shown. `timeEnd`/`estimated` stay in the reply
+ * (always null/false) so older app builds keep working.
+ */
 function steps(row) {
   const cancelled = Boolean(row.cancelled);
   const step = row.step ?? 0;
   const times = row.step_times || {};
-  const est = row.estimates || {};
-  // We have no ready time for a pickup order: only real times, no estimates.
-  const pickup = row.fulfilment === 'pickup';
-  const estimates = pickup ? [] : [null, est.preparingAt, est.outForDeliveryAt, est.windowStart];
   return stepsFor(row).map(([id, title], i) => {
     const reached = times[i] !== undefined || (!cancelled && step >= i);
     let state = 'todo';
     if (cancelled) state = reached ? 'done' : 'todo';
     else if (step === 3 || i < step) state = 'done';
     else if (i === step) state = 'current';
-
-    let time = times[i] ?? null;
-    let estimated = false;
-    let timeEnd = null;
-    if (!time && i === 0) time = iso(row.created_at);
-    if (!time && !reached && !cancelled && estimates[i]) {
-      time = estimates[i];
-      estimated = true;
-      if (i === 3) timeEnd = est.windowEnd ?? null;
-    }
-    return { id, title, state, time, timeEnd, estimated };
+    const time = times[i] ?? (i === 0 ? iso(row.created_at) : null);
+    return { id, title, state, time, timeEnd: null, estimated: false };
   });
 }
 
@@ -70,6 +63,18 @@ function presentStatus(row) {
   return { id: stepsFor(row)[step][0], code, label, group, step, cancelled };
 }
 
+function paymentView(payment) {
+  if (!payment) return null;
+  return {
+    method: payment.method,
+    brand: payment.brand ?? null,
+    last4: payment.last4 ?? null,
+    transactionId: payment.transaction_id ?? null,
+    // Cash on delivery and pay-at-the-branch are paid later, so there is no payment time yet.
+    paidAt: payment.method === 'cod' || payment.method === 'branch' ? null : iso(payment.created_at),
+  };
+}
+
 /**
  * @param {object} row       orders table row
  * @param {{ payment?: object, branch?: object|null, media?: { from: string, to: string } }} extra
@@ -85,21 +90,8 @@ export function presentOrder(row, { payment = null, branch = null, media = null 
     steps: steps(row),
     items: (row.lines || []).map((l) => ({ productId: l.productId, name: l.name, qty: l.qty, price: l.price, image: rebase(l.image, media) })),
     subtotal: row.subtotal,
-    discount: row.discount,
-    deliveryFee: row.delivery_fee,
-    vat: row.vat,
     total: row.total,
-    promoCode: row.promo_code ?? null,
-    payment: payment
-      ? {
-          method: payment.method,
-          brand: payment.brand ?? null,
-          last4: payment.last4 ?? null,
-          transactionId: payment.transaction_id ?? null,
-          // Cash on delivery and pay-at-the-branch are paid later, so there is no payment time yet.
-          paidAt: payment.method === 'cod' || payment.method === 'branch' ? null : iso(payment.created_at),
-        }
-      : null,
+    payment: paymentView(payment),
     branch: branch ?? (row.branch_id ? { id: row.branch_id, name: row.branch_name } : null),
     // ROF picks the branch now (design 2026-11-18 §5.2): measure from the delivery address to it.
     distanceKm: row.distance_km ?? (branch?.location && row.address?.location ? roundedDistance(row.address.location, branch.location) : null),
@@ -110,5 +102,68 @@ export function presentOrder(row, { payment = null, branch = null, media = null 
     canResendCode: !cancelled && canResendCode(row.rof_status),
     createdAt: iso(row.created_at),
     cancelledAt: iso(row.cancelled_at),
+  };
+}
+
+/**
+ * An order exactly as RSOF has it (adapter's toOrderDetail) in the same reply shape as presentOrder.
+ * RSOF is the master of orders: nothing is calculated by us. The total is the sum of the line prices
+ * RSOF stamped (there is no delivery fee, VAT or discount); payment is null until it moves to RSOF.
+ * link / payment: only for an order placed in our app. RSOF has no payment yet, so what the customer paid
+ * at checkout (our saved record), the address and the delivery window are added on top of RSOF's order.
+ * Status, items, prices, branch and times always stay RSOF's. Such an order keeps our id so the apps see one order.
+ */
+export function presentRofOrder(order, { branch = null, link = null, payment = null, media = null } = {}) {
+  const linked = Boolean(link);
+  const step = stepOf(order.status, order.fulfilment);
+  const cancelled = step === 'cancelled';
+  const times = stepTimes(order.timeline, order.fulfilment);
+  // The step/status helpers read a stored-row shape; RSOF's order maps onto it directly.
+  const row = {
+    fulfilment: order.fulfilment,
+    cancelled,
+    step: typeof step === 'number' ? step : 0,
+    step_times: times,
+    rof_status: order.status,
+    created_at: order.createdAt,
+  };
+  // RSOF's address line usually names the city already ("…, Al Khobar 34445"): add it only when it does not.
+  const city = order.city && !order.address.includes(order.city) ? order.city : null;
+  const view = {
+    id: order.rofOrderId,
+    number: `KR-${order.orderNumber}`,
+    fulfilment: order.fulfilment,
+    status: presentStatus(row),
+    steps: steps(row),
+    // Every status change RSOF recorded, oldest first (a cancelled order that RSOF later reopens keeps its "Cancelled").
+    history: order.timeline
+      .map((r) => ({ r, info: statusInfo(r.status, order.fulfilment) }))
+      .filter(({ info }) => info)
+      .map(({ r, info }) => ({ id: info.name, label: info.label, group: info.group, cancelled: info.step === 'cancelled', time: iso(r.at), note: r.note ?? null })),
+    items: order.lines.map((l) => ({ productId: l.productId, name: l.name, qty: l.qty, price: l.price, image: null })),
+    subtotal: order.total,
+    total: order.total,
+    payment: null,
+    branch: branch ?? (order.branchId ? { id: order.branchId, name: order.branchName } : null),
+    distanceKm: null,
+    address: order.fulfilment === 'pickup' ? null : { line: order.address, district: null, city, postcode: null, location: null },
+    deliveryPhone: order.phone ? `+${order.phone}` : null,
+    window: { start: null, end: null },
+    canCancel: linked && !cancelled && canCancel(order.status),
+    canResendCode: linked && !cancelled && canResendCode(order.status),
+    createdAt: iso(order.createdAt),
+    cancelledAt: iso(times.cancelled),
+  };
+  if (!link) return view;
+  const saved = link.lines || [];
+  return {
+    ...view,
+    id: link.id,
+    items: view.items.map((i) => ({ ...i, image: rebase(saved.find((l) => l.productId === i.productId)?.image, media) })),
+    payment: paymentView(payment),
+    address: link.address ?? view.address,
+    distanceKm: link.distance_km ?? (branch?.location && link.address?.location ? roundedDistance(link.address.location, branch.location) : null),
+    deliveryPhone: link.delivery_phone ?? view.deliveryPhone,
+    window: { start: iso(link.window_start), end: iso(link.window_end) },
   };
 }

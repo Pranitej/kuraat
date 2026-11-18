@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, View, useWindowDimensions, type ScrollViewInstance } from 'react-native';
 import { BranchTeaserCard } from '@/components/branch/BranchCard';
 import { Screen } from '@/components/layout';
@@ -23,8 +23,6 @@ import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { areaLabel, categoryFilter, filterProducts, withDistances } from '@/domain';
 import { productGrid } from '@/lib/grid';
-import { getDevicePosition } from '@/lib/location';
-import { captureLocationOnce } from '@/services/locationService.js';
 import { colors, layout } from '@/theme/theme';
 import type { Branch, Product } from '@/types/api';
 
@@ -37,11 +35,6 @@ const DEFAULT_FILTERS: Filters = { q: '', category: 'all', sort: 'recommended' }
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const userId = user?.id;
-  // Once per app session (sign-in always lands here): the device location, for pickup pins (design 2026-11-18 §5.6).
-  useEffect(() => {
-    if (userId) captureLocationOnce(userId, getDevicePosition);
-  }, [userId]);
   const { count } = useCart();
   const { address, addresses, loaded: addressesLoaded, choose } = useDeliveryAddress();
   const catalog = useCatalog();

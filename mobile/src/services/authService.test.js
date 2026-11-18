@@ -41,7 +41,7 @@ const signupForm = {
 };
 
 describe('sign-up with a WhatsApp code', () => {
-  test('sends the form with coordinates (no made-up postcode), but not the typed address text', async () => {
+  test('sends the form without coordinates unless the customer shared their location (and no made-up postcode), and not the typed address text', async () => {
     const calls = stubFetch(() => ({ body: challenge('signup') }));
     await requestOtp('50 111 2233', 'signup', signupForm);
     expect(calls[0]).toMatchObject({ path: '/auth/otp/request', method: 'POST' });
@@ -54,9 +54,9 @@ describe('sign-up with a WhatsApp code', () => {
         line: 'Building 3, Prince Turki St',
         district: 'Al Yarmouk',
         city: 'Al Khobar',
-        location: { lat: expect.any(Number), lng: expect.any(Number) },
       },
     });
+    expect(body.payload.address).not.toHaveProperty('location');
   });
 
   test('keeps coordinates the form already has', async () => {
@@ -106,7 +106,7 @@ describe('sign-up with a WhatsApp code', () => {
   });
 });
 
-describe('password reset and phone change', () => {
+describe('password reset and the fixed mobile number', () => {
   test('reset: the verification token is kept and sent with the new password', async () => {
     const calls = stubFetch((call) => {
       if (call.path === '/auth/otp/request') return { body: challenge('reset', '501234821') };
@@ -122,24 +122,11 @@ describe('password reset and phone change', () => {
     expect(getPendingOtp()).toBeNull();
   });
 
-  test('phone change: the verification token goes with the new number, then is cleared', async () => {
-    setTokens({ accessToken: 'a0', refreshToken: 'r0' });
-    const calls = stubFetch((call) => {
-      if (call.path === '/auth/otp/request') return { body: challenge('change-phone', '559998877') };
-      if (call.path === '/auth/otp/verify') return { body: { next: 'account', verificationToken: 'v-phone' } };
-      return { body: { ...USER, phone: '559998877' } };
-    });
-    await requestOtp('55 999 8877', 'change-phone');
-    await verifyOtp('123456');
-    expect((await updateProfile({ phone: '559998877' })).phone).toBe('559998877');
-    expect(calls[2]).toMatchObject({ path: '/me', method: 'PATCH', auth: 'Bearer a0', body: { phone: '559998877', verificationToken: 'v-phone' } });
-    expect(getPendingOtp()).toBeNull();
-  });
-
-  test('a profile change without a new phone sends no verification token', async () => {
+  test('the mobile number is never sent with a profile change: it is fixed once the account exists', async () => {
     setTokens({ accessToken: 'a0', refreshToken: 'r0' });
     const calls = stubFetch(() => ({ body: USER }));
-    await updateProfile({ name: 'Noura', email: '', gender: 'female', avatar: null });
+    await updateProfile({ name: 'Noura', email: '', gender: 'female', avatar: null, phone: '559998877' });
+    expect(calls[0]).toMatchObject({ path: '/me', method: 'PATCH', auth: 'Bearer a0' });
     expect(calls[0].body).toEqual({ name: 'Noura', email: '', gender: 'female', avatar: null });
   });
 });

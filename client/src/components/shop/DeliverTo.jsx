@@ -6,7 +6,7 @@ import { useAddresses } from '@/context/AddressContext.jsx';
 import { useAuth } from '@/context/AuthContext.jsx';
 import { useCheckout } from '@/context/CheckoutContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { deliverToLabel, deliveryAddress, formatAddress, formatPhone } from '@/domain';
+import { deliverToLabel, deliveryAddress, formatAddress } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
 
@@ -56,7 +56,7 @@ export function AddressOption({ address, checked, onSelect }) {
         </span>
         <span className="mt-1 block text-body text-copy">{formatAddress(address)}</span>
         <span className="mt-1 block text-label font-normal text-muted">
-          {address.contactName || user?.name} · {formatPhone(address.phone)}
+          {address.contactName || user?.name}
         </span>
       </span>
     </button>

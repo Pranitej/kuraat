@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, Navigation, Phone, Store } from 'lucide-react';
 import { Button, Tag } from '@/components/ui';
-import { directionsUrl, formatDistance, formatHours, telUrl } from '@/domain';
+import { branchTypeLabel, directionsUrl, formatDistance, formatHours, telUrl } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
 
@@ -54,6 +54,8 @@ export const BranchListCard = forwardRef(function BranchListCard({ branch, dista
         <h3 className="text-[17px] font-bold leading-6 text-ink">{branch.name}</h3>
         {nearest && <Tag tone="dark">Nearest to you</Tag>}
       </div>
+      {/* RSOF's branch type (hub / master / …), small and muted so customers can tell the branches apart. */}
+      {branchTypeLabel(branch.type) && <p className="mt-0.5 text-label font-normal text-muted">{branchTypeLabel(branch.type)}</p>}
       <p className="mt-1 text-small text-muted">{branch.address}</p>
       <div className="mt-2.5">
         <OpenLine branch={branch} distanceKm={distanceKm} showDistance />

@@ -1,16 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { LocateFixed, MapPin, Phone, Trash2 } from 'lucide-react';
+import { LocateFixed, MapPin, Trash2 } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import BottomBar from '@/components/layout/BottomBar.jsx';
-import { Button, Chip, ConfirmDialog, FieldWrapper, PhoneField, SelectField, Spinner, TextField, Toggle } from '@/components/ui';
+import { Button, Chip, ConfirmDialog, FieldWrapper, SelectField, Spinner, TextField, Toggle } from '@/components/ui';
 import MapIllustration from '@/components/branch/MapIllustration.jsx';
 import { useAddresses } from '@/context/AddressContext.jsx';
-import { useAuth } from '@/context/AuthContext.jsx';
 import { useBranches } from '@/context/BranchContext.jsx';
 import { useCheckout } from '@/context/CheckoutContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { ADDRESS_LABELS, LOCATION_FAILED, deliveryCities, validateMobile, validateRequired } from '@/domain';
+import { ADDRESS_LABELS, LOCATION_FAILED, deliveryCities, validateRequired } from '@/domain';
 import { getBrowserPosition } from '@/lib/geolocation.js';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
@@ -30,7 +29,6 @@ function AddressForm({ addressId }) {
   const location = useLocation();
   const returnTo = location.state?.returnTo || ROUTES.addresses;
   const toast = useToast();
-  const { user } = useAuth();
   const checkout = useCheckout();
   const { addresses, getById, create, update, remove } = useAddresses();
   const { branches } = useBranches();
@@ -45,7 +43,6 @@ function AddressForm({ addressId }) {
     district: existing?.district || '',
     city: existing?.city || '',
     landmark: existing?.landmark || '',
-    phone: existing?.phone || user?.phone || '',
     isDefault: existing ? existing.isDefault : addresses.length === 0,
     location: existing?.location || null,
   }));
@@ -57,6 +54,22 @@ function AddressForm({ addressId }) {
   const [locating, setLocating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // A new address: ask for the device location once, as other apps do. Refusing is fine (the location is
+  // optional and the address can still be saved and ordered to); "Use current location" stays for a later try.
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!isNew || asked.current) return;
+    asked.current = true;
+    (async () => {
+      setLocating(true);
+      const position = await getBrowserPosition({ precise: true });
+      setLocating(false);
+      if (!position) return;
+      setForm((f) => (f.location ? f : { ...f, location: position }));
+      setPinned(true);
+    })();
+  }, [isNew]);
 
   if (!isNew && !existing) return <Navigate to={ROUTES.addresses} replace />;
   const city = form.city || cities[0] || '';
@@ -87,7 +100,6 @@ function AddressForm({ addressId }) {
       line: validateRequired(form.line, 'Enter the building and street'),
       district: validateRequired(form.district, 'Enter the district'),
       city: validateRequired(city, 'Choose a city'),
-      phone: validateMobile(form.phone),
     };
     setErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
@@ -159,8 +171,6 @@ function AddressForm({ addressId }) {
             </div>
 
             <TextField label="Landmark (optional)" value={form.landmark} onChange={(e) => set('landmark')(e.target.value)} placeholder="Near Al Rakah Park" />
-
-            <PhoneField label="Phone for this address" value={form.phone} onChange={set('phone')} error={errors.phone} />
 
             <div className="flex items-center justify-between gap-4">
               <label htmlFor="default-toggle" className="text-[15px] font-bold text-ink">

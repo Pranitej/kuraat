@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Navigation, PackageSearch, PackageX, Phone, Store } from 'lucide-react';
+import { ChevronDown, Navigation, PackageSearch, PackageX, Phone, Store } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, WhatsAppIcon } from '@/components/ui';
 import { OrderItemImage, OrderTimeline, RefreshButton, StatusTag, branchLabel } from '@/components/account/OrderParts.jsx';
 import { useOrder, useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
+import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderHistoryView, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useCountdown, useDocumentTitle } from '@/hooks';
 
@@ -56,6 +56,7 @@ export default function OrderDetailPage() {
   const toast = useToast();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   useDocumentTitle(order ? `Order #${order.number}` : 'Order');
 
   if (!order) {
@@ -71,6 +72,7 @@ export default function OrderDetailPage() {
 
   const status = orderStatusView(order);
   const steps = orderTimelineView(order, now);
+  const history = orderHistoryView(order, now);
   const branch = order.branch;
   const pickup = isPickup(order);
 
@@ -108,6 +110,33 @@ export default function OrderDetailPage() {
           <Card className="p-4">
             <OrderTimeline steps={steps} />
             {status.id === 'out_for_delivery' && <DeliveryCodeNote order={order} onResend={resendCode} />}
+            {/* The full history is already in this order's reply: the button only shows it, it asks for nothing. */}
+            {history.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowHistory((v) => !v)}
+                  aria-expanded={showHistory}
+                  className="mt-4 flex w-full items-center justify-center gap-1.5 border-t border-divider pt-3 text-label font-bold text-maroon"
+                >
+                  {showHistory ? 'Hide full history' : 'View full history'}
+                  <ChevronDown size={16} strokeWidth={2.2} aria-hidden className={`transition-transform ${showHistory ? 'rotate-180' : ''}`} />
+                </button>
+                {showHistory && (
+                  <ul className="mt-3 flex flex-col gap-3" aria-label="Order history">
+                    {history.map((h) => (
+                      <li key={h.id}>
+                        <div className="flex items-baseline justify-between gap-4">
+                          <span className={`text-[15px] font-semibold ${h.cancelled ? 'text-hotpink' : 'text-ink'}`}>{h.title}</span>
+                          <span className="tabular shrink-0 text-label font-normal text-muted">{h.time}</span>
+                        </div>
+                        {h.note && <p className="mt-0.5 text-label font-normal text-muted">{h.note}</p>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
           </Card>
 
           {pickup && status.ongoing && (
@@ -177,16 +206,14 @@ export default function OrderDetailPage() {
                       <span className="block truncate text-[16px] font-semibold text-ink">{item.name}</span>
                       <span className="block text-label font-normal text-muted">Qty {item.qty}</span>
                     </span>
-                    <span className="tabular text-[15px] font-bold text-ink">{formatSAR(item.price * item.qty)}</span>
+                    <span className="tabular text-[15px] font-bold text-ink">{item.price == null ? '' : formatSAR(item.price * item.qty)}</span>
                   </Link>
                 </li>
               ))}
             </ul>
             <div className="my-3.5 h-px bg-divider" />
             <div className="flex flex-col gap-2.5">
-              {order.discount > 0 && <SummaryRow label={`Discount (${order.promoCode})`} value={`− ${formatSAR(order.discount)}`} />}
-              {!pickup && <SummaryRow label="Delivery" value={order.deliveryFee === 0 ? 'Free' : formatSAR(order.deliveryFee)} />}
-              <SummaryRow label="Total (incl. VAT)" value={formatSAR(order.total)} />
+              <SummaryRow label="Total" value={order.total == null ? '—' : formatSAR(order.total)} />
             </div>
           </Card>
 
@@ -195,7 +222,7 @@ export default function OrderDetailPage() {
               {[
                 pickup ? [PICKUP.collectFrom, branch?.name ?? PENDING_BRANCH.title] : ['Deliver to', formatAddress(order.address)],
                 ['Phone', formatPhone(order.deliveryPhone)],
-                ['Payment', paymentLabel(order.payment)],
+                ...(order.payment ? [['Payment', paymentLabel(order.payment)]] : []),
               ].map(([label, value]) => (
                 <div key={label} className="flex items-start justify-between gap-6">
                   <dt className="shrink-0 text-body text-muted">{label}</dt>

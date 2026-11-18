@@ -78,7 +78,7 @@ async function upsertPayment(ctx, userId, key, fields) {
 const setPayment = (ctx, id, fields) => ctx.db('payments').where({ id }).update({ ...fields, updated_at: ctx.clock.now() });
 
 /**
- * @param {{ fulfilment?: 'delivery'|'pickup', channel?: 'web'|'mobile', addressId?, deliveryPhone, promoCode?, payment: { method: 'card'|'cod'|'branch', card?, saveCard? }, idempotencyKey }} input
+ * @param {{ fulfilment?: 'delivery'|'pickup', channel?: 'web'|'mobile', addressId?, payment: { method: 'card'|'cod'|'branch', card?, saveCard? }, idempotencyKey }} input
  * @returns {Promise<{ order: object, created: boolean }>}
  */
 export async function placeOrder(ctx, userId, input) {
@@ -98,17 +98,17 @@ export async function placeOrder(ctx, userId, input) {
   // A pickup order has no delivery address; delivery needs the address it goes to.
   const addressRow = pickup ? null : await ctx.db('addresses').where({ user_id: userId, id: input.addressId }).first();
   if (!pickup && !addressRow) throw notFound('not_found', 'This address no longer exists.');
-  const promoCode = input.promoCode !== undefined ? input.promoCode : cart.promoCode;
   // Fresh from ROF for every line: the money and stock check that counts.
-  const priced = await priceForUser(ctx, userId, { items: cart.items, promoCode }, { fulfilment: pickup ? 'pickup' : 'delivery', fresh: true });
+  const priced = await priceForUser(ctx, { items: cart.items }, { fresh: true });
   const problem = cartProblem(priced);
   if (problem) throw conflict('cart_changed', problem);
   const items = priced.items.map((l) => ({ productId: l.productId, qty: l.qty }));
 
   // 3 — coverage: ROF picks the branch (design 2026-11-18 §5.2), but we still only take orders for
-  // addresses a hub serves.
+  // addresses a hub serves. An address without a shared location cannot be checked: the order is still
+  // accepted (the location is optional) and RSOF assigns the branch.
   const address = pickup ? null : toAddress(addressRow);
-  if (!pickup) {
+  if (!pickup && address.location) {
     const { candidates } = await deliveryCandidates(ctx, address.location, items);
     if (!candidates.length) throw conflict('no_branch', "We don't have a branch that delivers to this address yet.");
   }
@@ -152,7 +152,6 @@ export async function placeOrder(ctx, userId, input) {
         toRofOrderPayload({
           user,
           address,
-          deliveryPhone: input.deliveryPhone,
           items,
           payment: paid,
           total: amount,
@@ -189,14 +188,10 @@ export async function placeOrder(ctx, userId, input) {
       step: 0,
       cancelled: false,
       address: address ? JSON.stringify(address) : null,
-      delivery_phone: input.deliveryPhone,
+      delivery_phone: user.phone, // always the account's number (an older app may still send one: it is ignored)
       lines: JSON.stringify(lineRows),
       subtotal: priced.totals.subtotal,
-      discount: priced.totals.discount,
-      delivery_fee: priced.totals.delivery,
-      vat: priced.totals.vat,
       total: priced.totals.total,
-      promo_code: priced.promo?.valid ? priced.promo.code : null,
       window_start: pickup ? null : new Date(est.windowStart),
       window_end: pickup ? null : new Date(est.windowEnd),
       estimates: JSON.stringify(est),
@@ -208,12 +203,13 @@ export async function placeOrder(ctx, userId, input) {
     await trx('payments').where({ id: paymentId }).update({ order_id: orderId, updated_at: now });
   });
 
-  // 7 — the customer's pin: ROF assigns the nearest branch with stock from it. A failure never
-  // fails the order (it is placed and paid); RSOF staff can still assign a branch by hand.
+  // 7 — the customer's pin, only when they really shared one: ROF assigns the nearest branch with stock
+  // from it. With no pin nothing is sent, so RSOF keeps the order as "created" and asks the customer for
+  // their location itself. A failure never fails the order (it is placed and paid); RSOF staff can still assign a branch by hand.
   let locationShared = pin ? true : null;
   try {
     if (pin) await ctx.rof.shareOrderLocation(created.rofOrderId, pin);
-    else ctx.logger.info(`[orders] KR-${created.orderNumber} is a pickup order with no known location — RSOF staff must assign a branch`);
+    else ctx.logger.info(`[orders] KR-${created.orderNumber} has no shared location — RSOF will ask the customer for it`);
   } catch (error) {
     // Whatever went wrong, the order is placed and the payment is held: never fail or lock it here.
     locationShared = false;
@@ -248,6 +244,6 @@ export async function placeOrder(ctx, userId, input) {
       : "Your order screen shows the branch once it's confirmed.";
     await notify(trx, userId, { type: 'order', title: `Order #${number} confirmed`, body, link }, new Date(doneAt.getTime() + 1));
   });
-  await saveCart(ctx.db, userId, { items: [], promoCode: null }, doneAt);
+  await saveCart(ctx.db, userId, { items: [] }, doneAt);
   return { order: await orderFor(ctx, orderId), created: true };
 }

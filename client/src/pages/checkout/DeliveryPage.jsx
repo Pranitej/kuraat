@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ChevronRight, Store } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
@@ -12,7 +12,7 @@ import { useAuth } from '@/context/AuthContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { useCheckout } from '@/context/CheckoutContext.jsx';
 import { useDeliveryQuote } from '@/hooks/useDeliveryQuote.js';
-import { PICKUP, deliveryAddress, validateMobile } from '@/domain';
+import { PICKUP, deliveryAddress } from '@/domain';
 import { offeredMethod } from '@/services/orderService.js';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
@@ -28,18 +28,9 @@ export default function DeliveryPage() {
   const { items, totals, status: cartStatus } = useCart();
   const { addresses } = useAddresses();
   const selected = deliveryAddress(addresses, checkout.addressId);
-  const [phone, setPhone] = useState(checkout.deliveryPhone || selected?.phone || user?.phone || '');
-  const [phoneTouched, setPhoneTouched] = useState(Boolean(checkout.deliveryPhone));
   const [errors, setErrors] = useState({});
   const productIds = useMemo(() => items.map((i) => i.productId), [items]);
   const { quote: delivery, error: quoteError } = useDeliveryQuote({ addressId: pickup ? null : selected?.id, productIds, fulfilment: pickup ? 'pickup' : 'delivery' });
-
-  // Follow the selected address's phone until the user edits the field
-  useEffect(() => {
-    if (phoneTouched) return;
-    const follow = pickup ? user?.phone : selected?.phone;
-    if (follow) setPhone(follow);
-  }, [selected, phoneTouched, pickup, user]);
 
   // After a reload the cart is still on its way from the server: wait instead of bouncing to the cart.
   if (!items.length && cartStatus === 'loading') return <div className="min-h-[60dvh]" aria-busy="true" />;
@@ -58,15 +49,15 @@ export default function DeliveryPage() {
   };
 
   const next = () => {
-    const errs = { address: pickup || selected ? '' : 'Choose a delivery address', phone: validateMobile(phone) };
+    const errs = { address: pickup || selected ? '' : 'Choose a delivery address' };
     setErrors(errs);
-    if (errs.address || errs.phone) return;
-    checkout.patch(pickup ? { deliveryPhone: phone } : { addressId: selected.id, deliveryPhone: phone });
+    if (errs.address) return;
+    if (!pickup) checkout.patch({ addressId: selected.id });
     navigate(ROUTES.payment);
   };
 
   const summary = pickup ? (
-    delivery?.totals ? <OrderSummary totals={delivery.totals} fulfilment="pickup" title="Order summary" /> : <Skeleton className="h-[180px] rounded-xl" />
+    delivery?.totals ? <OrderSummary totals={delivery.totals} title="Order summary" /> : <Skeleton className="h-[180px] rounded-xl" />
   ) : (
     <OrderSummary totals={totals} title="Order summary" />
   );
@@ -103,18 +94,8 @@ export default function DeliveryPage() {
           <InfoBanner icon={Store} className="mt-5">
             {PICKUP.note}
           </InfoBanner>
-          <PhoneField
-            className="mt-6"
-            label={PICKUP.phoneLabel}
-            value={phone}
-            onChange={(v) => {
-              setPhone(v);
-              setPhoneTouched(true);
-              setErrors((e) => ({ ...e, phone: '' }));
-            }}
-            error={errors.phone}
-            helper={PICKUP.phoneHelper}
-          />
+          {/* The order always carries the account's number (it cannot be edited here): RSOF finds the customer's orders by it. */}
+          <PhoneField className="mt-6" label={PICKUP.phoneLabel} value={user?.phone || ''} onChange={() => {}} disabled helper={PICKUP.phoneHelper} />
           {delivery?.branch && <DeliveryFromCard className="mt-5" icon="store" label={PICKUP.likely} branch={delivery.branch} distanceKm={delivery.distanceKm} showDistance />}
           {quoteError && (
             <p role="alert" className="mt-5 text-label text-hotpink">
@@ -140,20 +121,17 @@ export default function DeliveryPage() {
 
       <AddAddressTile returnTo={ROUTES.delivery} className="mt-3" />
 
+      {/* The order always carries the account's number (it cannot be edited here): RSOF finds the customer's orders by it. */}
       <PhoneField
         className="mt-6"
         label="Phone number for this delivery"
-        value={phone}
-        onChange={(v) => {
-          setPhone(v);
-          setPhoneTouched(true);
-          setErrors((e) => ({ ...e, phone: '' }));
-        }}
-        error={errors.phone}
-        helper="The courier will call this number on arrival."
+        value={user?.phone || ''}
+        onChange={() => {}}
+        disabled
+        helper="Your account's mobile number. The courier will call it on arrival."
       />
 
-      {delivery && (
+      {delivery?.branch && (
         <DeliveryFromCard className="mt-5" icon="store" branch={delivery.branch} distanceKm={delivery.distanceKm} showDistance />
       )}
       {quoteError && (

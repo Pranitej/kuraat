@@ -11,7 +11,6 @@ const form = {
   district: 'Al Faisaliyah District',
   city: 'Dammam',
   landmark: '',
-  phone: '55 987 6543',
   isDefault: false,
   location: null,
 };
@@ -23,12 +22,12 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('toAddressBody', () => {
-  test('fills coordinates for an address typed without a pin, and invents no postcode', () => {
+  test('an address typed without a pin has no coordinates (they are optional, never invented) and no postcode', () => {
     const body = toAddressBody(form);
-    expect(body).toMatchObject({ type: 'other', label: 'Parents’ home', line: 'Villa 8', district: 'Al Faisaliyah District', city: 'Dammam', phone: '559876543', isDefault: false });
+    expect(body).toMatchObject({ type: 'other', label: 'Parents’ home', line: 'Villa 8', district: 'Al Faisaliyah District', city: 'Dammam', isDefault: false });
+    expect(body).not.toHaveProperty('phone'); // an address has no mobile number
     expect(body.postcode).toBeUndefined();
-    expect(body.location.lat).toBeCloseTo(26.41, 1);
-    expect(body.location.lng).toBeCloseTo(50.125, 1);
+    expect(body).not.toHaveProperty('location');
   });
 
   test('keeps coordinates the form already has', () => {

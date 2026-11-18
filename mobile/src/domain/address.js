@@ -1,7 +1,5 @@
 /** Address helpers (pure). */
 
-import { CITY_CENTRES } from './branches.js';
-import { jitter } from './geo.js';
 
 export const ADDRESS_LABELS = [
   { id: 'home', label: 'Home' },
@@ -35,12 +33,6 @@ export function deliveryAddress(addresses, chosenId) {
 export function deliverToLabel(address) {
   if (!address) return '';
   return [address.label, areaLabel(address)].filter(Boolean).join(' · ');
-}
-
-/** Geo point for an address typed by hand (no map pin): city centre + deterministic offset. */
-export function locateAddress({ line = '', district = '', city }) {
-  const centre = CITY_CENTRES[city] || CITY_CENTRES['Al Khobar'];
-  return jitter(centre, `${line}|${district}|${city}`.toLowerCase());
 }
 
 /** Known districts per city (used to understand free-text addresses). */

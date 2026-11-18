@@ -31,16 +31,6 @@ export function cityFilters(branches) {
   return cities.length < 2 ? [] : ['All', ...cities];
 }
 
-/** Approximate city centres for addresses entered without a map pin. */
-export const CITY_CENTRES = {
-  'Al Khobar': { lat: 26.293, lng: 50.21 },
-  Dhahran: { lat: 26.31, lng: 50.14 },
-  Dammam: { lat: 26.41, lng: 50.125 },
-  'Al Ahsa': { lat: 25.32, lng: 49.55 },
-  Riyadh: { lat: 24.72, lng: 46.7 },
-  Jeddah: { lat: 21.38, lng: 38.78 },
-};
-
 export const HEAD_OFFICE = {
   address: 'Prince Faisal bin Fahd Rd, Al Khobar 31952',
   supportHours: '9 AM – 11 PM',
@@ -58,6 +48,17 @@ const BRAND_PREFIX = /^kuraat\s*·\s*/i;
 export function toBranchView(branch) {
   const short = String(branch.name || '').replace(BRAND_PREFIX, '').trim() || branch.name;
   return { ...branch, displayName: branch.name, name: short, shortName: short };
+}
+
+/**
+ * RSOF's branch type as a short label for the branch card: hub → "Hub branch", master → "Master branch",
+ * branch → "Branch"; any other type RSOF may add shows as "<Type> branch"; none → nothing.
+ */
+export function branchTypeLabel(type) {
+  const t = String(type ?? '').trim().toLowerCase();
+  if (!t) return '';
+  if (t === 'branch') return 'Branch';
+  return `${t.charAt(0).toUpperCase()}${t.slice(1)} branch`;
 }
 
 /** Nearest first, each with `distanceKm` from `location` (kept in order, null distances, without one). */

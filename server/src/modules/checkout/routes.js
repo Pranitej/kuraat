@@ -2,7 +2,7 @@
  * /api/v1/checkout/quote — which branch will deliver to an address, how far it is, and the delivery
  * slot. Used by the Delivery step and by the product page's "Delivered from …" line (productIds).
  * For branch pickup (design 2026-11-18 §5.3) it estimates the nearest hub to where the customer is
- * and prices the stored cart without the delivery fee (the server owns every price).
+ * and prices the stored cart (RSOF's product prices only).
  */
 import express from 'express';
 import { z } from 'zod';
@@ -47,7 +47,7 @@ export function checkoutRoutes(ctx) {
 
     if (req.body.fulfilment === 'pickup') {
       const location = await pickupLocation(req.userId, req.body.location);
-      const { totals } = await priceForUser(ctx, req.userId, cart, { fulfilment: 'pickup' });
+      const { totals } = await priceForUser(ctx, cart);
       // The branch is only an estimate: if RSOF's branch list is down the customer still gets their prices.
       let found = null;
       if (location) {
@@ -70,17 +70,21 @@ export function checkoutRoutes(ctx) {
 
     const address = await findAddress(ctx.db, req.userId, req.body.addressId);
     if (!address) throw notFound('not_found', 'This address no longer exists.');
+    const { start: windowStart, end: windowEnd } = deliveryWindow(ctx.clock.now());
+    // No shared location: no nearest branch to show. The customer can still order, and RSOF assigns the branch.
+    if (address.lat == null || address.lng == null) {
+      return res.json({ branch: null, distanceKm: null, isNearest: null, inStock: null, window: { start: windowStart.toISOString(), end: windowEnd.toISOString() } });
+    }
     const location = { lat: Number(address.lat), lng: Number(address.lng) };
     const { candidates, nearestId, inStock } = await deliveryCandidates(ctx, location, items);
     if (!candidates.length) throw conflict('no_branch', "We don't have a branch that delivers to this address yet.");
     const [chosen] = candidates;
-    const { start, end } = deliveryWindow(ctx.clock.now());
     return res.json({
       branch: chosen.branch,
       distanceKm: chosen.distanceKm,
       isNearest: chosen.branch.id === nearestId,
       inStock,
-      window: { start: start.toISOString(), end: end.toISOString() },
+      window: { start: windowStart.toISOString(), end: windowEnd.toISOString() },
     });
   });
 

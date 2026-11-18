@@ -52,6 +52,7 @@ export function registerOrderRoutes(app, { store, now, ok, fail, availableToSell
   const iso = () => now().toISOString();
   const findOrder = (id) => db.orders.find((o) => o.id === id);
   const productName = (id) => db.products.find((p) => p.id === id)?.name ?? 'Unknown product';
+  const productPrice = (id) => db.products.find((p) => p.id === id)?.sellingPrice ?? null;
   const branchName = (id) => db.branches.find((b) => b.id === id)?.name ?? null;
 
   function setStatus(order, to, remarks) {
@@ -239,7 +240,15 @@ export function registerOrderRoutes(app, { store, now, ok, fail, availableToSell
         remarks: o.remarks,
         createdOn: o.createdOn,
         modifiedOn: o.modifiedOn,
-        products: o.items.map((i) => ({ productId: i.productId, productName: productName(i.productId), quantity: i.quantity })),
+        // Real RSOF stamps the selling price on each line and totals them (verified on UAT, 18 Nov 2026).
+        products: o.items.map((i) => ({
+          productId: i.productId,
+          productName: productName(i.productId),
+          quantity: i.quantity,
+          unitPrice: productPrice(i.productId),
+          lineTotal: (productPrice(i.productId) ?? 0) * i.quantity,
+        })),
+        productsTotal: { amount: o.items.reduce((sum, i) => sum + (productPrice(i.productId) ?? 0) * i.quantity, 0), pricedLines: o.items.length, unpricedLines: 0, usesCurrentPrice: false },
         timeline: o.timeline.map((r) => ({
           statusFrom: r.statusFrom === null ? null : statusNumber(r.statusFrom),
           statusTo: statusNumber(r.statusTo),

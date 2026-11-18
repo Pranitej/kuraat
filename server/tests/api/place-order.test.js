@@ -1,17 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { BRANCH_IDS, PRODUCT_IDS } from '../support/rof-double/seed.js';
 import { RofError } from '../../src/rof/errors.js';
 import { signInDemo } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
-import { TEST_PROMOS } from '../helpers/promos.js';
 
 let t;
 let me;
 let homeId;
 beforeEach(async () => {
-  t = await createTestContext({ withRof: true, rofTimeoutMs: 800, configOverrides: { promos: TEST_PROMOS } });
+  t = await createTestContext({ withRof: true, rofTimeoutMs: 800 });
   await t.reset();
   me = await signInDemo(t);
   homeId = (await api('get', '/addresses')).body.find((a) => a.label === 'Home').id;
@@ -29,7 +28,7 @@ const fault = (faults) => request(t.mockRof.app).post('/__dev/faults').send(faul
 const visa = { method: 'card', card: { number: '4242 4242 4242 4242', expiry: '12/29', cvv: '123' } };
 const pdfCart = { items: [{ productId: PRODUCT_IDS.classic, qty: 1 }, { productId: PRODUCT_IDS.croissant, qty: 2 }] };
 const place = (overrides = {}) =>
-  api('post', '/orders', { addressId: homeId, deliveryPhone: '501234821', payment: visa, idempotencyKey: randomUUID(), ...overrides });
+  api('post', '/orders', { addressId: homeId, payment: visa, idempotencyKey: randomUUID(), ...overrides });
 const payment = () => t.db('payments').first();
 
 describe('placing an order', () => {
@@ -45,10 +44,7 @@ describe('placing an order', () => {
         { productId: PRODUCT_IDS.croissant, name: 'Butter Croissant Box', qty: 2, price: 64 },
       ],
       subtotal: 313,
-      discount: 0,
-      deliveryFee: 15,
-      vat: 42.78,
-      total: 328,
+      total: 313,
       payment: { method: 'card', brand: 'Visa', last4: '4242' },
       branch: { id: BRANCH_IDS.corniche, name: 'Kuraat · Al Khobar Corniche' },
       distanceKm: 5.8,
@@ -57,11 +53,12 @@ describe('placing an order', () => {
       canCancel: true,
       canResendCode: false,
     });
-    expect(res.body.steps.map((s) => [s.id, s.state, s.estimated])).toEqual([
-      ['confirmed', 'current', false],
-      ['preparing', 'todo', true],
-      ['out_for_delivery', 'todo', true],
-      ['delivered', 'todo', true],
+    // Only real times: the placed time on the first step, nothing invented for the steps ahead.
+    expect(res.body.steps.map((s) => [s.id, s.state, s.time, s.estimated])).toEqual([
+      ['confirmed', 'current', '2026-11-15T09:21:00.000Z', false],
+      ['preparing', 'todo', null, false],
+      ['out_for_delivery', 'todo', null, false],
+      ['delivered', 'todo', null, false],
     ]);
 
     expect(rofOrders()).toHaveLength(1);
@@ -83,16 +80,16 @@ describe('placing an order', () => {
     expect((await api('get', '/cart')).body.items).toEqual([]);
   });
 
-  test('the ROF payload: delivery phone, MobileApp, Delivery, orderType 0, country/province, money in remarks', async () => {
+  test('the ROF payload: the account phone, MobileApp, Delivery, orderType 0, country/province, money in remarks', async () => {
     await api('put', '/cart', pdfCart);
-    await place({ deliveryPhone: '559876543' });
+    await place();
     expect(rofOrders()[0]).toMatchObject({
       customerName: 'Sara Al-Mutairi',
-      phoneNumber: '966559876543',
+      phoneNumber: '966501234821',
       customerEmail: 'sara.m@example.com',
       address: 'Building 14, King Fahd Rd, Al Rakah, Al Khobar 34445',
       city: 'Al Khobar',
-      remarks: 'Landmark: Near Al Rakah Park · Account phone: +966 50 123 4821 · Paid by card',
+      remarks: 'Landmark: Near Al Rakah Park · Paid by card',
       source: 'MobileApp',
       fulfillmentType: 'Delivery',
       orderType: 0,
@@ -103,6 +100,15 @@ describe('placing an order', () => {
         { productId: PRODUCT_IDS.croissant, quantity: 2 },
       ],
     });
+  });
+
+  test('the order always carries the account phone: a delivery phone sent by an older app is ignored', async () => {
+    await api('put', '/cart', pdfCart);
+    const res = await place({ deliveryPhone: '559876543' });
+    expect(res.status).toBe(201);
+    expect(res.body.deliveryPhone).toBe('501234821');
+    expect(rofOrders()[0].phoneNumber).toBe('966501234821');
+    expect((await t.db('orders').first()).delivery_phone).toBe('501234821');
   });
 
   test('placing reads every product live: a price change seconds after the cart was priced is still caught', async () => {
@@ -217,6 +223,19 @@ describe('placing an order', () => {
     expect((await api('post', `/orders/${res.body.id}/cancel`)).status).toBe(200);
   });
 
+  test('no shared location: the order is placed and paid, no pin is sent, RSOF keeps it as Created and asks the customer itself', async () => {
+    await api('put', '/cart', pdfCart);
+    await t.db('addresses').where({ id: homeId }).update({ lat: null, lng: null });
+    const shared = vi.spyOn(t.ctx.rof, 'shareOrderLocation');
+    const res = await place();
+    expect(res.status).toBe(201);
+    expect(shared).not.toHaveBeenCalled();
+    expect(rofOrders()[0].status).toBe('Created'); // not "Shared location manually"
+    expect(res.body.status).toMatchObject({ code: 'Created' });
+    expect((await t.db('orders').first()).location_shared).toBeNull();
+    expect((await payment()).status).toBe('captured');
+  });
+
   test('pin share fails → the order is still placed and paid; location_shared false, warning logged', async () => {
     await api('put', '/cart', pdfCart);
     await fault({ locationReject: 'Location service unavailable' });
@@ -278,10 +297,12 @@ describe('placing an order', () => {
     expect((await api('get', '/cards')).body).toEqual([{ id: expect.any(String), brand: 'Visa', last4: '4242', expiry: '12/29' }]);
   });
 
-  test('promo codes in the cart are applied to the order', async () => {
-    await api('put', '/cart', { ...pdfCart, promoCode: 'KURAAT10' });
+  test('the order is the RSOF product prices only: no delivery fee, VAT, discount or promo code', async () => {
+    await api('put', '/cart', pdfCart);
     const res = await place();
-    expect(res.body).toMatchObject({ discount: 31.3, total: 296.7, promoCode: 'KURAAT10' });
+    expect(res.body).toMatchObject({ subtotal: 313, total: 313 });
+    for (const key of ['discount', 'deliveryFee', 'vat', 'promoCode']) expect(res.body).not.toHaveProperty(key);
+    expect(Number((await t.db('payments').first()).amount)).toBe(313); // the card is charged the RSOF prices, nothing more
   });
 
   test('empty cart → 400 empty_cart; unknown address → 404', async () => {
@@ -308,7 +329,7 @@ describe('placing an order', () => {
 
   describe('branch pickup (design 2026-11-18 §5.3)', () => {
     const placePickup = (overrides = {}) =>
-      api('post', '/orders', { fulfilment: 'pickup', deliveryPhone: '501234821', payment: { method: 'branch' }, idempotencyKey: randomUUID(), ...overrides });
+      api('post', '/orders', { fulfilment: 'pickup', payment: { method: 'branch' }, idempotencyKey: randomUUID(), ...overrides });
     const setLocation = (lat, lng) => t.db('users').where({ id: me.user.id }).update({ last_lat: lat, last_lng: lng });
 
     test('pay at branch: no fee, no address, ROF gets Pickup and the pin from the last known location', async () => {
@@ -320,7 +341,6 @@ describe('placing an order', () => {
         fulfilment: 'pickup',
         address: null,
         window: { start: null, end: null },
-        deliveryFee: 0,
         total: 313,
         payment: { method: 'branch', brand: null, last4: null, transactionId: null, paidAt: null },
         branch: { id: BRANCH_IDS.corniche },
@@ -385,7 +405,7 @@ describe('placing an order', () => {
 
     test('delivery without an address, or paying at the branch, is refused too', async () => {
       await api('put', '/cart', pdfCart);
-      const noAddress = await api('post', '/orders', { deliveryPhone: '501234821', payment: visa, idempotencyKey: randomUUID() });
+      const noAddress = await api('post', '/orders', { payment: visa, idempotencyKey: randomUUID() });
       expect(noAddress.status).toBe(400);
       expect(noAddress.body).toMatchObject({ code: 'invalid', field: 'addressId' });
       const atBranch = await place({ payment: { method: 'branch' } });

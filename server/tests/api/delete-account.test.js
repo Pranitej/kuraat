@@ -50,7 +50,8 @@ describe('delete account (store requirement)', () => {
     const me = await signInDemo(t);
     const order = await placeTestOrder(t, me);
     await advance(t, order.number, 'Delivered');
-    await api('get', `/orders/${order.id}?refresh=true`, me.auth); // syncs the delivered status (placing already read ROF once)
+    // What the background poller does: sync our record with RSOF (the orders page itself only reads RSOF).
+    await t.ctx.orders.refresh(await t.db('orders').where({ id: order.id }).first());
     const userId = me.user.id;
 
     await api('put', '/me/location', me.auth, { lat: 26.2874, lng: 50.2085 });

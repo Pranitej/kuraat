@@ -39,8 +39,20 @@ describe('sign up', () => {
     expect(res.body.tokens).toMatchObject({ accessToken: expect.any(String), refreshToken: expect.any(String), expiresIn: 900 });
 
     const [address] = await t.db('addresses').where({ user_id: res.body.user.id });
-    expect(address).toMatchObject({ label: 'Home', type: 'home', is_default: 1, postcode: '', lat: 26.31402, phone: '551234567' });
+    expect(address).toMatchObject({ label: 'Home', type: 'home', is_default: 1, postcode: '', lat: 26.31402 });
+    expect(address).not.toHaveProperty('phone'); // the number lives on the account only
     expect(await t.db('notifications').where({ user_id: res.body.user.id, type: 'welcome' })).toHaveLength(1);
+  });
+
+  test('the location is optional at sign-up: the Home address is created without coordinates', async () => {
+    const payload = signupPayload();
+    delete payload.address.location;
+    const res = await requestOtp('551234568', 'signup', payload);
+    expect(res.status).toBe(200);
+    const verified = await verify(res.body.challengeId);
+    expect(verified.status).toBe(200);
+    const [address] = await t.db('addresses').where({ user_id: verified.body.user.id });
+    expect(address).toMatchObject({ label: 'Home', lat: null, lng: null });
   });
 
   test('with a registered phone → 409 phone_taken on field phone', async () => {

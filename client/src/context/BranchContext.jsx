@@ -4,9 +4,12 @@ import { listBranches } from '@/services/branchService.js';
 import { useAuth } from './AuthContext.jsx';
 
 const BranchContext = createContext(null);
-const EMPTY = { branches: [], status: 'loading', error: null };
+const EMPTY = { branches: [], allBranches: [], status: 'loading', error: null };
 
-/** Delivery branches, loaded once per session (as `toBranchView` shapes). */
+/**
+ * Branches, loaded once per session (as `toBranchView` shapes): `allBranches` is every branch RSOF has (the
+ * branch directory shows them all, with their type); `branches` is only the hubs, which are the delivery branches.
+ */
 export function BranchProvider({ children }) {
   const { isAuthenticated } = useAuth();
   const [state, setState] = useState(EMPTY);
@@ -14,8 +17,8 @@ export function BranchProvider({ children }) {
   const load = useCallback(async () => {
     setState((s) => ({ ...s, status: s.branches.length ? 'ready' : 'loading', error: null }));
     try {
-      const branches = (await listBranches()).map(toBranchView);
-      setState({ branches, status: 'ready', error: null });
+      const allBranches = (await listBranches()).map(toBranchView);
+      setState({ allBranches, branches: allBranches.filter((b) => b.isHub !== false), status: 'ready', error: null });
     } catch (error) {
       setState((s) => ({ ...s, status: s.branches.length ? 'ready' : 'error', error }));
     }
@@ -27,7 +30,7 @@ export function BranchProvider({ children }) {
   }, [isAuthenticated, load]);
 
   const value = useMemo(() => {
-    const byId = new Map(state.branches.map((b) => [b.id, b]));
+    const byId = new Map(state.allBranches.map((b) => [b.id, b]));
     return { ...state, refresh: load, getBranch: (id) => byId.get(id) || null };
   }, [state, load]);
 

@@ -9,7 +9,7 @@ const LEGAL = {
     title: 'Terms of use',
     body: [
       'Orders are prepared fresh by the kuraat branch nearest to your delivery address and delivered within the time slot shown at checkout.',
-      'Prices are in Saudi riyals. VAT and any delivery fee are shown at checkout before you pay.',
+      'Prices are in Saudi riyals and are shown at checkout before you pay.',
       'You can cancel an order free of charge until the branch starts preparing it. Perishable items cannot be returned once delivered.',
     ],
   },

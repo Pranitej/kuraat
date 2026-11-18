@@ -9,26 +9,20 @@ import { z } from 'zod';
 import { MAX_ITEM_QTY } from '../../config/business.js';
 import { requireAuth } from '../../http/auth.js';
 import { validate } from '../../http/validate.js';
-import { normalizePromoCode, priceCart } from './pricing.js';
+import { priceCart } from './pricing.js';
 
 const MAX_LINES = 50;
 
 export async function loadCart(db, userId) {
   const row = await db('carts').where({ user_id: userId }).first();
-  return { items: row?.items ?? [], promoCode: row?.promo_code ?? null };
+  return { items: row?.items ?? [] };
 }
 
-export async function saveCart(db, userId, { items, promoCode }, now) {
+export async function saveCart(db, userId, { items }, now) {
   await db('carts')
-    .insert({ user_id: userId, items: JSON.stringify(items), promo_code: promoCode, created_at: now, updated_at: now })
+    .insert({ user_id: userId, items: JSON.stringify(items), promo_code: null, created_at: now, updated_at: now })
     .onConflict('user_id')
-    .merge({ items: JSON.stringify(items), promo_code: promoCode, updated_at: now });
-}
-
-/** A customer's first order: no earlier order that was not cancelled. */
-export async function isFirstOrder(db, userId) {
-  const { n } = await db('orders').where({ user_id: userId, cancelled: false }).count({ n: '*' }).first();
-  return Number(n) === 0;
+    .merge({ items: JSON.stringify(items), promo_code: null, updated_at: now });
 }
 
 /** How old a product may be on the cart screen and in quotes: changes still show within seconds. */
@@ -39,13 +33,9 @@ export const CART_PRODUCT_MAX_AGE_MS = 5_000;
  * all customers and taps (one RSOF call per product per few seconds instead of one per line per
  * request); placing an order passes `fresh`, so every line is re-read from ROF right then.
  */
-export async function priceForUser(ctx, userId, cart, { fulfilment = 'delivery', fresh = false } = {}) {
+export async function priceForUser(ctx, cart, { fresh = false } = {}) {
   return priceCart(cart, {
-    fulfilment,
     getProduct: (id) => ctx.catalog.getProduct(id, fresh ? { fresh: true } : { maxAgeMs: CART_PRODUCT_MAX_AGE_MS }),
-    isFirstOrder: await isFirstOrder(ctx.db, userId),
-    pricesIncludeVat: ctx.config.pricesIncludeVat,
-    promos: ctx.config.promos,
   });
 }
 
@@ -53,7 +43,6 @@ const cartSchema = z.object({
   items: z
     .array(z.object({ productId: z.string().min(1).max(64), qty: z.number().int().min(1).max(MAX_ITEM_QTY) }))
     .max(MAX_LINES, `A cart can hold up to ${MAX_LINES} different products.`),
-  promoCode: z.string().max(40).nullable().optional(),
 });
 
 export function cartRoutes(ctx) {
@@ -61,18 +50,16 @@ export function cartRoutes(ctx) {
   router.use(requireAuth(ctx));
 
   router.get('/', async (req, res) => {
-    res.json(await priceForUser(ctx, req.userId, await loadCart(ctx.db, req.userId)));
+    res.json(await priceForUser(ctx, await loadCart(ctx.db, req.userId)));
   });
 
   router.put('/', validate({ body: cartSchema }), async (req, res) => {
     // Same product twice → one line (quantities added, capped).
     const merged = new Map();
     for (const { productId, qty } of req.body.items) merged.set(productId, Math.min(MAX_ITEM_QTY, (merged.get(productId) ?? 0) + qty));
-    const promoCode = normalizePromoCode(req.body.promoCode);
-    const priced = await priceForUser(ctx, req.userId, { items: [...merged].map(([productId, qty]) => ({ productId, qty })), promoCode });
+    const priced = await priceForUser(ctx, { items: [...merged].map(([productId, qty]) => ({ productId, qty })) });
     const stored = priced.items.map((l) => ({ productId: l.productId, qty: l.qty, lastPrice: l.product?.price ?? null }));
-    // An invalid code is reported in this answer but not remembered, so the next read is clean.
-    await saveCart(ctx.db, req.userId, { items: stored, promoCode: priced.promo?.valid ? promoCode : null }, ctx.clock.now());
+    await saveCart(ctx.db, req.userId, { items: stored }, ctx.clock.now());
     res.json(priced);
   });
 

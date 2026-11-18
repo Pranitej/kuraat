@@ -6,18 +6,10 @@
 /** Saudi Arabia: UTC+3 all year (no daylight saving). All business times use it. */
 export const SAUDI_UTC_OFFSET_MINUTES = 180;
 
-export const VAT_RATE = 0.15;
-export const DELIVERY_FEE = 15;
 export const MAX_ITEM_QTY = 20;
 
-/**
- * Promo codes that are live. NONE: the apps have no promo field (removed 18 Nov 2026), and the old test codes
- * (KURAAT10, WELCOME15, FREEDELIVERY) must not work on real orders, so any code sent to the API is refused as
- * "not valid". To launch a code, add it here, e.g.
- *   SUMMER10: { code: 'SUMMER10', type: 'percent', value: 10, label: '10% off your sweets' }
- * (type 'percent' or 'delivery'; add firstOrderOnly: true for a first-order code). Tests inject their own.
- */
-export const PROMO_CODES = {};
+// No delivery fee, no VAT line and no promo codes (decided 18 Nov 2026): the customer pays the product
+// prices RSOF sends, and nothing else. Add them back here only when the business asks for them.
 
 /** Opening hours (24 h clock, Saudi time). close 24 = midnight. */
 export const DEFAULT_BRANCH_HOURS = { open: 10, close: 24 };

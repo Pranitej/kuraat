@@ -88,7 +88,7 @@ export default function ProductDetailPage() {
 
   const openZoom = (i = active) => navigate(ROUTES.productPhotos(product.id, i));
 
-  const deliveryMeta = delivery
+  const deliveryMeta = delivery?.branch
     ? [delivery.isNearest ? 'Closest to you' : `${delivery.distanceKm} km away`, quoteStockLabel(delivery.inStock), formatWindow(delivery.window.start, delivery.window.end, new Date(), { long: false })].filter(Boolean).join(' · ')
     : null;
   const inCart = quantityOf(product.id);
@@ -192,7 +192,7 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {delivery && (
+            {delivery?.branch && (
               <DeliveryFromCard
                 className="mt-4"
                 branch={delivery.branch}
@@ -263,7 +263,7 @@ export default function ProductDetailPage() {
                 </section>
               )}
 
-              {delivery && <DeliveryFromCard className="mt-6 lg:hidden" branch={delivery.branch} />}
+              {delivery?.branch && <DeliveryFromCard className="mt-6 lg:hidden" branch={delivery.branch} />}
             </div>
             <div className="h-6 lg:h-16" />
           </div>

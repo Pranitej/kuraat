@@ -6,7 +6,7 @@ import { Button, Card, ConfirmDialog, EmptyState, IconTile, Skeleton, Tag } from
 import { useAddresses } from '@/context/AddressContext.jsx';
 import { useAuth } from '@/context/AuthContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { formatAddress, formatPhone } from '@/domain';
+import { formatAddress } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 
@@ -60,7 +60,7 @@ export default function AddressesPage() {
                   </div>
                   <p className="mt-3 text-body text-copy">{formatAddress(a)}</p>
                   <p className="mt-0.5 text-label font-normal text-muted">
-                    {a.contactName || user?.name} · {formatPhone(a.phone)}
+                    {a.contactName || user?.name}
                   </p>
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     <Button variant="secondary" size="md" leftIcon={Pencil} to={ROUTES.addressEdit(a.id)}>

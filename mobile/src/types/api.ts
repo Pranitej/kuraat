@@ -19,7 +19,7 @@ export type User = {
 
 export type Tokens = { accessToken: string; refreshToken: string; expiresIn?: number };
 
-export type OtpPurpose = 'signup' | 'signin' | 'reset' | 'change-phone' | 'delete-account';
+export type OtpPurpose = 'signup' | 'signin' | 'reset' | 'delete-account';
 
 /** The pending WhatsApp verification kept for one app launch (authService.js). */
 export type PendingOtp = {
@@ -68,6 +68,10 @@ export type Branch = {
   address: string;
   city: string;
   phone: string;
+  /** RSOF's branch type in lower case ('hub', 'master', …); may be empty. */
+  type?: string;
+  /** Only hubs deliver; the directory also lists the others. Missing = treated as a hub. */
+  isHub?: boolean;
   location: LatLng;
   hours: BranchHours;
   openNow: boolean;
@@ -85,7 +89,6 @@ export type Address = {
   city: string;
   postcode: string;
   landmark: string;
-  phone: string;
   contactName: string;
   location: LatLng;
   isDefault: boolean;
@@ -104,15 +107,13 @@ export type PricedLine = {
   warning: CartWarning;
 };
 
-export type Promo = { code: string; label: string | null; valid: boolean; error?: string };
+export type Totals = { count: number; subtotal: number; total: number };
 
-export type Totals = { count: number; subtotal: number; discount: number; delivery: number; total: number; vat: number };
-
-export type PricedCart = { items: PricedLine[]; promo: Promo | null; totals: Totals };
+export type PricedCart = { items: PricedLine[]; totals: Totals };
 
 /**
  * Delivery: the branch that would deliver and the slot. Pickup (design 2026-11-18 §5.3): the nearest
- * branch to the customer (may be null) and the stored cart priced without the delivery fee.
+ * branch to the customer (may be null) and the stored cart priced from RSOF's product prices.
  */
 export type Quote = {
   fulfilment?: 'delivery' | 'pickup';
@@ -143,13 +144,11 @@ export type Order = {
     timeEnd?: string | null;
     estimated: boolean;
   }[];
+  /** Every status change RSOF recorded, oldest first. Orders placed a moment ago may not have it yet. */
+  history?: { id: string; label: string; group: string; cancelled: boolean; time: string | null; note: string | null }[];
   items: { productId: string; name: string; qty: number; price: number; image: string | null }[];
   subtotal: number;
-  discount: number;
-  deliveryFee: number;
-  vat: number;
   total: number;
-  promoCode: string | null;
   payment: {
     method: PaymentMethod;
     brand: string | null;

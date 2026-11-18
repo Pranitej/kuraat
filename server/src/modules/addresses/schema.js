@@ -1,9 +1,8 @@
 /**
  * Address validation shared by sign-up (Home address) and the addresses API.
- * Every address needs real coordinates: the nearest branch is computed from them (guide §6.2).
+ * Coordinates are optional (the customer may not share their location); when given they must be real ones.
  */
 import { z } from 'zod';
-import { phoneSchema } from '../auth/phone.js';
 
 /** Rough bounding box of Saudi Arabia; anything outside cannot be delivered to. */
 export const SAUDI_BOUNDS = { minLat: 16, maxLat: 33, minLng: 34, maxLng: 56 };
@@ -23,7 +22,7 @@ export const signupAddressSchema = z.object({
   district: z.string().trim().max(100).default(''),
   city: z.string().trim().min(2, 'Choose a city').max(60),
   postcode: z.string().trim().max(10).optional(),
-  location: locationSchema,
+  location: locationSchema.optional(),
 });
 
 /** Full address as saved in the address book. */
@@ -31,6 +30,5 @@ export const addressInputSchema = signupAddressSchema.extend({
   type: z.enum(['home', 'office', 'other']).default('home'),
   label: z.string().trim().max(60).optional(),
   landmark: z.string().trim().max(200).default(''),
-  phone: phoneSchema,
   isDefault: z.boolean().optional(),
 });

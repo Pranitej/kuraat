@@ -27,7 +27,6 @@ const input = (overrides = {}) => ({
   district: 'Al Yarmouk',
   city: 'Al Khobar',
   landmark: '',
-  phone: '+966 50 123 4821',
   location: { lat: 26.31402, lng: 50.223148 },
   ...overrides,
 });
@@ -45,7 +44,6 @@ describe('address book', () => {
       city: 'Al Khobar',
       postcode: '34445',
       landmark: 'Near Al Rakah Park',
-      phone: '501234821',
       contactName: 'Sara Al-Mutairi',
       location: { lat: 26.348558, lng: 50.193673 },
       isDefault: true,
@@ -56,7 +54,9 @@ describe('address book', () => {
     ({ auth } = await signInDemo(t));
     const res = await api('post', '/addresses', input({ type: 'other', label: '  Gym ', isDefault: true }));
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ label: 'Gym', postcode: '', contactName: 'Sara Al-Mutairi', phone: '501234821', isDefault: true });
+    expect(res.body).toMatchObject({ label: 'Gym', postcode: '', contactName: 'Sara Al-Mutairi', isDefault: true });
+    expect(res.body).not.toHaveProperty('phone'); // an address has no mobile number: the customer has one, on the account
+    expect((await t.db('addresses').where({ id: res.body.id }).first())).not.toHaveProperty('phone');
     const list = (await api('get', '/addresses')).body;
     expect(list.filter((a) => a.isDefault).map((a) => a.label)).toEqual(['Gym']);
     expect(list[0].label).toBe('Gym');
@@ -97,11 +97,17 @@ describe('address book', () => {
     expect(list.find((a) => a.isDefault).label).toBe('Office');
   });
 
-  test('missing location → 400 invalid on field location; outside Saudi → out_of_area', async () => {
+  test('the location is optional: an address without one is saved with location null; a location outside Saudi → out_of_area', async () => {
     ({ auth } = await signInDemo(t));
     const { location, ...noLocation } = input();
     expect(location).toBeDefined();
-    expect((await api('post', '/addresses', noLocation)).body).toMatchObject({ code: 'invalid', field: 'location' });
+    const saved = await api('post', '/addresses', noLocation);
+    expect(saved.status).toBe(201);
+    expect(saved.body.location).toBeNull();
+    expect((await t.db('addresses').where({ id: saved.body.id }).first())).toMatchObject({ lat: null, lng: null });
+    // Sharing it later (e.g. "Use current location") fills it in.
+    const shared = await api('patch', `/addresses/${saved.body.id}`, input());
+    expect(shared.body.location).toEqual({ lat: 26.31402, lng: 50.223148 });
     expect((await api('post', '/addresses', input({ location: { lat: 25.2, lng: 55.27 + 10 } }))).body).toMatchObject({
       code: 'out_of_area',
       field: 'location',

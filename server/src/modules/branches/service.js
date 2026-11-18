@@ -24,6 +24,8 @@ export function createBranchService({ rof, now = () => Date.now(), ttlMs = 60_00
 
   const hubs = () =>
     cache.get('branches', async () => (await rof.listBranches({ hubOnly: true })).items.map(toBranch).filter((b) => b.isHub));
+  // Every active branch (hubs and the master/other branches), for the branch directory.
+  const everyBranch = () => cache.get('all-branches', async () => (await rof.listBranches({ hubOnly: false })).items.map(toBranch));
 
   return {
     /** RSOF's per-branch stock rows ({ items }), at most stockTtlMs old. */
@@ -32,6 +34,13 @@ export function createBranchService({ rof, now = () => Date.now(), ttlMs = 60_00
     /** Branches customers can be delivered from, with hours and openNow (Saudi time). */
     async listDeliveryBranches() {
       return (await hubs()).map(present);
+    },
+    /**
+     * The branch directory: every active branch RSOF has, each with its RSOF `type` and `isHub` (only hubs deliver,
+     * so the apps use isHub for anything about delivery and show all of them in the directory).
+     */
+    async listBranches() {
+      return (await everyBranch()).map((branch) => ({ ...present(branch), isHub: branch.isHub }));
     },
     /**
      * Hubs first; RSOF may also assign a branch that is not a hub (its rule is "the nearest branch

@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import * as Location from 'expo-location';
 import { session } from '@/lib/storage.js';
 import { renderScreen } from '@/test/renderScreen';
 import { mockRouter, resetRouterMock, setMockParams } from '@/test/routerMock';
@@ -16,7 +17,6 @@ const HOME = {
   city: 'Al Khobar',
   postcode: '34445',
   landmark: '',
-  phone: '501234821',
   contactName: 'Sara',
   location: { lat: 26.2874, lng: 50.2085 },
   isDefault: true,
@@ -44,6 +44,11 @@ describe('23 · Saved addresses', () => {
 });
 
 describe('24 · Add / edit address', () => {
+  beforeEach(() => {
+    jest.mocked(Location.requestForegroundPermissionsAsync).mockClear();
+    jest.mocked(Location.getCurrentPositionAsync).mockClear();
+  });
+
   test('a new address from Delivery is saved, selected for the checkout, and returns there', async () => {
     setMockParams({ returnTo: '/checkout/delivery' });
     let list = [HOME];
@@ -73,11 +78,36 @@ describe('24 · Add / edit address', () => {
       line: 'Tower B, King Saud St',
       district: 'Al Faisaliyah',
       city: 'Dammam', // the first city we deliver to (alphabetical)
-      phone: '501234821',
     });
+    expect(body).not.toHaveProperty('phone'); // an address has no mobile number
     expect(body.postcode).toBeUndefined(); // no made-up postcode
-    expect(body.location).toEqual({ lat: expect.any(Number), lng: expect.any(Number) });
+    // The device location was asked for once when the form opened, and kept (typing the street does not drop it).
+    expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
+    expect(body.location).toEqual({ lat: 26.2874, lng: 50.2085 });
     expect(session.read('checkout')).toMatchObject({ addressId: 'a3' });
+  });
+
+  test('the location is optional: when the customer refuses, the address is still saved, without coordinates', async () => {
+    jest.mocked(Location.requestForegroundPermissionsAsync).mockResolvedValueOnce({ status: 'denied', granted: false, canAskAgain: false } as never);
+    setMockParams({ returnTo: '/addresses' });
+    const branch = { id: 'b1', name: 'Dammam Central', city: 'Dammam', phone: '', location: { lat: 26.4, lng: 50.1 }, hours: { open: 10, close: 24 }, openNow: true };
+    const { calls } = await renderScreen(<EditAddressScreen />, {
+      server: (c) => {
+        if (c.path === '/branches') return { body: [branch] };
+        if (c.path === '/addresses' && c.method === 'GET') return { body: [HOME] };
+        if (c.path === '/addresses' && c.method === 'POST') return { status: 201, body: { ...OFFICE, id: 'a3', ...(c.body as object) } };
+        return undefined;
+      },
+    });
+    await fireEvent.changeText(await screen.findByLabelText('Address'), 'Tower B, King Saud St');
+    await fireEvent.changeText(screen.getByLabelText('District'), 'Al Faisaliyah');
+    await fireEvent.press(screen.getByRole('button', { name: 'Save address' }));
+    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+    expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
+    expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
+    const body = calls.find((c) => c.path === '/addresses' && c.method === 'POST')?.body as Record<string, unknown>;
+    expect(body).toMatchObject({ line: 'Tower B, King Saud St', district: 'Al Faisaliyah' });
+    expect(body).not.toHaveProperty('location');
   });
 
   test('missing street and district are flagged without calling the server', async () => {

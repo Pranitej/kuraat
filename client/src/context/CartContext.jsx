@@ -7,7 +7,7 @@ import { useCatalog } from './CatalogContext.jsx';
 
 const CartContext = createContext(null);
 const MAX_QTY = 20;
-const EMPTY_TOTALS = { count: 0, subtotal: 0, discount: 0, delivery: 0, total: 0, vat: 0 };
+const EMPTY_TOTALS = { count: 0, subtotal: 0, total: 0 };
 const toItems = (priced) => priced.items.map((l) => ({ productId: l.productId, qty: l.qty }));
 /** Warnings worth keeping on screen after the cart has been re-saved with the new values. */
 const NOTICES = ['qty_reduced', 'price_changed'];
@@ -15,8 +15,8 @@ const NOTICES = ['qty_reduced', 'price_changed'];
 /**
  * The cart lives on the server, which prices it from RSOF. Taps change the local items at once and
  * are saved in the background (cartSync); totals and warnings come from the server's last answer
- * (`syncing` while a save is on its way). There are no promo codes: every save sends none, which
- * also clears one saved before they were removed.
+ * (`syncing` while a save is on its way). The total is RSOF's product prices: no delivery fee,
+ * VAT line or promo code.
  */
 export function CartProvider({ children }) {
   const { user } = useAuth();
@@ -71,11 +71,10 @@ export function CartProvider({ children }) {
       setStatus('ready');
       const changed = answer.items.filter((l) => NOTICES.includes(l.warning));
       setNotices(Object.fromEntries(changed.map((l) => [l.productId, l.warning])));
-      // Save the adjusted cart (or drop a code saved before promo codes were removed) so checkout
-      // accepts it; the notices stay until the next change.
-      if (changed.length || answer.promo) {
+      // Save the adjusted cart so checkout accepts it; the notices stay until the next change.
+      if (changed.length) {
         setSyncing(true);
-        sync.schedule({ items: next, promoCode: null });
+        sync.schedule({ items: next });
       }
     } catch (e) {
       setError(e);
@@ -94,7 +93,7 @@ export function CartProvider({ children }) {
       setNotices({});
       setError(null);
       setSyncing(true);
-      sync.schedule({ items: nextItems, promoCode: null });
+      sync.schedule({ items: nextItems });
     },
     [sync],
   );

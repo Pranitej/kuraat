@@ -5,6 +5,7 @@ import { apiRequest } from '@/services/api.js';
 import { jestFetch, type FetchCall } from '@/test/jestFetch';
 import { AppProviders } from '@/context/AppProviders';
 import { useAuth } from '@/context/AuthContext';
+import { useBranches } from '@/context/BranchContext';
 import { useCart } from '@/context/CartContext';
 import { useCatalog } from '@/context/CatalogContext';
 import { useCheckout } from '@/context/CheckoutContext';
@@ -39,7 +40,7 @@ const ONGOING = {
 };
 
 type Items = { productId: string; qty: number }[];
-const priced = (items: Items, promoCode: string | null = null) => ({
+const priced = (items: Items) => ({
   items: items.map((i) => ({
     ...i,
     product: { id: i.productId, name: PRODUCT.name, price: 185, images: [] },
@@ -48,15 +49,7 @@ const priced = (items: Items, promoCode: string | null = null) => ({
     maxQuantity: 20,
     warning: null,
   })),
-  promo: promoCode
-    ? {
-        code: promoCode,
-        label: null,
-        valid: promoCode === 'KURAAT10',
-        error: promoCode === 'KURAAT10' ? undefined : "This code isn't valid.",
-      }
-    : null,
-  totals: { count: items.reduce((s, i) => s + i.qty, 0), subtotal: 0, discount: 0, delivery: 15, total: 0, vat: 0 },
+  totals: { count: items.reduce((s, i) => s + i.qty, 0), subtotal: 0, total: 0 },
 });
 
 /** A signed-in customer's server; `extra` answers first. */
@@ -67,8 +60,8 @@ function server(extra: (c: FetchCall) => { status?: number; body?: unknown } | u
     if (c.path === '/me') return { body: USER };
     if (c.path === '/cart' && c.method === 'GET') return { body: priced([]) };
     if (c.path === '/cart' && c.method === 'PUT') {
-      const b = c.body as { items: Items; promoCode: string | null };
-      return { body: priced(b.items, b.promoCode) };
+      const b = c.body as { items: Items };
+      return { body: priced(b.items) };
     }
     if (c.path === '/categories') return { body: [{ id: 'c1', name: 'Truffles' }] };
     if (c.path === '/products') return { body: [PRODUCT] };
@@ -149,6 +142,23 @@ describe('CatalogProvider', () => {
   });
 });
 
+describe('BranchProvider', () => {
+  test('the directory gets every branch; delivery (Home, address cities) gets only the hubs', async () => {
+    tokenStore.write(TOKENS);
+    const branch = (id: string, name: string, extra: object) => ({ id, name, address: '', city: 'Riyadh', phone: '', location: { lat: 1, lng: 1 }, hours: { open: 10, close: 24 }, openNow: true, ...extra });
+    server((c) =>
+      c.path === '/branches'
+        ? { body: [branch('b1', 'Dammam Central', { type: 'hub', isHub: true }), branch('b2', 'Riyadh Main', { type: 'master', isHub: false })] }
+        : undefined,
+    );
+    const { result } = await renderHook(() => ({ auth: useAuth(), branches: useBranches() }), { wrapper: AppProviders });
+    await waitFor(() => expect(result.current.branches.status).toBe('ready'));
+    expect(result.current.branches.allBranches.map((b) => b.id)).toEqual(['b1', 'b2']);
+    expect(result.current.branches.branches.map((b) => b.id)).toEqual(['b1']);
+    expect(result.current.branches.getBranch('b2')).toMatchObject({ type: 'master' }); // a master branch can still be looked up
+  });
+});
+
 describe('CartProvider', () => {
   test('taps update at once; three quick adds are saved with one PUT', async () => {
     tokenStore.write(TOKENS);
@@ -163,18 +173,9 @@ describe('CartProvider', () => {
     expect(result.current.cart.count).toBe(3);
     await waitFor(() => expect(calls.filter((c) => c.path === '/cart' && c.method === 'PUT')).toHaveLength(1));
     const put = calls.find((c) => c.method === 'PUT');
-    expect(put?.body).toEqual({ items: [{ productId: 'p1', qty: 3 }], promoCode: null });
+    expect(put?.body).toEqual({ items: [{ productId: 'p1', qty: 3 }] });
   });
 
-  test('a promo code saved before codes were removed is cleared on load', async () => {
-    tokenStore.write(TOKENS);
-    const calls = server((c) =>
-      c.path === '/cart' && c.method === 'GET' ? { body: priced([{ productId: 'p1', qty: 1 }], 'KURAAT10') } : undefined,
-    );
-    const { result } = await renderHook(useAll, { wrapper: AppProviders });
-    await waitFor(() => expect(result.current.cart.status).toBe('ready'));
-    await waitFor(() => expect(calls.find((c) => c.path === '/cart' && c.method === 'PUT')?.body).toEqual({ items: [{ productId: 'p1', qty: 1 }], promoCode: null }));
-  });
 });
 
 describe('OrderProvider', () => {

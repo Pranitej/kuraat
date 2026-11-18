@@ -273,7 +273,7 @@ export default function ProductDetailScreen() {
           </View>
         ) : null}
 
-        {delivery ? (
+        {delivery?.branch ? (
           <DeliveryFromCard
             style={styles.delivery}
             branch={delivery.branch}
@@ -348,7 +348,7 @@ export default function ProductDetailScreen() {
               </View>
             ) : null}
 
-            {delivery ? <DeliveryFromCard style={styles.section} branch={delivery.branch} /> : null}
+            {delivery?.branch ? <DeliveryFromCard style={styles.section} branch={delivery.branch} /> : null}
           </>
         ) : null}
       </View>

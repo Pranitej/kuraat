@@ -4,7 +4,7 @@
  */
 import { MAX_ITEM_QTY } from '../config/business.js';
 import { FIELD_MAP, HIGHLIGHTS, PLACEMENT_ONLY_KEYS } from './fields.js';
-import { normalizeStatus } from './status.js';
+import { normalizeStatus, statusInfo } from './status.js';
 
 const isBlank = (v) => v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
 
@@ -102,6 +102,8 @@ export function toBranch(raw) {
     city: raw.city ?? '',
     phone: raw.phoneNumber ?? '',
     location: { lat: Number(raw.latitude), lng: Number(raw.longitude) },
+    // RSOF's own branch type, as it sends it (lower case): 'hub' and 'master' on the UAT. Shown on the branch card.
+    type: String(raw.branchType || '').trim().toLowerCase(),
     // Lead's rule: delivery branches are the ones with branchType = 'hub'.
     isHub: String(raw.branchType || '').toLowerCase() === 'hub',
   };
@@ -125,8 +127,6 @@ export function toStockMap(rows = []) {
 // Saudi numbers are stored as 9 digits (966 is added); every other country is stored as "+<country code><number>" (the plus goes).
 export const toRofPhone = (phone) =>
   String(phone).startsWith('+') ? String(phone).slice(1).replace(/\D/g, '') : `966${String(phone).replace(/\D/g, '').replace(/^966/, '').replace(/^0/, '')}`;
-
-const formatLocalPhone = (d) => `${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5)}`;
 
 /** "Building 14, King Fahd Rd, Al Rakah, Al Khobar 34445" */
 export function formatAddressLine(address) {
@@ -169,11 +169,10 @@ export const ROF_SOURCE = { mobile: 'MobileApp', web: 'Website' };
  * customer order (ItemOrder — RSOF's default, sent explicitly). `channel` says which of our apps
  * placed it ('web' | 'mobile'); anything else is treated as the mobile app.
  */
-export function toRofOrderPayload({ user, address, deliveryPhone, items, payment = null, total = null, fulfilment = 'delivery', city = null, channel = 'mobile' }) {
+export function toRofOrderPayload({ user, address, items, payment = null, total = null, fulfilment = 'delivery', city = null, channel = 'mobile' }) {
   const pickup = fulfilment === 'pickup';
   const remarks = [];
   if (!pickup && !isBlank(address.landmark)) remarks.push(`Landmark: ${address.landmark.trim()}`);
-  if (deliveryPhone !== user.phone) remarks.push(`Account phone: ${String(user.phone).startsWith('+') ? user.phone : `+966 ${formatLocalPhone(user.phone)}`}`);
   const money = moneyRemark(payment, total);
   if (money) remarks.push(money);
   // A pickup order has no street address: ROF still wants one, so it gets a plain label (and the
@@ -182,7 +181,7 @@ export function toRofOrderPayload({ user, address, deliveryPhone, items, payment
   const payload = {
     customerName: user.name,
     // The delivery code and WhatsApp updates go to this number (guide §7.1).
-    phoneNumber: toRofPhone(deliveryPhone),
+    phoneNumber: toRofPhone(user.phone), // the order carries the account's number: RSOF finds a customer's orders by it
     customerEmail: isBlank(user.email) ? undefined : user.email,
     address: pickup ? 'Branch pickup' : formatAddressLine(address),
     city: isBlank(orderCity) ? undefined : orderCity,
@@ -217,4 +216,49 @@ export const toOrderSnapshot = (raw) => ({
 export const toOrderItems = (raw) => (raw.products || []).map((p) => ({ productId: p.productId, qty: Number(p.quantity) }));
 
 /** GET /api/orders/{id}/timeline (guide §9.2, oldest first) → [{ status, at }]. */
-export const toTimeline = (rows = []) => rows.map((r) => ({ status: normalizeStatus(r.statusTo), at: r.createdOn }));
+// RSOF does not promise an order (verified on UAT: the embedded timeline came back shuffled), so rows are put
+// oldest first here. A row's remark (RSOF's own note for that change) is kept when there is one.
+const timeValue = (at) => Date.parse(at) || 0;
+export const toTimeline = (rows = []) =>
+  rows
+    .map((r) => ({ status: normalizeStatus(r.statusTo), at: r.createdOn, ...(r.remarks && String(r.remarks).trim() ? { note: String(r.remarks).trim() } : {}) }))
+    .sort((a, b) => timeValue(a.at) - timeValue(b.at));
+
+/** GET /api/orders/by-phone/{phone} (guide §8) → the RSOF order ids, newest first. The rest of that reply is too thin to show. */
+export const toPhoneOrderIds = (rows) => (Array.isArray(rows) ? rows : []).map((r) => r?.orderId).filter(Boolean);
+
+/**
+ * GET /api/orders/{id} → everything the orders page shows, straight from RSOF. Prices are the ones
+ * RSOF stamped on the lines; RSOF has no VAT, delivery fee, discount or payment, so none are made up.
+ * Its embedded timeline has the same shape as /timeline (statusTo, createdOn), so one call is enough.
+ */
+export function toOrderDetail(raw) {
+  const total = raw.productsTotal?.amount;
+  const timeline = toTimeline(raw.timeline);
+  // A status we do not know (e.g. a transfer code) or a blank one: show the latest status in RSOF's own
+  // timeline that we do know, so the order keeps its last step and label.
+  const reported = normalizeStatus(raw.status);
+  const unknownStatus = statusInfo(reported) === null;
+  const status = unknownStatus ? (timeline.findLast((r) => statusInfo(r.status))?.status ?? reported) : reported;
+  return {
+    rofOrderId: raw.id,
+    orderNumber: raw.orderNumber,
+    status,
+    rawStatus: unknownStatus ? (raw.status ?? null) : null,
+    phone: String(raw.phoneNumber ?? '').replace(/\D/g, ''),
+    fulfilment: String(raw.fulfillmentType ?? '').toLowerCase() === 'pickup' ? 'pickup' : 'delivery',
+    address: raw.address ?? '',
+    city: raw.city ?? '',
+    branchId: raw.assignedToBranch ?? null,
+    branchName: raw.assignBranchName ?? null,
+    createdAt: raw.createdOn ?? null,
+    lines: (raw.products || []).map((p) => ({
+      productId: p.productId,
+      name: p.productName ?? '',
+      qty: Number(p.quantity),
+      price: p.unitPrice ?? null,
+    })),
+    total: total === undefined || total === null ? null : Number(total),
+    timeline,
+  };
+}

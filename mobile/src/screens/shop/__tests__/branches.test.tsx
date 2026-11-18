@@ -12,6 +12,8 @@ const BRANCHES = [
     address: 'Corniche Rd, Al Khobar',
     city: 'Al Khobar',
     phone: '+966 13 555 0101',
+    type: 'hub',
+    isHub: true,
     location: { lat: 26.29, lng: 50.22 },
     hours: { open: 10, close: 24 },
     openNow: true,
@@ -22,6 +24,8 @@ const BRANCHES = [
     address: 'Olaya St, Riyadh',
     city: 'Riyadh',
     phone: '+966 11 555 0102',
+    type: 'master',
+    isHub: false,
     location: { lat: 24.69, lng: 46.68 },
     hours: { open: 10, close: 24 },
     openNow: false,
@@ -39,6 +43,18 @@ describe('25 · Our branches', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Riyadh' }));
     expect(screen.queryByText('Al Khobar Corniche')).toBeNull();
     expect(screen.getByText('Riyadh Olaya')).toBeTruthy();
+  });
+
+  test('the directory lists every branch, the master branch too (not only the hubs that deliver)', async () => {
+    await renderScreen(<BranchesScreen />, { server });
+    expect(await screen.findByText('Al Khobar Corniche')).toBeTruthy();
+    expect(screen.getByText('Riyadh Olaya')).toBeTruthy(); // isHub false: a master branch
+  });
+
+  test('each branch card shows its RSOF branch type in small muted text', async () => {
+    await renderScreen(<BranchesScreen />, { server });
+    expect(await screen.findByText('Hub branch')).toBeTruthy();
+    expect(screen.getByText('Master branch')).toBeTruthy();
   });
 
   test('the city pills are the cities of the branches we have, nothing more', async () => {

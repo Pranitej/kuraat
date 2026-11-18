@@ -35,10 +35,9 @@ export async function createAccount(trx, ctx, { phone, name, gender, address, pa
     city: address.city,
     postcode: address.postcode || '', // only a postcode the customer gave, never a guess
     landmark: '',
-    phone,
     contact_name: name,
-    lat: address.location.lat,
-    lng: address.location.lng,
+    lat: address.location?.lat ?? null,
+    lng: address.location?.lng ?? null,
     is_default: true,
     created_at: now,
     updated_at: now,

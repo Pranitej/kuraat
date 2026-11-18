@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-nativ
 import { Clock, Navigation, Phone, Store } from '@/components/icons';
 import { Button, Tag, Text } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
-import { directionsUrl, formatDistance, formatHours, telUrl } from '@/domain';
+import { branchTypeLabel, directionsUrl, formatDistance, formatHours, telUrl } from '@/domain';
 import { useOpenUrl } from '@/lib/linking';
 import { colors, radii, shadows } from '@/theme/theme';
 import type { Branch } from '@/types/api';
@@ -84,6 +84,12 @@ export function BranchListCard({
         </Text>
         {nearest ? <Tag tone="dark">Nearest to you</Tag> : null}
       </View>
+      {/* RSOF's branch type (hub / master / …), small and muted so customers can tell the branches apart. */}
+      {branchTypeLabel(branch.type) ? (
+        <Text variant="label" weight={400} color="muted" style={styles.listType}>
+          {branchTypeLabel(branch.type)}
+        </Text>
+      ) : null}
       <Text variant="small" color="muted" style={styles.listAddress}>
         {branch.address}
       </Text>
@@ -128,6 +134,7 @@ const styles = StyleSheet.create({
   list: { backgroundColor: colors.surface, borderRadius: radii.xl, borderWidth: 1, borderColor: colors.lineSubtle, padding: 16 },
   highlighted: { borderColor: colors.maroon },
   listTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+  listType: { marginTop: 2 },
   listAddress: { marginTop: 4 },
   listOpen: { marginTop: 10 },
   actions: { marginTop: 16, flexDirection: 'row', gap: 12 },

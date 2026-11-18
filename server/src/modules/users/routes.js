@@ -2,12 +2,12 @@
 import express from 'express';
 import { z } from 'zod';
 import { requireAuth } from '../../http/auth.js';
-import { badRequest, conflict, unauthorized } from '../../http/errors.js';
+import { badRequest, unauthorized } from '../../http/errors.js';
 import { validate } from '../../http/validate.js';
-import { markConsumed, verifiedChallenge } from '../auth/otp.js';
+import { verifiedChallenge } from '../auth/otp.js';
 import { checkPassword, hashPassword, passwordProblems, weakPasswordMessage } from '../auth/password.js';
 import { phoneSchema } from '../auth/phone.js';
-import { findUserById, findUserByPhone, toPublicUser } from '../auth/service.js';
+import { findUserById, toPublicUser } from '../auth/service.js';
 import { notify, passwordNotification } from '../notifications/service.js';
 import { deleteAccount } from './deletion.js';
 
@@ -25,8 +25,9 @@ const profileSchema = z.object({
   email: z.union([z.literal(''), z.email('Enter a valid email address')]).optional(),
   gender: z.enum(['male', 'female', 'other']).optional(),
   avatar: avatarSchema.optional(),
+  // The mobile number is fixed once the account exists: it is still accepted here (older apps send it back
+  // unchanged) but a different one is refused below.
   phone: phoneSchema.optional(),
-  verificationToken: z.string().optional(),
 });
 
 const locationSchema = z.object({
@@ -50,26 +51,15 @@ export function meRoutes(ctx) {
 
   router.patch('/', validate({ body: profileSchema }), async (req, res) => {
     const user = await currentUser(req);
-    const { name, email, gender, avatar, phone, verificationToken } = req.body;
+    const { name, email, gender, avatar, phone } = req.body;
+    if (phone !== undefined && phone !== user.phone) throw badRequest('phone_locked', 'Your mobile number cannot be changed.', 'phone');
     const changes = { updated_at: ctx.clock.now() };
     if (name !== undefined) changes.name = name;
     if (email !== undefined) changes.email = email || null;
     if (gender !== undefined) changes.gender = gender;
     if (avatar !== undefined) changes.avatar = avatar;
 
-    let challenge = null;
-    if (phone !== undefined && phone !== user.phone) {
-      challenge = verificationToken ? await verifiedChallenge(ctx, verificationToken, { purpose: 'change-phone', userId: user.id, phone }) : null;
-      if (!challenge) throw badRequest('unverified_phone', 'Verify your new number with a WhatsApp code first.', 'phone');
-      const owner = await findUserByPhone(ctx.db, phone);
-      if (owner && owner.id !== user.id) throw conflict('phone_taken', 'This number already has a kuraat account.', 'phone');
-      changes.phone = phone;
-    }
-
-    await ctx.db.transaction(async (trx) => {
-      await trx('users').where({ id: user.id }).update(changes);
-      if (challenge) await markConsumed(ctx, challenge.id, trx);
-    });
+    await ctx.db('users').where({ id: user.id }).update(changes);
     res.json(toPublicUser(await findUserById(ctx.db, user.id)));
   });
 

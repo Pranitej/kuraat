@@ -183,9 +183,12 @@ describe('other mappings', () => {
       city: 'Al Khobar',
       phone: '+966 13 555 0110',
       location: { lat: 26.28, lng: 50.21 },
+      type: 'hub',
       isHub: true,
     });
-    expect(toBranch({ ...guideBranch, branchType: 'warehouse' }).isHub).toBe(false);
+    expect(toBranch({ ...guideBranch, branchType: 'warehouse' })).toMatchObject({ type: 'warehouse', isHub: false });
+    expect(toBranch({ ...guideBranch, branchType: ' Master ' })).toMatchObject({ type: 'master', isHub: false });
+    expect(toBranch({ ...guideBranch, branchType: undefined }).type).toBe('');
   });
 
   test('toRofPhone adds the 966 country code', () => {
@@ -217,6 +220,19 @@ describe('other mappings', () => {
   test('toOrderSnapshot normalises a numeric status (UAT detail / partner API send codes)', () => {
     expect(toOrderSnapshot({ id: 'o', orderNumber: 1001, status: 2 }).status).toBe('SharedLocationManually');
     expect(toOrderSnapshot({ id: 'o', orderNumber: 1001, status: '5' }).status).toBe('Preparing');
+  });
+
+  test('toTimeline puts RSOF rows oldest first (RSOF sends them in no order) and keeps a row note', () => {
+    const rows = [
+      { statusTo: 5, createdOn: '2026-11-15T12:06:00Z', remarks: ' Staff started ' },
+      { statusTo: 0, createdOn: '2026-11-15T12:01:00Z' },
+      { statusTo: 12, createdOn: '2026-11-15T12:05:00Z', remarks: '' },
+    ];
+    expect(toTimeline(rows)).toEqual([
+      { status: 'Created', at: '2026-11-15T12:01:00Z' },
+      { status: 'Canceled', at: '2026-11-15T12:05:00Z' },
+      { status: 'Preparing', at: '2026-11-15T12:06:00Z', note: 'Staff started' },
+    ]);
   });
 
   test('toTimeline accepts numeric statusTo', () => {
@@ -269,10 +285,10 @@ describe('order payload for POST /api/orders/manual (guide §7.1, spec §6.7 ste
     });
   });
 
-  test('a different delivery phone puts the account phone in remarks; no email or landmark is omitted', () => {
+  test('the order carries the account phone (an old caller passing another delivery phone changes nothing); no email is omitted', () => {
     const payload = toRofOrderPayload({ user: { ...user, email: '' }, address: { ...address, landmark: '' }, deliveryPhone: '559876543', items });
-    expect(payload.phoneNumber).toBe('966559876543');
-    expect(payload.remarks).toBe('Account phone: +966 50 123 4821');
+    expect(payload.phoneNumber).toBe('966501234821');
+    expect(payload.remarks).toBeNull();
     expect(payload).not.toHaveProperty('customerEmail');
   });
 
@@ -312,7 +328,7 @@ describe('pickup payload (design 2026-11-18 §5.3)', () => {
 
   test('pickup paid by card says so; with no city nothing is guessed', () => {
     const payload = toRofOrderPayload({ user, address: null, deliveryPhone: '559876543', items, payment: { method: 'card' }, total: 313, fulfilment: 'pickup' });
-    expect(payload.remarks).toBe('Account phone: +966 50 123 4821 · Paid by card');
+    expect(payload.remarks).toBe('Paid by card');
     expect(payload).not.toHaveProperty('city');
     expect(payload).not.toHaveProperty('province');
   });

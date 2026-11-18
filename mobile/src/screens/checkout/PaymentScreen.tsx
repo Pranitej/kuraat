@@ -9,7 +9,6 @@ import { DeliveryFromCard } from '@/components/shop/DeliveryFromCard';
 import { Button, Field, RadioDot, Text, Toggle } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
-import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useCheckout } from '@/context/CheckoutContext';
 import { useOrders } from '@/context/OrderContext';
@@ -51,7 +50,6 @@ export default function PaymentScreen() {
   const router = useRouter();
   const toast = useToast();
   const cart = useCart();
-  const { user } = useAuth();
   const { addresses, defaultAddress, loaded: addressesLoaded } = useAddresses();
   const { placeOrder } = useOrders();
   const checkout = useCheckout();
@@ -85,7 +83,7 @@ export default function PaymentScreen() {
   if (!cart.items.length && !processing) return <Redirect href={ROUTES.cart} />;
   if (!pickup && !address && !processing) return <Redirect href={ROUTES.delivery} />;
 
-  // Pickup has no delivery fee: its totals come priced from the server with the quote.
+  // Pickup totals come priced from the server with the quote (the same RSOF product prices).
   const totals = pickup ? delivery?.totals : cart.totals;
   const choose = (id: PaymentMethod) => {
     setMethod(id);
@@ -112,7 +110,6 @@ export default function PaymentScreen() {
       const order = await placeOrder({
         fulfilment: pickup ? 'pickup' : 'delivery',
         addressId: address?.id,
-        deliveryPhone: checkout.deliveryPhone || address?.phone || user?.phone || '',
         payment: toPaymentBody(method, { card, saveCard: save }),
         idempotencyKey: ensureIdempotencyKey(),
       });

@@ -22,8 +22,7 @@ const CART = {
       warning: null,
     },
   ],
-  promo: null,
-  totals: { count: 1, subtotal: 185, discount: 0, delivery: 15, total: 200, vat: 26.09 },
+  totals: { count: 1, subtotal: 185, total: 185 },
 };
 const ADDRESS = {
   id: 'a1',
@@ -46,11 +45,7 @@ const ORDER = {
   steps: [],
   items: [{ productId: 'p1', name: 'Truffle Box · Classic', qty: 1, price: 185, image: null }],
   subtotal: 185,
-  discount: 0,
-  deliveryFee: 15,
-  vat: 26.09,
-  total: 200,
-  promoCode: null,
+  total: 185,
   payment: { method: 'card', brand: 'Visa', last4: '4242', transactionId: 'TX-1', paidAt: '2026-11-16T09:21:00.000Z' },
   branch: { id: 'b1', name: 'Al Khobar Corniche', address: 'Corniche Rd' },
   distanceKm: 2.4,
@@ -110,7 +105,7 @@ describe('14 · Payment', () => {
 
     await screen.findByText('Payment method');
     await fillCard();
-    const pay = screen.getByRole('button', { name: 'Pay SAR 200.00' });
+    const pay = screen.getByRole('button', { name: 'Pay SAR 185.00' });
     await act(async () => {
       fireEvent.press(pay);
       fireEvent.press(pay);
@@ -133,9 +128,9 @@ describe('14 · Payment', () => {
     });
     await screen.findByText('Payment method');
     await fillCard();
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay SAR 200.00' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay SAR 185.00' }));
     expect(await screen.findAllByText("We can't reach the store right now. Please try again in a moment.")).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay SAR 200.00' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay SAR 185.00' }));
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/checkout/success/o1'));
     const keys = calls
       .filter((c) => c.path === '/orders' && c.method === 'POST')
@@ -153,7 +148,7 @@ describe('14 · Payment', () => {
     });
     await screen.findByText('Payment method');
     await fillCard();
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay SAR 200.00' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay SAR 185.00' }));
     expect((await screen.findAllByText('Your card was declined. Try another card.')).length).toBeGreaterThan(0);
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
@@ -162,13 +157,13 @@ describe('14 · Payment', () => {
     const { calls } = await renderScreen(<PaymentScreen />, { server: shop(() => ({ status: 201, body: ORDER })) });
     await screen.findByText('Payment method');
     await fireEvent.press(screen.getByRole('radio', { name: /Cash on delivery/ }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Place order · SAR 200.00' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Place order · SAR 185.00' }));
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/checkout/success/o1'));
     expect(calls.find((c) => c.path === '/orders' && c.method === 'POST')?.body).toMatchObject({ payment: { method: 'cod' } });
   });
 
   test('Saudi Arabia: only card and cash on delivery; an old draft that chose UPI starts on card', async () => {
-    session.write('checkout', { addressId: 'a1', deliveryPhone: '501234821', paymentMethod: 'upi', idempotencyKey: null, lastOrderId: null });
+    session.write('checkout', { addressId: 'a1', paymentMethod: 'upi', idempotencyKey: null, lastOrderId: null });
     await renderScreen(<PaymentScreen />, { server: shop(() => ({ status: 201, body: ORDER })) });
     await screen.findByText('Payment method');
     expect(screen.getAllByRole('radio').map((r) => r.props.accessibilityLabel)).toEqual([
@@ -182,14 +177,14 @@ describe('14 · Payment', () => {
 });
 
 describe('14 · Payment — branch pickup (design 2026-11-18 §5.3)', () => {
-  const PICKUP_TOTALS = { count: 1, subtotal: 185, discount: 0, delivery: 0, total: 185, vat: 24.13 };
-  const PICKUP_ORDER = { ...ORDER, fulfilment: 'pickup', address: null, window: { start: null, end: null }, deliveryFee: 0, total: 185, payment: { method: 'branch', brand: null, last4: null, transactionId: null, paidAt: null } };
+  const PICKUP_TOTALS = { count: 1, subtotal: 185, total: 185 };
+  const PICKUP_ORDER = { ...ORDER, fulfilment: 'pickup', address: null, window: { start: null, end: null }, total: 185, payment: { method: 'branch', brand: null, last4: null, transactionId: null, paidAt: null } };
   const pickupShop = (onOrder: (c: FetchCall) => { status?: number; body?: unknown } | undefined) => (c: FetchCall) => {
     if (c.path === '/checkout/quote') return { body: { fulfilment: 'pickup', branch: { id: 'b1', name: 'Kuraat · Al Khobar Corniche' }, distanceKm: 2.4, isNearest: true, inStock: null, totals: PICKUP_TOTALS } };
     return shop(onOrder)(c);
   };
   beforeEach(() => {
-    session.write('checkout', { fulfilment: 'pickup', addressId: null, deliveryPhone: '501234821', paymentMethod: 'card', idempotencyKey: null, lastOrderId: null });
+    session.write('checkout', { fulfilment: 'pickup', addressId: null, paymentMethod: 'card', idempotencyKey: null, lastOrderId: null });
   });
 
   test('pickup offers Pay now and Pay at branch — never cash on delivery', async () => {
@@ -202,7 +197,7 @@ describe('14 · Payment — branch pickup (design 2026-11-18 §5.3)', () => {
     expect(screen.queryByRole('radio', { name: /Cash on delivery/ })).toBeNull();
   });
 
-  test('Pay at branch places a pickup order without an address, priced without the delivery fee', async () => {
+  test('Pay at branch places a pickup order without an address, priced from the RSOF product prices', async () => {
     const { calls } = await renderScreen(<PaymentScreen />, { server: pickupShop(() => ({ status: 201, body: PICKUP_ORDER })) });
     await screen.findByText('Payment method');
     await fireEvent.press(screen.getByRole('radio', { name: /Pay at branch/ }));
@@ -210,15 +205,16 @@ describe('14 · Payment — branch pickup (design 2026-11-18 §5.3)', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Place order · SAR 185.00' }));
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/checkout/success/o1'));
     const body = calls.find((c) => c.path === '/orders' && c.method === 'POST')?.body as Record<string, unknown>;
-    expect(body).toMatchObject({ fulfilment: 'pickup', payment: { method: 'branch' }, deliveryPhone: '501234821' });
+    expect(body).toMatchObject({ fulfilment: 'pickup', payment: { method: 'branch' } });
     expect(body).not.toHaveProperty('addressId');
+    expect(body).not.toHaveProperty('deliveryPhone'); // the order carries the account number, set by the kuraat server
   });
 
   test('delivery still posts its address and says delivery', async () => {
-    session.write('checkout', { fulfilment: 'delivery', addressId: 'a1', deliveryPhone: '501234821', paymentMethod: 'cod', idempotencyKey: null, lastOrderId: null });
+    session.write('checkout', { fulfilment: 'delivery', addressId: 'a1', paymentMethod: 'cod', idempotencyKey: null, lastOrderId: null });
     const { calls } = await renderScreen(<PaymentScreen />, { server: pickupShop(() => ({ status: 201, body: ORDER })) });
     await screen.findByText('Payment method');
-    await fireEvent.press(await screen.findByRole('button', { name: 'Place order · SAR 200.00' }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Place order · SAR 185.00' }));
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalled());
     expect(calls.find((c) => c.path === '/orders' && c.method === 'POST')?.body).toMatchObject({ fulfilment: 'delivery', addressId: 'a1', payment: { method: 'cod' } });
   });
@@ -248,7 +244,7 @@ describe('14 · Payment — branch pickup (design 2026-11-18 §5.3)', () => {
   });
 
   test('a delivery draft that remembered "pay at branch" starts on card', async () => {
-    session.write('checkout', { fulfilment: 'delivery', addressId: 'a1', deliveryPhone: '501234821', paymentMethod: 'branch', idempotencyKey: null, lastOrderId: null });
+    session.write('checkout', { fulfilment: 'delivery', addressId: 'a1', paymentMethod: 'branch', idempotencyKey: null, lastOrderId: null });
     await renderScreen(<PaymentScreen />, { server: pickupShop(() => ({ status: 201, body: ORDER })) });
     await screen.findByText('Payment method');
     expect(screen.getByRole('radio', { name: /Credit \/ debit card/ }).props.accessibilityState).toMatchObject({ checked: true });
@@ -311,7 +307,7 @@ describe('16 · Order confirmed', () => {
 
   test('a pickup order: "Pickup · Show #… at the pickup counter", "Collect from" and a popup that leads with "Pick up your order from"', async () => {
     setMockParams({ orderId: 'o1' });
-    const pickup = { ...ORDER, fulfilment: 'pickup', address: null, window: { start: null, end: null }, deliveryFee: 0 };
+    const pickup = { ...ORDER, fulfilment: 'pickup', address: null, window: { start: null, end: null } };
     await renderScreen(<OrderConfirmedScreen />, { server: (c) => (c.path === '/orders/o1' ? { body: pickup } : shop(() => undefined)(c)) });
     expect(await screen.findByText('Pick up your order from')).toBeTruthy();
     expect(screen.getByText('Chosen near you. Stock is confirmed by the branch.')).toBeTruthy();

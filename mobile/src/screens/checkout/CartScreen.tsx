@@ -132,7 +132,7 @@ export default function CartScreen() {
         <OrderSummary totals={totals} dimmed={syncing} />
       </View>
 
-      {delivery ? (
+      {delivery?.branch ? (
         <InfoBanner icon={Store} style={styles.banner}>
           <Text color="copy" style={styles.bannerText}>
             {before}

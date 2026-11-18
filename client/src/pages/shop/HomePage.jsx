@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronRight, CloudOff, SearchX } from 'lucide-react';
 import { Chip, ChipRow, EmptyState, SectionTitle } from '@/components/ui';
@@ -13,18 +13,11 @@ import { DeliverToBar, DeliverToSheet, useDeliveryAddress } from '@/components/s
 import { areaLabel, categoryFilter, filterProducts, withDistances } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
-import { captureLocationOnce } from '@/services/locationService.js';
-import { getBrowserPosition } from '@/lib/geolocation.js';
 
 /** 07/08 · Home */
 export default function HomePage() {
   useDocumentTitle('Home');
   const { user } = useAuth();
-  const userId = user?.id;
-  // Once per session (sign-in always lands here): the device location, for pickup pins (design 2026-11-18 §5.6).
-  useEffect(() => {
-    if (userId) captureLocationOnce(userId, getBrowserPosition);
-  }, [userId]);
   const { count } = useCart();
   const { address, addresses, loaded: addressesLoaded, choose } = useDeliveryAddress();
   const catalog = useCatalog();

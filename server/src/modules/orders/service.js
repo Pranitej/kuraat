@@ -6,15 +6,15 @@
  * so lists and notifications work even while ROF is unreachable.
  */
 import { conflict, notFound, tooManyRequests } from '../../http/errors.js';
-import { toOrderSnapshot, toTimeline } from '../../rof/adapter.js';
+import { toOrderDetail, toOrderSnapshot, toPhoneOrderIds, toRofPhone, toTimeline } from '../../rof/adapter.js';
 import { isRofError } from '../../rof/errors.js';
 import { canCancel, canResendCode, stepOf, stepTimes } from '../../rof/status.js';
 import { notify } from '../notifications/service.js';
-import { presentOrder } from './present.js';
+import { presentOrder, presentRofOrder } from './present.js';
 
 const RESEND_SECONDS = 60;
-/** Same rule as the orders list and the poller: cancelled, or at the last step (delivered / picked up). */
-const isFinished = (row) => Boolean(row.cancelled) || (row.step ?? 0) >= 3;
+const DETAIL_CACHE_MAX = 2000;
+const LIST_CONCURRENCY = 5;
 const sar = (n) => `SAR ${Number(n).toFixed(2)}`;
 
 function cancellationBody(payment) {
@@ -32,7 +32,10 @@ async function refundFor(trx, payment, now) {
 }
 
 export function createOrdersService(ctx) {
-  const findRow = (userId, id) => ctx.db('orders').where({ user_id: userId, id }).first();
+  // Our record of an order placed in the app is only a pointer (who placed it, its RSOF order id and what
+  // we charged). The apps name an order by its RSOF id; older links and the checkout screens use ours.
+  const findRow = (userId, id) =>
+    ctx.db('orders').where({ user_id: userId }).andWhere((q) => q.where({ id }).orWhere({ rof_order_id: id })).first();
   const paymentFor = (orderId) => ctx.db('payments').where({ order_id: orderId }).first();
   // Photo links saved in orders point at ROF_BASE_URL; the apps load them from the media base.
   const media = { from: ctx.config.rof.baseUrl, to: ctx.config.rof.mediaBaseUrl };
@@ -57,6 +60,96 @@ export function createOrdersService(ctx) {
       reading.set(row.id, pending);
     }
     return pending;
+  }
+
+  /**
+   * The orders page reads RSOF only (RSOF is the master of orders). Every order is re-read once it is
+   * older than the caller allows, delivered and cancelled ones too: RSOF staff can change a status after
+   * the fact (e.g. cancelled → preparing) and the page must follow. Same-moment reads share one RSOF call.
+   */
+  const details = new Map(); // rof order id → { at, order }
+  const readingDetail = new Map(); // rof order id → Promise<order>
+  const phoneLists = new Map(); // rof phone → { at, ids }
+  const readingPhone = new Map(); // rof phone → Promise<ids>
+
+  function readOrder(rofId, maxAgeMs) {
+    const cached = details.get(rofId);
+    if (cached && ctx.clock.now().getTime() - cached.at < maxAgeMs) return Promise.resolve(cached.order);
+    let pending = readingDetail.get(rofId);
+    if (!pending) {
+      pending = ctx.rof
+        .getOrder(rofId)
+        .then(toOrderDetail)
+        .then((order) => {
+          if (order.rawStatus !== null) {
+            ctx.logger.warn(`[orders] KR-${order.orderNumber} has unknown ROF status ${JSON.stringify(order.rawStatus)}; showing its last known status`);
+          }
+          if (details.size >= DETAIL_CACHE_MAX) details.delete(details.keys().next().value);
+          details.set(rofId, { at: ctx.clock.now().getTime(), order });
+          return order;
+        })
+        .finally(() => readingDetail.delete(rofId));
+      readingDetail.set(rofId, pending);
+    }
+    return pending;
+  }
+
+  function readPhoneOrderIds(phone, maxAgeMs) {
+    const cached = phoneLists.get(phone);
+    if (cached && ctx.clock.now().getTime() - cached.at < maxAgeMs) return Promise.resolve(cached.ids);
+    let pending = readingPhone.get(phone);
+    if (!pending) {
+      pending = ctx.rof
+        .listOrdersByPhone(phone)
+        .then(toPhoneOrderIds)
+        .then((ids) => {
+          phoneLists.set(phone, { at: ctx.clock.now().getTime(), ids });
+          return ids;
+        })
+        .finally(() => readingPhone.delete(phone));
+      readingPhone.set(phone, pending);
+    }
+    return pending;
+  }
+
+  /** The customer's mobile number in RSOF's format (country code, no "+"): the account's number. */
+  async function rofPhoneOf(userId) {
+    const user = await ctx.db('users').where({ id: userId }).first();
+    return user?.phone ? toRofPhone(user.phone) : null;
+  }
+
+  /** A few RSOF reads at a time, in order. An order RSOF no longer knows is skipped; any other failure stops the page. */
+  async function readOrders(ids, maxAgeMs) {
+    const found = new Array(ids.length).fill(null);
+    let next = 0;
+    async function worker() {
+      while (next < ids.length) {
+        const at = next++;
+        try {
+          found[at] = await readOrder(ids[at], maxAgeMs);
+        } catch (error) {
+          if (!isRofError(error, 'rejected')) throw error;
+          ctx.logger.warn(`[orders] RSOF would not return order ${ids[at]}: ${error.message}`);
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(LIST_CONCURRENCY, ids.length) }, worker));
+    return found.filter(Boolean);
+  }
+
+  /** One order for the apps, from RSOF. An order we hold no record of must carry the customer's own number. */
+  async function view(userId, id, maxAgeMs) {
+    const link = await findRow(userId, id);
+    let order;
+    try {
+      order = await readOrder(link?.rof_order_id ?? id, maxAgeMs);
+    } catch (error) {
+      if (isRofError(error, 'rejected')) throw notFound('not_found', 'We could not find this order.');
+      throw error;
+    }
+    if (!link && order.phone !== (await rofPhoneOf(userId))) throw notFound('not_found', 'We could not find this order.');
+    const branch = order.branchId ? await ctx.branches.getBranch(order.branchId).catch(() => null) : null;
+    return presentRofOrder(order, { branch, link, payment: link ? await paymentFor(link.id) : null, media });
   }
 
   /**
@@ -176,39 +269,39 @@ export function createOrdersService(ctx) {
     present,
 
     /**
-     * tab: ongoing (not delivered, not cancelled) · delivered (step 3) · all. Newest first.
-     * refresh: re-read ongoing orders from ROF now (throttled), not within the 30 s cache.
+     * Every order of the customer's mobile number, from RSOF (placed in the apps, on WhatsApp or by RSOF
+     * staff), newest first. tab: ongoing (not delivered, not cancelled) · delivered · all.
+     * refresh: re-read RSOF now (throttled), not within the 30 s cache.
      */
     async list(userId, tab = 'all', { refresh: refreshAsked = false } = {}) {
+      const phone = await rofPhoneOf(userId);
+      if (!phone) return [];
       const maxAgeMs = maxAge(userId, refreshAsked, 30_000);
-      const rows = await ctx.db('orders')
-        .where({ user_id: userId })
-        .orderBy([
-          { column: 'created_at', order: 'desc' },
-          { column: 'id', order: 'desc' },
-        ])
-        .limit(100);
       const forced = refreshAsked && maxAgeMs === 0;
-      const fresh = await whileForced(userId, forced, () =>
-        Promise.all(rows.map((r) => (!r.cancelled && (r.step ?? 0) < 3 ? refresh(r, { maxAgeMs, failIfUnavailable: forced }) : r))),
-      );
-      const shown = fresh.filter((r) => {
-        if (tab === 'ongoing') return !r.cancelled && (r.step ?? 0) < 3;
-        if (tab === 'delivered') return !r.cancelled && r.step === 3;
-        return true;
+      const orders = await whileForced(userId, forced, async () => readOrders(await readPhoneOrderIds(phone, maxAgeMs), maxAgeMs));
+      // RSOF matches a number loosely (its last digits): show only orders that carry exactly this number.
+      const shown = orders
+        .filter((o) => o.phone === phone)
+        .filter((o) => {
+          const step = stepOf(o.status, o.fulfilment);
+          if (tab === 'ongoing') return step !== 'cancelled' && step !== 3;
+          if (tab === 'delivered') return step === 3;
+          return true;
+        })
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      // Orders placed in our app also have our checkout record (what was charged); RSOF has none of that.
+      const links = shown.length ? await ctx.db('orders').where({ user_id: userId }).whereIn('rof_order_id', shown.map((o) => o.rofOrderId)) : [];
+      const payments = links.length ? await ctx.db('payments').whereIn('order_id', links.map((r) => r.id)) : [];
+      return shown.map((o) => {
+        const link = links.find((r) => r.rof_order_id === o.rofOrderId) ?? null;
+        return presentRofOrder(o, { link, payment: link ? payments.find((p) => p.order_id === link.id) : null, media });
       });
-      const payments = shown.length ? await ctx.db('payments').whereIn('order_id', shown.map((r) => r.id)) : [];
-      return shown.map((r) => presentOrder(r, { payment: payments.find((p) => p.order_id === r.id), media }));
     },
 
+    // Always RSOF's current word (within the short cache): staff may change any status, even a finished one.
     async get(userId, id, { refresh: refreshAsked = false } = {}) {
-      const row = await mine(userId, id);
-      // Delivered, picked up or cancelled: the status can no longer change, so RSOF is not asked again
-      // (the list already skips these; the detail screen did not).
-      if (isFinished(row)) return present(row);
       const maxAgeMs = maxAge(userId, refreshAsked, 15_000);
-      const forced = refreshAsked && maxAgeMs === 0;
-      return present(await whileForced(userId, forced, () => refresh(row, { maxAgeMs, failIfUnavailable: forced })));
+      return whileForced(userId, refreshAsked && maxAgeMs === 0, () => view(userId, id, maxAgeMs));
     },
 
     async cancel(userId, id) {
@@ -246,7 +339,7 @@ export function createOrdersService(ctx) {
           now,
         );
       });
-      return present(await findRow(userId, id));
+      return view(userId, id, 0);
     },
 
     async resendCode(userId, id) {

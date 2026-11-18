@@ -1,5 +1,5 @@
 /** Orders on the server (server/README.md → Orders): placed in RSOF, tracked from RSOF. */
-import { onlyDigits, toWirePhone } from '@/domain';
+import { onlyDigits } from '@/domain';
 import { CLIENT_CHANNEL } from '../lib/env.js';
 import { apiRequest } from './api.js';
 
@@ -13,16 +13,15 @@ export const getOrder = (id, { refresh = false } = {}) => apiRequest(refresh ? `
  * Pays (simulated in UAT) and places the order for the server cart. Same key → same order, so a
  * retry after a time-out is safe. Waits up to 60 s: the server may try RSOF more than once.
  * A pickup order (design 2026-11-18 §5.3) has no delivery address, so none is sent.
- * @param {{ fulfilment?: 'delivery' | 'pickup', addressId?: string, deliveryPhone: string, payment: object, idempotencyKey: string }} input
+ * @param {{ fulfilment?: 'delivery' | 'pickup', addressId?: string, payment: object, idempotencyKey: string }} input
  */
-export const placeOrder = ({ fulfilment = 'delivery', addressId, deliveryPhone, payment, idempotencyKey }) =>
+export const placeOrder = ({ fulfilment = 'delivery', addressId, payment, idempotencyKey }) =>
   apiRequest('/orders', {
     method: 'POST',
     body: {
       fulfilment,
       channel: CLIENT_CHANNEL,
       ...(fulfilment === 'pickup' ? {} : { addressId }),
-      deliveryPhone: toWirePhone(deliveryPhone),
       payment,
       idempotencyKey,
     },

@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AuthLayout } from '@/components/layout';
 import { LocateFixed, MapPin, User } from '@/components/icons';
@@ -46,6 +46,20 @@ export default function SignUpScreen() {
     setLocated({ location: position });
     setErrors((e) => ({ ...e, address: '' }));
   };
+
+  // A new customer has no address yet: ask for the device location once when the form opens, as other apps do.
+  // Refusing is fine (the location is optional); "Use my current location" stays for a later try.
+  const asked = useRef(false);
+  useEffect(() => {
+    if (asked.current || located) return;
+    asked.current = true;
+    (async () => {
+      setLocating(true);
+      const position = await getDevicePosition({ precise: true });
+      setLocating(false);
+      if (position) setLocated({ location: position });
+    })();
+  }, [located]);
 
   const submit = async () => {
     const next: Errors = {

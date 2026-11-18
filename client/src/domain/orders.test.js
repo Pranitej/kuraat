@@ -2,7 +2,7 @@
 // The 12/24-hour style follows the device: these use a 24-hour device unless a test says otherwise.
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { setClockReader } from './format.js';
-import { ORDER_FILTERS, PICKUP, cancelRefundText, filterOrders, isPickup, orderItemCount, orderStatusView, orderTimelineView, paidLater, paymentLabel } from './orders.js';
+import { ORDER_FILTERS, PICKUP, cancelRefundText, filterOrders, isPickup, orderHistoryView, orderItemCount, orderStatusView, orderTimelineView, paidLater, paymentLabel } from './orders.js';
 
 beforeEach(() => setClockReader(() => true));
 afterEach(() => setClockReader(null));
@@ -20,31 +20,44 @@ const preparing = {
   steps: [
     step('confirmed', 'Order confirmed', 'done', '2026-11-15T09:21:00Z'),
     step('preparing', 'Preparing at the branch', 'current', '2026-11-15T09:25:00Z'),
+    step('out_for_delivery', 'Out for delivery', 'todo', null),
+    step('delivered', 'Delivered', 'todo', null),
+  ],
+};
+// What an older server sent: made-up times on the steps ahead, flagged `estimated`.
+const withEstimates = {
+  ...preparing,
+  steps: [
+    ...preparing.steps.slice(0, 2),
     step('out_for_delivery', 'Out for delivery', 'todo', '2026-11-15T13:30:00Z', { estimated: true }),
     step('delivered', 'Delivered', 'todo', '2026-11-15T14:00:00Z', { estimated: true, timeEnd: '2026-11-15T16:00:00Z' }),
   ],
 };
 
 describe('orderTimelineView', () => {
-  test('reached steps show their time, the rest their estimate — in the device time zone', () => {
-    expect(orderTimelineView(preparing, NOW).map((s) => s.time)).toEqual(['04:21', '04:25', 'Estimated 08:30', 'Estimated 09:00 – 11:00']);
+  test('reached steps show their real time in the device time zone; steps ahead show no time', () => {
+    expect(orderTimelineView(preparing, NOW).map((s) => s.time)).toEqual(['04:21', '04:25', '', '']);
     expect(orderTimelineView(preparing, NOW).map((s) => s.state)).toEqual(['done', 'current', 'todo', 'todo']);
   });
 
-  test('a 12-hour device gets AM/PM on every row — reached times and estimates alike', () => {
-    setClockReader(() => false);
-    expect(orderTimelineView(preparing, NOW).map((s) => s.time)).toEqual(['4:21 AM', '4:25 AM', 'Estimated 8:30 AM', 'Estimated 9:00 – 11:00 AM']);
+  test('a time an older server still marks as estimated is never shown', () => {
+    expect(orderTimelineView(withEstimates, NOW).map((s) => s.time)).toEqual(['04:21', '04:25', '', '']);
   });
 
-  test('other days get the date in front, tomorrow says so', () => {
-    const later = {
+  test('a 12-hour device gets AM/PM on every real time', () => {
+    setClockReader(() => false);
+    expect(orderTimelineView(preparing, NOW).map((s) => s.time)).toEqual(['4:21 AM', '4:25 AM', '', '']);
+  });
+
+  test('times from other days get the date in front', () => {
+    const older = {
       ...preparing,
       steps: [
         step('confirmed', 'Order confirmed', 'done', '2026-11-08T10:05:00Z'),
-        step('preparing', 'Preparing at the branch', 'todo', '2026-11-16T07:00:00Z', { estimated: true }),
+        step('preparing', 'Preparing at the branch', 'current', '2026-11-14T15:00:00Z'),
       ],
     };
-    expect(orderTimelineView(later, NOW).map((s) => s.time)).toEqual(['8 Nov, 05:05', 'Estimated Tomorrow, 02:00']);
+    expect(orderTimelineView(older, NOW).map((s) => s.time)).toEqual(['8 Nov, 05:05', '14 Nov, 10:00']);
   });
 
   test('a cancelled order shows the steps it reached, then a cancelled row', () => {
@@ -152,5 +165,33 @@ describe('paid later, and what the cancel dialog promises (review: Important 1)'
 
   test('a card payment is refunded to the card', () => {
     expect(cancelRefundText({ payment: { method: 'card', brand: 'Visa', last4: '4242' }, total: 313 })).toBe('We will refund SAR 313.00 to Visa •••• 4242.');
+  });
+});
+
+describe('orderHistoryView (every status RSOF recorded)', () => {
+  const history = [
+    { id: 'Created', label: 'Order placed', group: 'placed', cancelled: false, time: '2026-11-15T09:00:00.000Z' },
+    { id: 'Canceled', label: 'Cancelled', group: 'cancelled', cancelled: true, time: '2026-11-15T09:10:00.000Z' },
+    { id: 'Preparing', label: 'Preparing', group: 'preparing', cancelled: false, time: '2026-11-15T09:20:00.000Z' },
+  ];
+
+  test('lists every status with its time, oldest first; the cancelled one stays even though RSOF reopened the order', () => {
+    const rows = orderHistoryView({ history }, NOW);
+    expect(rows.map((r) => [r.title, r.cancelled, r.time])).toEqual([
+      ['Order placed', false, '04:00'],
+      ['Cancelled', true, '04:10'],
+      ['Preparing', false, '04:20'],
+    ]);
+    expect(new Set(rows.map((r) => r.id)).size).toBe(3);
+  });
+
+  test('a note RSOF wrote for a change is kept, otherwise empty', () => {
+    const rows = orderHistoryView({ history: [{ ...history[0], note: 'Reopened by staff' }, history[1]] }, NOW);
+    expect(rows.map((r) => r.note)).toEqual(['Reopened by staff', '']);
+  });
+
+  test('a status without a time has an empty time, and an order without history has no rows', () => {
+    expect(orderHistoryView({ history: [{ ...history[0], time: null }] }, NOW)[0].time).toBe('');
+    expect(orderHistoryView({}, NOW)).toEqual([]);
   });
 });

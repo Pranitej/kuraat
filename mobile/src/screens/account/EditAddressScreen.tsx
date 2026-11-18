@@ -1,17 +1,16 @@
 import { Redirect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { MapIllustration } from '@/components/branch/MapIllustration';
 import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
 import { LocateFixed, MapPin, Trash2 } from '@/components/icons';
-import { Button, Chip, ConfirmDialog, Field, FieldWrapper, PhoneField, SelectField, Spinner, Text, Toggle } from '@/components/ui';
+import { Button, Chip, ConfirmDialog, Field, FieldWrapper, SelectField, Spinner, Text, Toggle } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useAddresses, type AddressInput } from '@/context/AddressContext';
-import { useAuth } from '@/context/AuthContext';
 import { useBranches } from '@/context/BranchContext';
 import { useCheckout } from '@/context/CheckoutContext';
 import { useToast } from '@/context/ToastContext';
-import { ADDRESS_LABELS, LOCATION_FAILED, deliveryCities, validateMobile, validateRequired } from '@/domain';
+import { ADDRESS_LABELS, LOCATION_FAILED, deliveryCities, validateRequired } from '@/domain';
 import { getDevicePosition } from '@/lib/location';
 import { colors, radii, shadows } from '@/theme/theme';
 import type { AddressType, LatLng } from '@/types/api';
@@ -23,11 +22,10 @@ type Form = {
   district: string;
   city: string;
   landmark: string;
-  phone: string;
   isDefault: boolean;
   location: LatLng | null;
 };
-type Errors = Partial<Record<'label' | 'line' | 'district' | 'city' | 'phone' | 'form', string>>;
+type Errors = Partial<Record<'label' | 'line' | 'district' | 'city' | 'form', string>>;
 
 /** 24 · Edit address (also "Add address"). Waits for the saved addresses before filling the form. */
 export default function EditAddressScreen() {
@@ -45,7 +43,6 @@ function AddressForm({ addressId }: { addressId?: string }) {
   // Added from Delivery or Home's "Deliver to": deliver to the new address straight away.
   const fromDelivery = params.returnTo === ROUTES.delivery || params.returnTo === ROUTES.home;
   const toast = useToast();
-  const { user } = useAuth();
   const checkout = useCheckout();
   const { addresses, getById, create, update, remove } = useAddresses();
   const { branches } = useBranches();
@@ -60,7 +57,6 @@ function AddressForm({ addressId }: { addressId?: string }) {
     district: existing?.district || '',
     city: existing?.city || '',
     landmark: existing?.landmark || '',
-    phone: existing?.phone || user?.phone || '',
     isDefault: existing ? existing.isDefault : addresses.length === 0,
     location: existing?.location || null,
   }));
@@ -72,6 +68,22 @@ function AddressForm({ addressId }: { addressId?: string }) {
   const [locating, setLocating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // A new address: ask for the device location once, as other apps do. Refusing is fine (the location is
+  // optional and the address can still be saved and ordered to); "Use current location" stays for a later try.
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!isNew || asked.current) return;
+    asked.current = true;
+    (async () => {
+      setLocating(true);
+      const position = await getDevicePosition({ precise: true });
+      setLocating(false);
+      if (!position) return;
+      setForm((f) => (f.location ? f : { ...f, location: position }));
+      setPinned(true);
+    })();
+  }, [isNew]);
 
   if (!isNew && !existing) return <Redirect href={ROUTES.addresses} />;
   const city = form.city || cities[0] || '';
@@ -110,7 +122,6 @@ function AddressForm({ addressId }: { addressId?: string }) {
       line: validateRequired(form.line, 'Enter the building and street'),
       district: validateRequired(form.district, 'Enter the district'),
       city: validateRequired(city, 'Choose a city'),
-      phone: validateMobile(form.phone),
     };
     setErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
@@ -214,8 +225,6 @@ function AddressForm({ addressId }: { addressId?: string }) {
         </View>
 
         <Field label="Landmark (optional)" value={form.landmark} onChangeText={set('landmark')} placeholder="Near Al Rakah Park" />
-
-        <PhoneField label="Phone for this address" value={form.phone} onChange={set('phone')} error={errors.phone} />
 
         <View style={styles.toggleRow}>
           <Text weight={700} style={[styles.flex, styles.toggleLabel]}>

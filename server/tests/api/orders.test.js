@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { signInDemo, signUp } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
 import { advance, placePickupTestOrder, placeTestOrder } from '../helpers/orders.js';
+import { PRODUCT_IDS } from '../support/rof-double/seed.js';
 
 let t;
 let me;
@@ -19,7 +20,7 @@ const api = (method, path, as = me.auth) => request(t.app)[method](`/api/v1${pat
 const minutes = (n) => t.clock.advance(n * 60_000);
 
 describe('order detail and tracking', () => {
-  test('reached steps show ROF times; the rest show our estimates', async () => {
+  test('reached steps show ROF times; steps not reached yet show no time (no made-up estimates)', async () => {
     const order = await placeTestOrder(t, me);
     minutes(10);
     await advance(t, order.number, 'BranchAccepted');
@@ -30,8 +31,8 @@ describe('order detail and tracking', () => {
     expect(res.body.steps).toEqual([
       { id: 'confirmed', title: 'Order confirmed', state: 'done', time: '2026-11-15T09:21:00.000Z', timeEnd: null, estimated: false },
       { id: 'preparing', title: 'Preparing at the branch', state: 'current', time: '2026-11-15T09:31:00.000Z', timeEnd: null, estimated: false },
-      { id: 'out_for_delivery', title: 'Out for delivery', state: 'todo', time: '2026-11-15T13:30:00.000Z', timeEnd: null, estimated: true },
-      { id: 'delivered', title: 'Delivered', state: 'todo', time: '2026-11-15T14:00:00.000Z', timeEnd: '2026-11-15T16:00:00.000Z', estimated: true },
+      { id: 'out_for_delivery', title: 'Out for delivery', state: 'todo', time: null, timeEnd: null, estimated: false },
+      { id: 'delivered', title: 'Delivered', state: 'todo', time: null, timeEnd: null, estimated: false },
     ]);
     expect(res.body.canCancel).toBe(false);
     expect(res.body.branch).toMatchObject({ name: 'Kuraat · Al Khobar Corniche', phone: '+966 13 555 0110', location: { lat: 26.305709, lng: 50.227336 } });
@@ -46,30 +47,56 @@ describe('order detail and tracking', () => {
     expect(res.body.steps.every((s) => s.state === 'done')).toBe(true);
   });
 
-  test('a delivered order is not read from RSOF again (its status can no longer change)', async () => {
+  test('RSOF is the master: an order cancelled in the app and then set to Preparing in RSOF shows Preparing again', async () => {
+    const order = await placeTestOrder(t, me);
+    expect((await api('post', `/orders/${order.id}/cancel`)).body.status.cancelled).toBe(true);
+    t.mockRof.store.data.orders[0].status = 'Preparing'; // RSOF staff change the status by hand
+    minutes(1);
+    const detail = await api('get', `/orders/${order.id}`);
+    expect(detail.body.status).toMatchObject({ code: 'Preparing', cancelled: false });
+    expect(detail.body.canCancel).toBe(false);
+    expect((await api('get', '/orders')).body[0].status).toMatchObject({ code: 'Preparing', cancelled: false });
+    expect((await api('get', '/orders?tab=ongoing')).body).toHaveLength(1);
+  });
+
+  test('the history lists every status RSOF recorded, so the cancellation stays visible after RSOF reopens the order', async () => {
+    const order = await placeTestOrder(t, me);
+    minutes(1);
+    expect((await api('post', `/orders/${order.id}/cancel`)).status).toBe(200);
+    minutes(1);
+    // RSOF staff reopen it by hand (the stand-in only walks live orders, the real RSOF accepts any status).
+    const rofOrder = t.mockRof.store.data.orders[0];
+    rofOrder.timeline.push({ statusFrom: 'Canceled', statusTo: 'Preparing', remarks: 'Reopened', createdBy: 'staff', createdOn: t.clock.now().toISOString() });
+    rofOrder.status = 'Preparing';
+    // The test clock stands still within a minute: give each row its own second, as real RSOF stamps in milliseconds.
+    rofOrder.timeline.forEach((r, i) => { r.createdOn = new Date(Date.parse(r.createdOn) + i * 1000).toISOString(); });
+    rofOrder.timeline.reverse(); // real RSOF sends its timeline in no particular order
+    minutes(1);
+    const res = await api('get', `/orders/${order.id}`);
+    expect(res.body.status).toMatchObject({ code: 'Preparing', cancelled: false });
+    const times = res.body.history.map((h) => h.time);
+    expect(times).toEqual([...times].sort()); // oldest first, whatever order RSOF used
+    const labels = res.body.history.map((h) => h.label);
+    expect(labels.slice(-2)).toEqual(['Cancelled', 'Preparing']);
+    expect(res.body.history.at(-1).note).toBe('Reopened'); // RSOF's own note for that change
+    expect(labels[0]).toBe('Order placed');
+    expect(res.body.history.find((h) => h.label === 'Cancelled')).toMatchObject({ id: 'Canceled', cancelled: true });
+    expect(res.body.history.every((h) => typeof h.time === 'string')).toBe(true);
+  });
+
+  test('a delivered order is read again too, and the refresh button always asks RSOF', async () => {
     const order = await placeTestOrder(t, me);
     minutes(1);
     await advance(t, order.number, 'Delivered');
-    expect((await api('get', `/orders/${order.id}`)).body.status.id).toBe('delivered'); // learns it is delivered
-    minutes(5);
+    expect((await api('get', `/orders/${order.id}`)).body.status.id).toBe('delivered');
     const reads = vi.spyOn(t.ctx.rof, 'getOrder');
-    const timeline = vi.spyOn(t.ctx.rof, 'getOrderTimeline');
+    await api('get', `/orders/${order.id}`); // within the short cache: no new RSOF call
+    expect(reads).not.toHaveBeenCalled();
+    t.mockRof.store.data.orders[0].status = 'OutForDelivery'; // set back by RSOF staff
+    minutes(1);
     const res = await api('get', `/orders/${order.id}?refresh=true`);
-    expect(res.status).toBe(200);
-    expect(res.body.status.id).toBe('delivered');
-    expect(res.body.steps.every((s) => s.state === 'done')).toBe(true);
-    expect(reads).not.toHaveBeenCalled();
-    expect(timeline).not.toHaveBeenCalled();
-  });
-
-  test('a cancelled order is not read from RSOF again', async () => {
-    const order = await placeTestOrder(t, me);
-    expect((await api('post', `/orders/${order.id}/cancel`)).status).toBe(200);
-    minutes(5);
-    const reads = vi.spyOn(t.ctx.rof, 'getOrder');
-    const res = await api('get', `/orders/${order.id}`);
-    expect(res.body.status.cancelled).toBe(true);
-    expect(reads).not.toHaveBeenCalled();
+    expect(res.body.status.id).toBe('out_for_delivery');
+    expect(reads).toHaveBeenCalledTimes(1);
   });
 
   test('simultaneous refreshes of one order share a single RSOF read (2 calls, not 6)', async () => {
@@ -100,13 +127,14 @@ describe('order detail and tracking', () => {
     expect(t.logs.some(([level, line]) => level === 'warn' && line.includes('TransferRequested'))).toBe(true);
   });
 
-  test('ROF down → the last known order is still shown', async () => {
+  test('RSOF is the master: with RSOF down there is no saved copy to show, the apps get 503', async () => {
     const order = await placeTestOrder(t, me);
     await request(t.mockRof.app).post('/__dev/faults').send({ down: true });
     minutes(1);
     const res = await api('get', `/orders/${order.id}`);
-    expect(res.status).toBe(200);
-    expect(res.body.number).toBe(order.number);
+    expect(res.status).toBe(503);
+    expect(res.body.code).toBe('rof_unavailable');
+    expect((await api('get', '/orders')).status).toBe(503);
   });
 
   test("another user's order → 404", async () => {
@@ -117,12 +145,14 @@ describe('order detail and tracking', () => {
 });
 
 describe('payment receipt fields', () => {
-  test('a card order carries the transaction id and the payment time, in detail and list', async () => {
+  test('a card order carries the transaction id and the payment time, in detail and list (RSOF has no payment: it is our checkout record)', async () => {
     const order = await placeTestOrder(t, me);
     expect(order.payment).toMatchObject({ method: 'card', brand: 'Visa', last4: '4242', paidAt: '2026-11-15T09:21:00.000Z' });
     expect(order.payment.transactionId).toMatch(/^TXN-[0-9A-F]{8}$/);
     const [listed] = (await api('get', '/orders')).body;
+    expect(listed.id).toBe(order.id); // one order, one id: the app never shows it twice
     expect(listed.payment.transactionId).toBe(order.payment.transactionId);
+    expect((await api('get', `/orders/${order.id}`)).body).toMatchObject({ id: order.id, total: order.total, payment: { transactionId: order.payment.transactionId } });
   });
 
   test('cash on delivery has no transaction id and no payment time', async () => {
@@ -219,6 +249,71 @@ describe('refresh button (design 2026-11-18 §5.4)', () => {
   });
 });
 
+describe('orders from every channel, straight from RSOF by mobile number', () => {
+  const createInRof = (phoneNumber, extra = {}) =>
+    t.mockRof.call('post', '/api/orders/manual', {
+      customerName: 'Lead',
+      phoneNumber,
+      address: 'Walk-in, Al Khobar',
+      city: 'Al Khobar',
+      source: 'WhatsApp',
+      fulfillmentType: 'Delivery',
+      items: [{ productId: PRODUCT_IDS.classic, quantity: 2 }],
+      ...extra,
+    });
+
+  test('an order made in RSOF (WhatsApp) with the customer number shows in the list and detail, with the prices RSOF stamped', async () => {
+    const made = (await createInRof('966501234821')).body.data;
+    const listed = (await api('get', '/orders')).body;
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({
+      id: made.id,
+      number: `KR-${made.orderNumber}`,
+      deliveryPhone: '+966501234821',
+      payment: null,
+      canCancel: false,
+      canResendCode: false,
+    });
+    expect(listed[0].items).toEqual([expect.objectContaining({ productId: PRODUCT_IDS.classic, qty: 2, price: expect.any(Number) })]);
+    expect(listed[0].total).toBe(listed[0].items[0].price * 2);
+    const detail = await api('get', `/orders/${made.id}`);
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({ id: made.id, number: listed[0].number, total: listed[0].total });
+  });
+
+  test('app orders and RSOF orders are one list, newest first, and an app order can still be cancelled', async () => {
+    const first = (await createInRof('966501234821')).body.data;
+    minutes(1);
+    const placed = await placeTestOrder(t, me);
+    const listed = (await api('get', '/orders')).body;
+    expect(listed.map((o) => o.number)).toEqual([placed.number, `KR-${first.orderNumber}`]);
+    expect(listed[0].canCancel).toBe(true);
+    expect(listed[1].canCancel).toBe(false);
+    expect((await api('post', `/orders/${listed[0].id}/cancel`)).body.status.id).toBe('cancelled');
+  });
+
+  test('another customer number is not shown: not in the list, 404 in detail (even when RSOF matches on the last digits)', async () => {
+    const theirs = (await createInRof('966559998877')).body.data;
+    const loose = (await createInRof('971501234821')).body.data; // same last 9 digits, other country
+    expect((await api('get', '/orders')).body).toEqual([]);
+    expect((await api('get', `/orders/${theirs.id}`)).status).toBe(404);
+    expect((await api('get', `/orders/${loose.id}`)).status).toBe(404);
+  });
+
+  test('the list is read from RSOF with one by-phone call and one detail call per order, then cached for 30 s', async () => {
+    await createInRof('966501234821');
+    await createInRof('966501234821');
+    const byPhone = vi.spyOn(t.ctx.rof, 'listOrdersByPhone');
+    const detail = vi.spyOn(t.ctx.rof, 'getOrder');
+    expect((await api('get', '/orders')).body).toHaveLength(2);
+    expect(byPhone).toHaveBeenCalledTimes(1);
+    expect(detail).toHaveBeenCalledTimes(2);
+    await api('get', '/orders');
+    expect(byPhone).toHaveBeenCalledTimes(1);
+    expect(detail).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('pickup orders through RSOF (design 2026-11-18 §5.3)', () => {
   test('the RSOF stand-in walks a pickup order to PickUpByCustomer, never to a courier', async () => {
     const order = await placePickupTestOrder(t, me);
@@ -260,7 +355,7 @@ describe('cancel', () => {
     expect((await t.db('payments').first()).status).toBe('refunded');
     const note = await t.db('notifications').where({ type: 'cancelled' }).first();
     expect(note).toMatchObject({ title: `Order #${order.number} cancelled` });
-    expect(note.body).toBe('Your order was cancelled. SAR 200.00 will be refunded to Visa •••• 4242.');
+    expect(note.body).toBe('Your order was cancelled. SAR 185.00 will be refunded to Visa •••• 4242.');
   });
 
   test('after Preparing → 409 cannot_cancel and nothing changes in ROF', async () => {

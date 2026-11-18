@@ -11,7 +11,7 @@ import { formatPhone, firstName } from '@/domain';
 import { OTP_RESEND_SECONDS } from '@/services/authService.js';
 import { useCountdown, useDocumentTitle } from '@/hooks';
 
-const ORIGIN = { signup: ROUTES.signUp, signin: ROUTES.signIn, reset: ROUTES.signIn, 'change-phone': ROUTES.account, 'delete-account': ROUTES.account };
+const ORIGIN = { signup: ROUTES.signUp, signin: ROUTES.signIn, reset: ROUTES.signIn, 'delete-account': ROUTES.account };
 
 /** 04 · WhatsApp OTP — "Verify your number" */
 export default function VerifyOtpPage() {

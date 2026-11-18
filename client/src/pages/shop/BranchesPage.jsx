@@ -15,7 +15,7 @@ import { useDocumentTitle } from '@/hooks';
 export default function BranchesPage() {
   useDocumentTitle('Our branches');
   const { defaultAddress } = useAddresses();
-  const { branches } = useBranches();
+  const { allBranches: branches } = useBranches(); // the directory lists every branch, hubs and master
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState('');
   const [chosenCity, setCity] = useState('All');

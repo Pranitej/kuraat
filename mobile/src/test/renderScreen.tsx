@@ -48,7 +48,7 @@ export const PRODUCTS = [
 type Reply = { status?: number; body?: unknown } | undefined;
 type Items = { productId: string; qty: number }[];
 
-export const pricedCart = (items: Items, promoCode: string | null = null) => ({
+export const pricedCart = (items: Items) => ({
   items: items.map((i) => ({
     ...i,
     product: { id: i.productId, name: PRODUCTS[0].name, price: 185, images: [] },
@@ -57,15 +57,7 @@ export const pricedCart = (items: Items, promoCode: string | null = null) => ({
     maxQuantity: 20,
     warning: null,
   })),
-  promo: promoCode
-    ? {
-        code: promoCode,
-        label: null,
-        valid: promoCode === 'KURAAT10',
-        error: promoCode === 'KURAAT10' ? undefined : "This code isn't valid.",
-      }
-    : null,
-  totals: { count: items.reduce((s, i) => s + i.qty, 0), subtotal: 0, discount: 0, delivery: 15, total: 0, vat: 0 },
+  totals: { count: items.reduce((s, i) => s + i.qty, 0), subtotal: 0, total: 0 },
 });
 
 /** The demo customer's server; `extra` answers first (return undefined to fall through). */
@@ -76,8 +68,8 @@ export function fakeServer(extra: (c: FetchCall) => Reply = () => undefined) {
     if (c.path === '/me') return { body: USER };
     if (c.path === '/cart' && c.method === 'GET') return { body: pricedCart([]) };
     if (c.path === '/cart' && c.method === 'PUT') {
-      const b = c.body as { items: Items; promoCode: string | null };
-      return { body: pricedCart(b.items, b.promoCode) };
+      const b = c.body as { items: Items };
+      return { body: pricedCart(b.items) };
     }
     if (c.path === '/categories') return { body: [{ id: 'c1', name: 'Truffles' }] };
     if (c.path === '/products') return { body: PRODUCTS };

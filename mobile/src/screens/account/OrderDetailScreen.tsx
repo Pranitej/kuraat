@@ -3,12 +3,12 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { OrderItemImage, OrderTimeline, RefreshButton, StatusTag, branchLabel, type StatusView, type TimelineRow } from '@/components/account/OrderParts';
 import { Screen, ScreenHeader } from '@/components/layout';
-import { Navigation, PackageSearch, PackageX, Phone, Store } from '@/components/icons';
+import { ChevronDown, ChevronUp, Navigation, PackageSearch, PackageX, Phone, Store } from '@/components/icons';
 import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Text, WhatsAppIcon } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useOrder, useOrders } from '@/context/OrderContext';
 import { useToast } from '@/context/ToastContext';
-import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
+import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderHistoryView, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
 import { useCountdown } from '@/hooks';
 import { useOpenUrl } from '@/lib/linking';
 import { colors, radii } from '@/theme/theme';
@@ -72,6 +72,7 @@ export default function OrderDetailScreen() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   if (!order) {
     return (
@@ -91,6 +92,7 @@ export default function OrderDetailScreen() {
 
   const status = orderStatusView(order) as StatusView;
   const steps = orderTimelineView(order, now) as TimelineRow[];
+  const history = orderHistoryView(order, now) as { id: string; title: string; cancelled: boolean; note: string; time: string }[];
   const branch = order.branch;
   const pickup = isPickup(order);
 
@@ -133,6 +135,38 @@ export default function OrderDetailScreen() {
         <Card style={styles.pad}>
           <OrderTimeline steps={steps} />
           {status.id === 'out_for_delivery' ? <DeliveryCodeNote order={order} onResend={resendCode} /> : null}
+          {/* The full history is already in this order's reply: the button only shows it, it asks for nothing. */}
+          {history.length > 1 ? (
+            <>
+              {/* Same look as the web: a divider, then a centred "View full history" with the arrow beside it. */}
+              <View style={styles.historyToggle}>
+                <Button variant="ghost" size="xs" block rightIcon={showHistory ? ChevronUp : ChevronDown} onPress={() => setShowHistory((v) => !v)}>
+                  {showHistory ? 'Hide full history' : 'View full history'}
+                </Button>
+              </View>
+              {showHistory ? (
+                <View style={styles.historyRows} accessibilityLabel="Order history">
+                  {history.map((h) => (
+                    <View key={h.id}>
+                      <View style={styles.historyRow}>
+                        <Text weight={600} color={h.cancelled ? 'hotpink' : 'ink'} style={styles.flex}>
+                          {h.title}
+                        </Text>
+                        <Text variant="label" weight={400} color="muted">
+                          {h.time}
+                        </Text>
+                      </View>
+                      {h.note ? (
+                        <Text variant="label" weight={400} color="muted">
+                          {h.note}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </>
+          ) : null}
         </Card>
 
         {pickup && status.ongoing ? (
@@ -216,7 +250,7 @@ export default function OrderDetailScreen() {
                 key={item.productId}
                 onPress={() => router.push(ROUTES.product(item.productId))}
                 accessibilityRole="button"
-                accessibilityLabel={`${item.name}, quantity ${item.qty}, ${formatSAR(item.price * item.qty)}`}
+                accessibilityLabel={`${item.name}, quantity ${item.qty}, ${item.price == null ? '' : formatSAR(item.price * item.qty)}`}
                 style={styles.item}
               >
                 <View style={styles.thumb}>
@@ -231,16 +265,14 @@ export default function OrderDetailScreen() {
                   </Text>
                 </View>
                 <Text weight={700} style={styles.itemPrice}>
-                  {formatSAR(item.price * item.qty)}
+                  {item.price == null ? '' : formatSAR(item.price * item.qty)}
                 </Text>
               </Pressable>
             ))}
           </View>
           <View style={styles.divider} />
           <View style={styles.summary}>
-            {order.discount > 0 ? <SummaryRow label={`Discount (${order.promoCode})`} value={`− ${formatSAR(order.discount)}`} /> : null}
-            {pickup ? null : <SummaryRow label="Delivery" value={order.deliveryFee === 0 ? 'Free' : formatSAR(order.deliveryFee)} />}
-            <SummaryRow label="Total (incl. VAT)" value={formatSAR(order.total)} />
+            <SummaryRow label="Total" value={order.total == null ? '—' : formatSAR(order.total)} />
           </View>
         </Card>
 
@@ -249,7 +281,7 @@ export default function OrderDetailScreen() {
             [
               pickup ? [PICKUP.collectFrom, branch?.name ?? PENDING_BRANCH.title] : ['Deliver to', formatAddress(order.address)],
               ['Phone', formatPhone(order.deliveryPhone)],
-              ['Payment', paymentLabel(order.payment)],
+              ...(order.payment ? [['Payment', paymentLabel(order.payment)]] : []),
             ] as [string, string][]
           ).map(([label, value]) => (
             <View key={label} style={styles.infoRow}>
@@ -290,6 +322,9 @@ const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
   stack: { gap: 12 },
   pad: { padding: 16 },
+  historyToggle: { marginTop: 16, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
+  historyRows: { marginTop: 12, gap: 12 },
+  historyRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 },
   code: {
     marginTop: 16,
     flexDirection: 'row',

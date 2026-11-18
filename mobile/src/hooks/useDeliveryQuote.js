@@ -22,7 +22,7 @@ function cachedQuote(addressId, productIds) {
  *
  * Pickup (design 2026-11-18 §5.3): `fulfilment: 'pickup'` needs no address. The quote is the nearest
  * branch to where the customer is (its `branch` may be null) and the stored cart priced without the
- * delivery fee (`totals`) — prices must never be stale, so a pickup quote is never reused.
+ * prices (`totals`) — prices must never be stale, so a pickup quote is never reused.
  * `retry()` asks again after a failure. A quote of the other kind is never shown while a new one loads.
  */
 export function useDeliveryQuote({ addressId, productIds = [], fulfilment = 'delivery' }) {

@@ -7,7 +7,6 @@ import { Button, RadioDot, Skeleton, TextField, Toggle } from '@/components/ui';
 import { CheckoutLayout, CheckoutSteps, OrderSummary } from '@/components/checkout/CheckoutParts.jsx';
 import DeliveryFromCard from '@/components/shop/DeliveryFromCard.jsx';
 import { useAddresses } from '@/context/AddressContext.jsx';
-import { useAuth } from '@/context/AuthContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { useCheckout } from '@/context/CheckoutContext.jsx';
 import { useOrders } from '@/context/OrderContext.jsx';
@@ -40,7 +39,6 @@ export default function PaymentPage() {
   const toast = useToast();
   const isDesktop = useIsDesktop();
   const cart = useCart();
-  const { user } = useAuth();
   const { addresses, defaultAddress, loaded: addressesLoaded } = useAddresses();
   const { placeOrder } = useOrders();
   const checkout = useCheckout();
@@ -67,7 +65,7 @@ export default function PaymentPage() {
   if (!cart.items.length && !processing) return <Navigate to={ROUTES.cart} replace />;
   if (!pickup && !address && !processing) return <Navigate to={ROUTES.delivery} replace />;
 
-  // Pickup has no delivery fee: its totals come priced from the server with the quote.
+  // Pickup totals come priced from the server with the quote (the same RSOF product prices).
   const totals = pickup ? delivery?.totals : cart.totals;
   const choose = (id) => {
     setMethod(id);
@@ -92,7 +90,6 @@ export default function PaymentPage() {
       const order = await placeOrder({
         fulfilment: pickup ? 'pickup' : 'delivery',
         addressId: address?.id,
-        deliveryPhone: checkout.deliveryPhone || address?.phone || user?.phone,
         payment: toPaymentBody(method, { card, saveCard: save }),
         idempotencyKey: ensureIdempotencyKey(),
       });
@@ -122,7 +119,7 @@ export default function PaymentPage() {
       aside={
         <div className="flex flex-col gap-4">
           {totals ? (
-            <OrderSummary totals={totals} fulfilment={pickup ? 'pickup' : 'delivery'} title="Order summary" />
+            <OrderSummary totals={totals} title="Order summary" />
           ) : quoteError ? null : (
             <div role="status" aria-busy="true" aria-label="Getting your total">
               <Skeleton className="h-[180px] rounded-xl" />

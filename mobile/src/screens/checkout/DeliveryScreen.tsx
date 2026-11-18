@@ -12,7 +12,7 @@ import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { useCheckout } from '@/context/CheckoutContext';
-import { PICKUP, deliveryAddress, validateMobile } from '@/domain';
+import { PICKUP, deliveryAddress } from '@/domain';
 import { useDeliveryQuote } from '@/hooks/quote';
 import { offeredMethod } from '@/services/orderService.js';
 import type { Address, Fulfilment, PaymentMethod } from '@/types/api';
@@ -26,8 +26,7 @@ export default function DeliveryScreen() {
   const checkout = useCheckout();
   const selected = deliveryAddress(addresses, checkout.addressId) as Address | null;
   const addAddress = useAddAddress(ROUTES.delivery as string);
-  const [typedPhone, setTypedPhone] = useState<string | null>(checkout.deliveryPhone || null);
-  const [errors, setErrors] = useState<{ address?: string; phone?: string }>({});
+  const [errors, setErrors] = useState<{ address?: string }>({});
   const productIds = useMemo(() => items.map((i) => i.productId), [items]);
   const pickup = checkout.fulfilment === 'pickup';
   const { quote: delivery, error: quoteError } = useDeliveryQuote({
@@ -35,9 +34,6 @@ export default function DeliveryScreen() {
     productIds,
     fulfilment: pickup ? 'pickup' : 'delivery',
   });
-
-  // Follows the selected address's phone (pickup: the account phone) until the customer edits the field (web behaviour).
-  const phone = typedPhone ?? (pickup ? user?.phone : selected?.phone) ?? user?.phone ?? '';
 
   // Right after start the cart is still on its way from the server: wait instead of bouncing to the cart.
   if (!items.length && (cartStatus === 'loading' || cartStatus === 'idle')) return <Screen>{null}</Screen>;
@@ -56,10 +52,10 @@ export default function DeliveryScreen() {
   };
 
   const next = () => {
-    const errs = { address: pickup || selected ? '' : 'Choose a delivery address', phone: validateMobile(phone) as string };
+    const errs = { address: pickup || selected ? '' : 'Choose a delivery address' };
     setErrors(errs);
-    if (errs.address || errs.phone || (!pickup && !selected)) return;
-    checkout.patch(pickup ? { deliveryPhone: phone } : { addressId: selected!.id, deliveryPhone: phone });
+    if (errs.address || (!pickup && !selected)) return;
+    if (!pickup) checkout.patch({ addressId: selected!.id });
     router.push(ROUTES.payment);
   };
 
@@ -92,17 +88,8 @@ export default function DeliveryScreen() {
           <InfoBanner icon={Store} style={styles.add}>
             {PICKUP.note}
           </InfoBanner>
-          <PhoneField
-            label={PICKUP.phoneLabel}
-            value={phone}
-            onChange={(v) => {
-              setTypedPhone(v);
-              setErrors((e) => ({ ...e, phone: '' }));
-            }}
-            error={errors.phone}
-            helper={PICKUP.phoneHelper}
-            style={styles.phone}
-          />
+          {/* The order always carries the account's number (it cannot be edited here): RSOF finds the customer's orders by it. */}
+          <PhoneField label={PICKUP.phoneLabel} value={user?.phone ?? ''} onChange={() => {}} disabled helper={PICKUP.phoneHelper} style={styles.phone} />
           {delivery?.branch ? (
             <DeliveryFromCard style={styles.delivery} icon="store" label={PICKUP.likely} branch={delivery.branch} distanceKm={delivery.distanceKm} showDistance />
           ) : null}
@@ -129,15 +116,13 @@ export default function DeliveryScreen() {
 
           <AddAddressTile onPress={addAddress} style={styles.add} />
 
+          {/* The order always carries the account's number (it cannot be edited here): RSOF finds the customer's orders by it. */}
           <PhoneField
             label="Phone number for this delivery"
-            value={phone}
-            onChange={(v) => {
-              setTypedPhone(v);
-              setErrors((e) => ({ ...e, phone: '' }));
-            }}
-            error={errors.phone}
-            helper="The courier will call this number on arrival."
+            value={user?.phone ?? ''}
+            onChange={() => {}}
+            disabled
+            helper="Your account's mobile number. The courier will call it on arrival."
             style={styles.phone}
           />
 

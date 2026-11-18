@@ -107,7 +107,7 @@ export const markVerified = (ctx, id, db = ctx.db) => db('otp_challenges').where
 export const markConsumed = (ctx, id, db = ctx.db) =>
   db('otp_challenges').where({ id }).update({ consumed_at: ctx.clock.now(), updated_at: ctx.clock.now() });
 
-/** A verified-but-unused challenge (reset / change-phone), valid for 15 minutes after verification. */
+/** A verified-but-unused challenge (reset / delete-account), valid for 15 minutes after verification. */
 export async function verifiedChallenge(ctx, id, { purpose, userId, phone } = {}) {
   const row = await ctx.db('otp_challenges').where({ id }).first();
   const fresh = row?.verified_at && ctx.clock.now().getTime() - new Date(row.verified_at).getTime() <= 15 * MINUTE;

@@ -4,13 +4,13 @@ import { useAuth } from '@/context/AuthContext.jsx';
 import { withIdempotencyKey } from '@/services/checkoutService.js';
 
 /**
- * Checkout draft (delivery or pickup, selected address, phone, payment method, idempotency key, last order).
+ * Checkout draft (delivery or pickup, selected address, payment method, idempotency key, last order).
  * Kept in sessionStorage so a refresh mid-checkout keeps the choices — and the same key, so a
  * payment retried after a reload can never create a second order.
  */
 const CheckoutContext = createContext(null);
 const KEY = 'checkout';
-const EMPTY = { fulfilment: 'delivery', addressId: null, deliveryPhone: '', paymentMethod: 'card', idempotencyKey: null, lastOrderId: null };
+const EMPTY = { fulfilment: 'delivery', addressId: null, paymentMethod: 'card', idempotencyKey: null, lastOrderId: null };
 
 export function CheckoutProvider({ children }) {
   const [state, setState] = useState(() => ({ ...EMPTY, ...(session.read(KEY) || {}) }));

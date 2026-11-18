@@ -110,6 +110,9 @@ export function createRofClient({ baseUrl, email, password, timeoutMs = 10000, p
       data('PUT', `/api/orders/${enc(orderId)}/location/shared`, { body: { latitude: lat, longitude: lng } }),
     // §9 Order detail and tracking
     getOrder: (orderId) => data('GET', `/api/orders/${enc(orderId)}`),
+    // §8 Orders of one mobile number (every channel: our apps, WhatsApp, RSOF staff). Newest first, at
+    // most 20, and thin (first item only, price 0) — we use it to learn the order ids, then read each one.
+    listOrdersByPhone: (phone) => data('GET', `/api/orders/by-phone/${enc(phone)}`),
     getOrderTimeline: (orderId) => data('GET', `/api/orders/${enc(orderId)}/timeline`),
     cancelOrder: (orderId) => data('PUT', `/api/orders/${enc(orderId)}/cancel`),
     resendDeliveryOtp: (orderId) => data('POST', `/api/orders/${enc(orderId)}/resend-otp`),

@@ -3,7 +3,6 @@
  * validated here, so a missing or wrong value fails at start-up with a clear message.
  */
 import { z } from 'zod';
-import { PROMO_CODES } from './business.js';
 
 const blankToUndefined = (value) => (value === '' ? undefined : value);
 const text = () => z.preprocess(blankToUndefined, z.string().trim().min(1));
@@ -32,7 +31,6 @@ const schema = z.object({
   ROF_TIMEOUT_MS: integer(10000),
   OTP_MODE: z.preprocess(blankToUndefined, z.enum(['test', 'whatsapp']).default('test')),
   OTP_TEST_CODE: z.preprocess(blankToUndefined, z.string().regex(/^\d{6}$/, 'must be 6 digits').default('123456')),
-  PRICES_INCLUDE_VAT: flag(true),
   ORDER_POLL_INTERVAL_MS: integer(60000),
   PASSWORD_HASH_COST: z.preprocess(blankToUndefined, z.coerce.number().int().min(4).max(15).default(12)),
   AUTH_RATE_LIMIT_PER_MINUTE: integer(20),
@@ -82,8 +80,6 @@ export function loadConfig(env = process.env) {
       timeoutMs: e.ROF_TIMEOUT_MS,
     },
     otp: { mode: e.OTP_MODE, testCode: e.OTP_TEST_CODE },
-    promos: PROMO_CODES,
-    pricesIncludeVat: e.PRICES_INCLUDE_VAT,
     pollIntervalMs: e.ORDER_POLL_INTERVAL_MS,
     passwordHashCost: e.PASSWORD_HASH_COST,
     authRateLimitPerMinute: e.AUTH_RATE_LIMIT_PER_MINUTE,

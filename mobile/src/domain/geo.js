@@ -18,14 +18,3 @@ export function roundedDistance(a, b) {
   return d == null ? null : Math.round(d * 10) / 10;
 }
 
-/** Deterministic small offset (±~1.5 km) so new addresses in the same city get distinct points. */
-export function jitter(base, seed = '') {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i += 1) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  const r1 = ((h >>> 0) % 1000) / 1000 - 0.5;
-  const r2 = (((h >>> 10) >>> 0) % 1000) / 1000 - 0.5;
-  return { lat: +(base.lat + r1 * 0.028).toFixed(5), lng: +(base.lng + r2 * 0.028).toFixed(5) };
-}

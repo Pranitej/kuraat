@@ -112,7 +112,7 @@ export const CartItemCard = memo(function CartItemCard({
   );
 });
 
-/** Totals card: subtotal, delivery, total, VAT. */
+/** Totals card: the items and their total (RSOF's product prices only). */
 export function OrderSummary({
   totals,
   title,
@@ -135,7 +135,6 @@ export function OrderSummary({
       ) : null}
       <View style={styles.summaryRows}>
         <SummaryRow label={`Subtotal (${totals.count} ${totals.count === 1 ? 'item' : 'items'})`} value={formatSAR(totals.subtotal)} />
-        <SummaryRow label="Delivery" value={totals.delivery === 0 ? 'Free' : formatSAR(totals.delivery)} />
       </View>
       <View style={styles.divider} />
       <View style={styles.totalRow}>
@@ -146,9 +145,6 @@ export function OrderSummary({
           {formatSAR(totals.total)}
         </Text>
       </View>
-      <Text variant="caption" color="muted" align="right" style={styles.vat}>
-        Includes VAT {formatSAR(totals.vat)}
-      </Text>
       {children}
     </Card>
   );
@@ -179,5 +175,4 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 },
   totalLabel: { fontSize: 16, lineHeight: 22 },
   total: { fontSize: 22, lineHeight: 28, fontVariant: ['tabular-nums'] },
-  vat: { marginTop: 4 },
 });

@@ -12,12 +12,11 @@ const withIdempotencyKey = withIdempotencyKeyJs as unknown as (draft: Draft, mak
 type Draft = {
   fulfilment: Fulfilment;
   addressId: string | null;
-  deliveryPhone: string;
   paymentMethod: PaymentMethod;
   idempotencyKey: string | null;
   lastOrderId: string | null;
 };
-const EMPTY: Draft = { fulfilment: 'delivery', addressId: null, deliveryPhone: '', paymentMethod: 'card', idempotencyKey: null, lastOrderId: null };
+const EMPTY: Draft = { fulfilment: 'delivery', addressId: null, paymentMethod: 'card', idempotencyKey: null, lastOrderId: null };
 
 export type CheckoutValue = Draft & {
   patch: (changes: Partial<Draft>) => void;

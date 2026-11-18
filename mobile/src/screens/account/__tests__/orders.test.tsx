@@ -23,11 +23,7 @@ const base = {
   ],
   items: [{ productId: 'p1', name: 'Truffle Box · Classic', qty: 1, price: 185, image: null }],
   subtotal: 185,
-  discount: 0,
-  deliveryFee: 15,
-  vat: 26.09,
-  total: 200,
-  promoCode: null,
+  total: 185,
   payment: { method: 'card', brand: 'Visa', last4: '4242', transactionId: 'TX-1', paidAt: '2026-11-16T09:21:00.000Z' },
   branch: { id: 'b1', name: 'Al Khobar Corniche', address: 'Corniche Rd', phone: '+966 13 555 0101', location: { lat: 26.29, lng: 50.22 } },
   distanceKm: 2.4,
@@ -70,7 +66,6 @@ const PICKUP = {
   fulfilment: 'pickup',
   address: null,
   window: { start: null, end: null },
-  deliveryFee: 0,
   total: 185,
   payment: { method: 'branch', brand: null, last4: null, transactionId: null, paidAt: null },
   steps: PICKUP_STEPS,
@@ -215,6 +210,37 @@ describe('22 · Order tracking', () => {
     expect(await screen.findByText('Branch being confirmed')).toBeTruthy();
     expect(screen.getByText(/nearest branch with everything in stock/)).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Call branch' })).toBeNull();
+  });
+
+  test('the full history opens inside the tracking card from a button, with no extra request', async () => {
+    setMockParams({ orderId: 'o1' });
+    const history = [
+      { id: 'Created', label: 'Order placed', group: 'placed', cancelled: false, time: '2026-11-16T09:21:00.000Z', note: null },
+      { id: 'Canceled', label: 'Cancelled', group: 'cancelled', cancelled: true, time: '2026-11-16T09:23:00.000Z', note: 'Order cancelled' },
+      { id: 'Preparing', label: 'Preparing', group: 'preparing', cancelled: false, time: '2026-11-16T09:25:00.000Z', note: null },
+    ];
+    const { calls } = await renderScreen(<OrderDetailScreen />, {
+      server: (c) => (c.path.startsWith('/orders/o1') ? { body: { ...ONGOING, history } } : undefined),
+    });
+    const open = await screen.findByRole('button', { name: 'View full history' });
+    expect(screen.queryByLabelText('Order history')).toBeNull(); // the tracker is the default view
+    const before = calls.length;
+    await fireEvent.press(open);
+    expect(await screen.findByLabelText('Order history')).toBeTruthy();
+    expect(screen.getByText('Cancelled')).toBeTruthy();
+    expect(screen.getByText('Order cancelled')).toBeTruthy(); // RSOF's note
+    expect(calls.length).toBe(before); // nothing was requested: the history came with the order
+    await fireEvent.press(screen.getByRole('button', { name: 'Hide full history' }));
+    expect(screen.queryByLabelText('Order history')).toBeNull();
+  });
+
+  test('an order with a single event has no history button', async () => {
+    setMockParams({ orderId: 'o1' });
+    await renderScreen(<OrderDetailScreen />, {
+      server: (c) => (c.path.startsWith('/orders/o1') ? { body: { ...ONGOING, history: [{ id: 'Created', label: 'Order placed', group: 'placed', cancelled: false, time: '2026-11-16T09:21:00.000Z', note: null }] } } : undefined),
+    });
+    await screen.findByText('Order confirmed');
+    expect(screen.queryByRole('button', { name: 'View full history' })).toBeNull();
   });
 
   test('the refresh button asks the server for fresh status', async () => {

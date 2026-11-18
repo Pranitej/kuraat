@@ -7,7 +7,7 @@ import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCheckout } from '@/context/CheckoutContext';
 import { useToast } from '@/context/ToastContext';
-import { deliverToLabel, deliveryAddress, formatAddress, formatPhone } from '@/domain';
+import { deliverToLabel, deliveryAddress, formatAddress } from '@/domain';
 import { ROUTES } from '@/lib/routes';
 import { colors, radii } from '@/theme/theme';
 import type { Address } from '@/types/api';
@@ -59,7 +59,7 @@ export function AddressOption({ address, checked, onSelect }: { address: Address
           {formatAddress(address)}
         </Text>
         <Text variant="label" weight={400} color="muted" style={styles.optionLine}>
-          {address.contactName || user?.name} · {formatPhone(address.phone)}
+          {address.contactName || user?.name}
         </Text>
       </View>
     </Pressable>

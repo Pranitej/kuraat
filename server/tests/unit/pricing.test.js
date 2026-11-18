@@ -1,50 +1,22 @@
 import { describe, expect, test } from 'vitest';
-import { computeTotals, findPromo as findPromoIn, priceCart as priceCartIn } from '../../src/modules/cart/pricing.js';
-import { TEST_PROMOS } from '../helpers/promos.js';
-
-const findPromo = (code) => findPromoIn(code, TEST_PROMOS);
-const priceCart = (cart, deps) => priceCartIn(cart, { promos: TEST_PROMOS, ...deps });
+import { computeTotals, priceCart } from '../../src/modules/cart/pricing.js';
 
 const lines = [
   { price: 185, qty: 1 }, // Truffle Box · Classic
   { price: 64, qty: 2 }, // Butter Croissant Box
 ];
 
-describe('computeTotals (prices include 15 % VAT)', () => {
-  test('Classic ×1 + Croissant Box ×2: 313 + 15 delivery = 328, VAT 42.78', () => {
-    expect(computeTotals(lines, null)).toEqual({ count: 3, subtotal: 313, discount: 0, delivery: 15, total: 328, vat: 42.78 });
-  });
-
-  test('KURAAT10 takes 31.30 off the sweets', () => {
-    expect(computeTotals(lines, findPromo('kuraat10'))).toMatchObject({ discount: 31.3, delivery: 15, total: 296.7 });
-  });
-
-  test('FREEDELIVERY removes the delivery fee', () => {
-    expect(computeTotals(lines, findPromo(' FREEDELIVERY '))).toMatchObject({ discount: 0, delivery: 0, total: 313 });
-  });
-
-  test('pickup has no delivery fee: 313 total, VAT recomputed from the smaller total (design 2026-11-18 §5.3)', () => {
-    expect(computeTotals(lines, null, { fulfilment: 'pickup' })).toEqual({ count: 3, subtotal: 313, discount: 0, delivery: 0, total: 313, vat: 40.83 });
-  });
-
-  test('delivery stays 328 when the fulfilment is stated', () => {
-    expect(computeTotals(lines, null, { fulfilment: 'delivery' })).toMatchObject({ delivery: 15, total: 328, vat: 42.78 });
+describe('computeTotals (the product prices RSOF sends, nothing else)', () => {
+  test('Classic ×1 + Croissant Box ×2 = 313: no delivery fee, no VAT line, no discount', () => {
+    expect(computeTotals(lines)).toEqual({ count: 3, subtotal: 313, total: 313 });
   });
 
   test('empty cart costs nothing', () => {
-    expect(computeTotals([], null)).toEqual({ count: 0, subtotal: 0, discount: 0, delivery: 0, total: 0, vat: 0 });
+    expect(computeTotals([])).toEqual({ count: 0, subtotal: 0, total: 0 });
   });
 
-  test('pricesIncludeVat false: VAT 49.20 added on top → total 377.20', () => {
-    expect(computeTotals(lines, null, { pricesIncludeVat: false })).toMatchObject({ vat: 49.2, total: 377.2 });
-  });
-});
-
-describe('priceCart for pickup', () => {
-  test('passes the fulfilment through to the totals', async () => {
-    const getProduct = async () => ({ id: 'p1', name: 'A', price: 100, images: [], meta: null, inStock: true, maxQuantity: 9 });
-    const cart = await priceCart({ items: [{ productId: 'p1', qty: 2 }] }, { getProduct, isFirstOrder: false, fulfilment: 'pickup' });
-    expect(cart.totals).toMatchObject({ subtotal: 200, delivery: 0, total: 200 });
+  test('prices with pence are added without rounding drift', () => {
+    expect(computeTotals([{ price: 19.99, qty: 3 }, { price: 0.1, qty: 3 }])).toEqual({ count: 6, subtotal: 60.27, total: 60.27 });
   });
 });
 
@@ -65,9 +37,8 @@ describe('priceCart', () => {
           { productId: 'p3', qty: 1, lastPrice: 22 },
           { productId: 'gone', qty: 1, lastPrice: 10 },
         ],
-        promoCode: null,
       },
-      { getProduct, isFirstOrder: true },
+      { getProduct },
     );
     expect(cart.items.map((l) => [l.productId, l.qty, l.available, l.warning])).toEqual([
       ['p1', 1, true, 'price_changed'],
@@ -77,29 +48,7 @@ describe('priceCart', () => {
     ]);
     expect(cart.items[0]).toMatchObject({ lineTotal: 185, product: { id: 'p1', name: 'Truffle Box · Classic', price: 185, image: 'http://x/a.jpg', meta: '30 pcs · 480 g' } });
     expect(cart.items[3].product).toBeNull();
-    expect(cart.totals).toMatchObject({ count: 6, subtotal: 505, total: 520 });
-    expect(cart.promo).toBeNull();
-  });
-
-  test('WELCOME15 only on a first order; unknown codes are refused', async () => {
-    const items = [{ productId: 'p1', qty: 1, lastPrice: 185 }];
-    const first = await priceCart({ items, promoCode: 'WELCOME15' }, { getProduct, isFirstOrder: true });
-    expect(first.promo).toEqual({ code: 'WELCOME15', label: '15% off your first order', valid: true });
-    expect(first.totals.discount).toBe(27.75);
-
-    const later = await priceCart({ items, promoCode: 'WELCOME15' }, { getProduct, isFirstOrder: false });
-    expect(later.promo).toEqual({ code: 'WELCOME15', label: '15% off your first order', valid: false, error: 'This code is for your first order only.' });
-    expect(later.totals.discount).toBe(0);
-
-    const unknown = await priceCart({ items, promoCode: 'nope' }, { getProduct, isFirstOrder: true });
-    expect(unknown.promo).toEqual({ code: 'NOPE', label: null, valid: false, error: "This code isn't valid." });
-  });
-});
-
-describe('live promo codes', () => {
-  test('none are live: the old test codes are refused on real orders', async () => {
-    const { PROMO_CODES } = await import('../../src/config/business.js');
-    expect(PROMO_CODES).toEqual({});
-    expect(findPromoIn('KURAAT10')).toBeNull();
+    expect(cart.totals).toEqual({ count: 6, subtotal: 505, total: 505 });
+    expect(cart).not.toHaveProperty('promo');
   });
 });

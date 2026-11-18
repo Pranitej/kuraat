@@ -5,7 +5,7 @@
  * The pending WhatsApp verification is kept in session storage so "Edit number", the OTP screen and
  * the set-password screen survive a refresh; the server holds the code itself.
  */
-import { locateAddress, onlyDigits, toWirePhone } from '@/domain';
+import { onlyDigits, toWirePhone } from '@/domain';
 import { session } from '../lib/storage.js';
 import { ApiError, apiRequest, clearTokens, getTokens, setTokens } from './api.js';
 
@@ -60,7 +60,7 @@ export async function deleteAccount() {
 
 /* ---------------- WhatsApp code ---------------- */
 
-/** Sign-up address as the server wants it: with coordinates (until the real map); a postcode only if given. */
+/** Sign-up address as the server wants it: coordinates only if the customer shared their location; a postcode only if given. */
 function signupAddress(address = {}) {
   const line = (address.line || '').trim();
   const district = (address.district || '').trim();
@@ -70,7 +70,7 @@ function signupAddress(address = {}) {
     district,
     city,
     ...(address.postcode ? { postcode: address.postcode } : {}),
-    location: address.location || locateAddress({ line, district, city }),
+    ...(address.location ? { location: address.location } : {}), // only a position the customer really shared
   };
 }
 
@@ -81,7 +81,7 @@ function remember(view, extra) {
 }
 
 /**
- * @param {'signup'|'signin'|'reset'|'change-phone'|'delete-account'} purpose
+ * @param {'signup'|'signin'|'reset'|'delete-account'} purpose
  * @param {object} [form] the sign-up form (kept locally whole, sent without UI-only fields)
  */
 export async function requestOtp(phone, purpose, form = null) {
@@ -159,14 +159,7 @@ export async function changePassword({ currentPassword, newPassword }) {
 /* ---------------- Profile ---------------- */
 
 export async function updateProfile(changes) {
-  const body = { ...changes };
-  const pending = getPendingOtp();
-  const verifiedPhone = pending?.purpose === 'change-phone' && pending.verificationToken ? pending : null;
-  if (body.phone !== undefined) {
-    body.phone = toWirePhone(body.phone);
-    if (verifiedPhone && verifiedPhone.phone === body.phone) body.verificationToken = verifiedPhone.verificationToken;
-  }
-  const user = await apiRequest('/me', { method: 'PATCH', body });
-  if (body.verificationToken) clearPendingOtp();
-  return user;
+  // The mobile number is fixed once the account exists, so it is never sent.
+  const { phone: _fixed, ...body } = changes;
+  return apiRequest('/me', { method: 'PATCH', body });
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { MAP_SLOTS, cityFilters, deliveryCities, mapPins, toBranchView, withDistances } from './branches.js';
+import { MAP_SLOTS, branchTypeLabel, cityFilters, deliveryCities, mapPins, toBranchView, withDistances } from './branches.js';
 
 const server = (name, lat, lng, extra = {}) => ({ id: name, name, address: '', city: '', phone: '', location: { lat, lng }, hours: { open: 10, close: 24 }, openNow: true, ...extra });
 const HOME = { lat: 26.348558, lng: 50.193673 };
@@ -76,5 +76,21 @@ describe('cityFilters', () => {
     expect(cityFilters(inCity('Dammam', 'Dammam'))).toEqual([]);
     expect(cityFilters(inCity('', ' '))).toEqual([]);
     expect(cityFilters([])).toEqual([]);
+  });
+});
+
+describe('branchTypeLabel', () => {
+  test('RSOF branch types become short labels', () => {
+    expect(branchTypeLabel('hub')).toBe('Hub branch');
+    expect(branchTypeLabel('master')).toBe('Master branch');
+    expect(branchTypeLabel('branch')).toBe('Branch');
+    expect(branchTypeLabel(' HUB ')).toBe('Hub branch');
+  });
+
+  test('a type RSOF adds later still reads well, and no type shows nothing', () => {
+    expect(branchTypeLabel('warehouse')).toBe('Warehouse branch');
+    expect(branchTypeLabel('')).toBe('');
+    expect(branchTypeLabel(null)).toBe('');
+    expect(branchTypeLabel(undefined)).toBe('');
   });
 });

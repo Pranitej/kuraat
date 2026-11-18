@@ -23,7 +23,7 @@ describe('finding 1 — concurrent retries after a failed payment', () => {
     await api('put', '/cart', { items: [{ productId: PRODUCT_IDS.classic, qty: 1 }] });
     const home = (await api('get', '/addresses')).body.find((a) => a.isDefault);
     const idempotencyKey = randomUUID();
-    const body = (card) => ({ addressId: home.id, deliveryPhone: '501234821', payment: { ...VISA, card }, idempotencyKey });
+    const body = (card) => ({ addressId: home.id, payment: { ...VISA, card }, idempotencyKey });
     expect((await api('post', '/orders', body({ ...VISA.card, number: '4000 0000 0000 0002' }))).status).toBe(402);
 
     const [a, b] = await Promise.all([api('post', '/orders', body(VISA.card)), api('post', '/orders', body(VISA.card))]);

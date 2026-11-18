@@ -1,5 +1,5 @@
 /**
- * The device's current position for captureLocationOnce (design 2026-11-18 §5.6, same rules as the
+ * The device's current position, asked when the customer adds an address or signs up (same rules as the
  * web's lib/geolocation.js): asks for "while using the app" permission only; refused → null; a fix
  * that takes longer than 10 s or fails → null. Never throws. `precise` is for an address pin the customer asked
  * for: a high-accuracy fix, 15 s at most.

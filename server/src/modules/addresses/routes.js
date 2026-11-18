@@ -23,9 +23,9 @@ export const toAddress = (row) => ({
   city: row.city,
   postcode: row.postcode,
   landmark: row.landmark,
-  phone: row.phone,
   contactName: row.contact_name,
-  location: { lat: Number(row.lat), lng: Number(row.lng) },
+  // null when the customer did not share their location with this address.
+  location: row.lat == null || row.lng == null ? null : { lat: Number(row.lat), lng: Number(row.lng) },
   isDefault: Boolean(row.is_default),
 });
 
@@ -53,7 +53,7 @@ export function addressRoutes(ctx) {
   router.use(requireAuth(ctx));
 
   const fields = (input, user) => {
-    if (!isInSaudi(input.location)) throw badRequest('out_of_area', OUT_OF_AREA_MESSAGE, 'location');
+    if (input.location && !isInSaudi(input.location)) throw badRequest('out_of_area', OUT_OF_AREA_MESSAGE, 'location');
     return {
       label: labelFor(input.type, input.label),
       type: input.type,
@@ -63,10 +63,9 @@ export function addressRoutes(ctx) {
       // Only a postcode the customer gave — never a guess from a fixed district/city table.
       postcode: input.postcode || '',
       landmark: input.landmark,
-      phone: input.phone,
       contact_name: user.name,
-      lat: input.location.lat,
-      lng: input.location.lng,
+      lat: input.location?.lat ?? null,
+      lng: input.location?.lng ?? null,
     };
   };
 

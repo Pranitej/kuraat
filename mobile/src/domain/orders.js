@@ -1,8 +1,8 @@
 /**
  * Order display helpers (pure) for the server's orders: status from RSOF folded into the four
- * tracking steps (+ cancelled), with real or estimated times. Times are shown in the device time zone.
+ * tracking steps (+ cancelled), with real times only (no made-up estimates). Times are shown in the device time zone.
  */
-import { formatDayMonth, formatSAR, formatTime, formatWindow, isSameDay } from './format.js';
+import { formatDayMonth, formatSAR, formatTime, isSameDay } from './format.js';
 
 const DAY_MS = 24 * 3600 * 1000;
 
@@ -36,7 +36,7 @@ export const PICKUP = {
   pickup: 'Branch pickup',
   note: 'Collect your order from the branch we confirm after you order — usually the nearest one with your items. Show your order number at the counter.',
   phoneLabel: 'Phone number for this order',
-  phoneHelper: 'We use it to reach you about your pickup.',
+  phoneHelper: 'The mobile number of your account. We use it to reach you about your pickup.',
   likely: 'Likely pickup branch',
   payNow: 'Pay now',
   payNowSub: 'Credit / debit card · Visa, Mastercard, Mada',
@@ -86,12 +86,10 @@ export function filterOrders(orders = [], filterId = 'all') {
   return orders.filter((o) => orderStatusView(o).group === filterId);
 }
 
+/** A step's real time (placed, or reached in RSOF); a step not reached yet shows none — no estimates. */
 function stepTime(s, now) {
-  if (!s.time) return '';
-  const prefix = dayPrefix(s.time, now);
-  if (!s.estimated) return `${prefix}${formatTime(s.time)}`;
-  if (s.id === 'delivered' && s.timeEnd) return `Estimated ${formatWindow(s.time, s.timeEnd, now).replace(/^Today, /, '')}`;
-  return `Estimated ${prefix}${formatTime(s.time)}`;
+  if (!s.time || s.estimated) return '';
+  return `${dayPrefix(s.time, now)}${formatTime(s.time)}`;
 }
 
 /** Rows for the tracking timeline (PDF screen 22); a cancelled order ends with "Order cancelled". */
@@ -101,6 +99,17 @@ export function orderTimelineView(order, now = new Date()) {
   const reached = rows.filter((r) => r.state !== 'todo');
   const at = order.cancelledAt;
   return [...reached, { id: 'cancelled', title: 'Order cancelled', state: 'cancelled', time: at ? `${dayPrefix(at, now)}${formatTime(at)}` : '' }];
+}
+
+/** Every status change RSOF recorded, oldest first (the full history behind "View full history"); a cancelled step stays visible even if RSOF reopens the order. */
+export function orderHistoryView(order, now = new Date()) {
+  return (order.history ?? []).map((h, i) => ({
+    id: `${h.id}-${i}`,
+    title: h.label,
+    cancelled: Boolean(h.cancelled),
+    note: h.note ?? '',
+    time: h.time ? `${dayPrefix(h.time, now)}${formatTime(h.time)}` : '',
+  }));
 }
 
 export function orderItemCount(order) {

@@ -34,7 +34,7 @@ describe('one idempotency key per checkout', () => {
         ? { status: 402, body: { message: 'Your bank declined this payment.', code: 'card_declined', field: 'card' } }
         : { status: 201, body: { id: 'o1', number: 'KR-20418' } };
     });
-    const input = { addressId: 'addr1', deliveryPhone: '501234821', payment: { method: 'cod' }, idempotencyKey: 'k-1' };
+    const input = { addressId: 'addr1', payment: { method: 'cod' }, idempotencyKey: 'k-1' };
     await expect(placeOrder(input)).rejects.toMatchObject({ code: 'card_declined' });
     expect(await placeOrder(input)).toEqual({ id: 'o1', number: 'KR-20418' });
     expect(calls.map((c) => c.body.idempotencyKey)).toEqual(['k-1', 'k-1']);
@@ -97,13 +97,14 @@ describe('delivery or pickup (design 2026-11-18 §5.3)', () => {
   test('a pickup order is sent with its fulfilment and without an address', async () => {
     const calls = stubFetch(() => ({ status: 201, body: { id: 'o1' } }));
     await placeOrder({ fulfilment: 'pickup', addressId: 'addr1', deliveryPhone: '50 123 4821', payment: { method: 'branch' }, idempotencyKey: 'k-1' });
-    expect(calls[0].body).toEqual({ fulfilment: 'pickup', channel: CLIENT_CHANNEL, deliveryPhone: '501234821', payment: { method: 'branch' }, idempotencyKey: 'k-1' });
+    // No phone is sent: the order always carries the account's number, which the kuraat server already has.
+    expect(calls[0].body).toEqual({ fulfilment: 'pickup', channel: CLIENT_CHANNEL, payment: { method: 'branch' }, idempotencyKey: 'k-1' });
   });
 
   test('a delivery order still sends its address, and says delivery', async () => {
     const calls = stubFetch(() => ({ status: 201, body: { id: 'o1' } }));
-    await placeOrder({ addressId: 'addr1', deliveryPhone: '501234821', payment: { method: 'cod' }, idempotencyKey: 'k-2' });
-    expect(calls[0].body).toEqual({ fulfilment: 'delivery', channel: CLIENT_CHANNEL, addressId: 'addr1', deliveryPhone: '501234821', payment: { method: 'cod' }, idempotencyKey: 'k-2' });
+    await placeOrder({ addressId: 'addr1', payment: { method: 'cod' }, idempotencyKey: 'k-2' });
+    expect(calls[0].body).toEqual({ fulfilment: 'delivery', channel: CLIENT_CHANNEL, addressId: 'addr1', payment: { method: 'cod' }, idempotencyKey: 'k-2' });
   });
 
   test('the pickup quote asks with the fulfilment (no address) and keeps totals; no branch is fine', async () => {

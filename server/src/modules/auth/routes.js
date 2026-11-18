@@ -39,7 +39,7 @@ function parseSignupPayload(payload) {
     const issue = result.error.issues[0];
     throw badRequest('invalid', payload ? issue.message : 'Fill in the sign-up form first.', ['payload', ...issue.path].join('.'));
   }
-  if (!isInSaudi(result.data.address.location)) throw badRequest('out_of_area', OUT_OF_AREA_MESSAGE, 'address.location');
+  if (result.data.address.location && !isInSaudi(result.data.address.location)) throw badRequest('out_of_area', OUT_OF_AREA_MESSAGE, 'address.location');
   return result.data;
 }
 
@@ -58,7 +58,7 @@ export function authRoutes(ctx) {
     validate({
       body: z.object({
         phone: phoneSchema,
-        purpose: z.enum(['signup', 'signin', 'reset', 'change-phone', 'delete-account']),
+        purpose: z.enum(['signup', 'signin', 'reset', 'delete-account']),
         payload: z.unknown().optional(),
       }),
     }),
@@ -77,13 +77,10 @@ export function authRoutes(ctx) {
       if (purpose === 'signup') {
         payload = parseSignupPayload(req.body.payload);
         if (existing) throw conflict('phone_taken', PHONE_TAKEN, 'phone');
-      } else if (purpose === 'change-phone') {
-        if (!req.userId) throw unauthorized();
-        if (existing) throw conflict('phone_taken', PHONE_TAKEN, 'phone');
       } else if (!existing) {
         throw notFound('not_found', NO_ACCOUNT, 'phone');
       }
-      res.json(await createChallenge(ctx, { phone, purpose, payload, userId: purpose === 'change-phone' ? req.userId : null }));
+      res.json(await createChallenge(ctx, { phone, purpose, payload, userId: null }));
     },
   );
 
@@ -117,10 +114,6 @@ export function authRoutes(ctx) {
         case 'reset':
           await markVerified(ctx, challenge.id);
           return res.json({ next: 'set-password', verificationToken: challenge.id });
-        case 'change-phone':
-          if (!req.userId || req.userId !== challenge.user_id) throw unauthorized();
-          await markVerified(ctx, challenge.id);
-          return res.json({ next: 'account', verificationToken: challenge.id });
         case 'delete-account':
           if (!req.userId || req.userId !== challenge.user_id) throw unauthorized();
           await markVerified(ctx, challenge.id);

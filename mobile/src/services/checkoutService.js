@@ -5,7 +5,7 @@ import { apiRequest } from './api.js';
 /**
  * Delivery: which branch will deliver to the address (stock-aware), how far it is and the delivery
  * slot. Pickup (design 2026-11-18 §5.3): needs no address — the nearest branch to where the customer
- * is (it may be null) and the cart priced without the delivery fee (`totals`). Without productIds
+ * is (it may be null) and the cart priced from RSOF's prices (`totals`). Without productIds
  * the server uses the stored cart.
  * @returns {Promise<{ branch, distanceKm, isNearest, inStock, window?: { start, end }, totals?: object }>}
  */

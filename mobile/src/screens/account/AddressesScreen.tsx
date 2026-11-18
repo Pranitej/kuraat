@@ -8,7 +8,7 @@ import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { formatAddress, formatPhone } from '@/domain';
+import { formatAddress } from '@/domain';
 import { radii } from '@/theme/theme';
 import type { Address } from '@/types/api';
 
@@ -75,7 +75,7 @@ export default function AddressesScreen() {
                 {formatAddress(a)}
               </Text>
               <Text variant="label" weight={400} color="muted" style={styles.contact}>
-                {a.contactName || user?.name} · {formatPhone(a.phone)}
+                {a.contactName || user?.name}
               </Text>
               <View style={styles.actions}>
                 <Button

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Check, ChevronRight, Mail, MapPin, Pencil, Phone, Trash2, User } from 'lucide-react';
+import { Check, ChevronRight, Mail, MapPin, Pencil, Trash2, User } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import BottomBar from '@/components/layout/BottomBar.jsx';
 import { Avatar, Button, ConfirmDialog, FieldWrapper, IconTile, PhoneField, SegmentedControl, Tag, TextField } from '@/components/ui';
@@ -8,7 +8,7 @@ import { GENDERS } from '@/config/options.js';
 import { useAuth } from '@/context/AuthContext.jsx';
 import { useAddresses } from '@/context/AddressContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { formatAddress, formatPhone, validateEmail, validateMobile, validateName } from '@/domain';
+import { formatAddress, formatPhone, validateEmail, validateName } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 
@@ -48,13 +48,10 @@ export default function AccountPage() {
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const [confirmPhone, setConfirmPhone] = useState(false);
-  const [sendingCode, setSendingCode] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [sendingDeleteCode, setSendingDeleteCode] = useState(false);
 
-  const dirty = ['name', 'email', 'gender', 'avatar', 'phone'].some((k) => (form[k] || '') !== (initial[k] || ''));
-  const phoneChanged = form.phone !== user.phone;
+  const dirty = ['name', 'email', 'gender', 'avatar'].some((k) => (form[k] || '') !== (initial[k] || ''));
   const set = (k) => (v) => {
     setForm((f) => ({ ...f, [k]: v }));
     setErrors((e) => ({ ...e, [k]: '' }));
@@ -80,13 +77,9 @@ export default function AccountPage() {
   };
 
   const save = async () => {
-    const errs = { name: validateName(form.name), email: validateEmail(form.email), phone: validateMobile(form.phone) };
+    const errs = { name: validateName(form.name), email: validateEmail(form.email) };
     setErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
-    if (phoneChanged) {
-      setConfirmPhone(true);
-      return;
-    }
     if (!dirty) {
       toast.show('Your details are up to date', { tone: 'info' });
       return;
@@ -99,22 +92,6 @@ export default function AccountPage() {
       setErrors({ [err.field || 'form']: err.message });
     } finally {
       setSaving(false);
-    }
-  };
-
-  const verifyNewNumber = async () => {
-    setSendingCode(true);
-    try {
-      // Save the other fields first, then verify the new number on WhatsApp
-      await updateProfile({ name: form.name, email: form.email, gender: form.gender, avatar: form.avatar });
-      await requestOtp(form.phone, 'change-phone');
-      setConfirmPhone(false);
-      navigate(ROUTES.verify);
-    } catch (err) {
-      setConfirmPhone(false);
-      setErrors({ [err.field || 'form']: err.message });
-    } finally {
-      setSendingCode(false);
     }
   };
 
@@ -163,14 +140,15 @@ export default function AccountPage() {
           <div className="mt-5 flex flex-col gap-5">
             <TextField label="Full name" icon={User} value={form.name} onChange={(e) => set('name')(e.target.value)} autoComplete="name" error={errors.name} />
 
+            {/* The number is fixed when the account is created: orders are found by it. */}
             <PhoneField
               id="account-phone"
               label="Mobile number (WhatsApp)"
-              value={form.phone}
-              onChange={set('phone')}
-              error={errors.phone}
-              helper="Changing your number needs a new WhatsApp code."
-              trailing={phoneChanged ? <Tag>Needs code</Tag> : <Tag icon={Check}>Verified</Tag>}
+              value={user.phone}
+              onChange={() => {}}
+              disabled
+              helper="Your mobile number cannot be changed."
+              trailing={<Tag icon={Check}>Verified</Tag>}
             />
 
             <TextField
@@ -208,22 +186,11 @@ export default function AccountPage() {
 
           <BottomBar>
             <Button block loading={saving} onClick={save}>
-              {phoneChanged ? 'Verify number & save' : 'Save changes'}
+              Save changes
             </Button>
           </BottomBar>
         </div>
       </div>
-
-      <ConfirmDialog
-        open={confirmPhone}
-        onClose={() => setConfirmPhone(false)}
-        onConfirm={verifyNewNumber}
-        loading={sendingCode}
-        icon={Phone}
-        title="Verify your new number"
-        message={`We will send a 6-digit code on WhatsApp to ${formatPhone(form.phone)}.`}
-        confirmLabel="Send code"
-      />
 
       <ConfirmDialog
         open={confirmDelete}

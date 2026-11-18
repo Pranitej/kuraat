@@ -12,8 +12,8 @@ client / mobile  ──►  kuraat server (this app)  ──►  RSOF order syst
 | Owned here (MySQL) | Read from / written to ROF |
 |---|---|
 | Customer accounts and login (WhatsApp code or password), profile | Categories, products, product details (custom fields) |
-| Addresses with coordinates | Hub branches (location, phone) |
-| Cart, prices, VAT, delivery fee | Order creation + branch assignment (from the pin we send) |
+| Addresses (coordinates only if the customer shared their location — optional) | Hub branches (location, phone) |
+| Cart and product prices (no delivery fee, VAT or promo codes) | Order creation + branch assignment (from the pin, only when the customer shared one; otherwise RSOF asks them) |
 | Payments (simulated in UAT), saved cards (brand + last 4 only) | Order status, timeline, cancel, delivery-code resend |
 | Notifications, delivery estimates, branch opening hours | |
 
@@ -62,7 +62,6 @@ Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test
 | `ROF_INVENTORY_CHECK` | `false` | `true` only if the service user has `Inventory.Read`; checkout then skips a nearer branch that is out of stock, with one `GET /api/inventory/balances` call |
 | `ROF_TIMEOUT_MS` | `10000` | Per ROF call (20000 suits UAT) |
 | `OTP_MODE`, `OTP_TEST_CODE` | `test`, `123456` | `test`: no WhatsApp message; the code is printed in the server log |
-| `PRICES_INCLUDE_VAT` | `true` | Whether ROF `sellingPrice` already includes 15 % VAT |
 | `ORDER_POLL_INTERVAL_MS` | `60000` | How often unfinished orders are re-read from ROF |
 | `PASSWORD_HASH_COST` | `12` | bcrypt cost |
 | `AUTH_RATE_LIMIT_PER_MINUTE` | `20` | Per IP, for `/auth/*` |
@@ -81,13 +80,13 @@ All bodies are JSON. Signed-in routes need `Authorization: Bearer <accessToken>`
 | Area | Endpoints |
 |---|---|
 | Health | `GET /health` |
-| Login | `POST /auth/otp/request` `{ phone, purpose: signup·signin·reset·change-phone·delete-account, payload? }` · `POST /auth/otp/resend` `{ challengeId }` · `POST /auth/otp/verify` `{ challengeId, code }` · `POST /auth/signup/password` · `POST /auth/signin` `{ phone, password }` · `POST /auth/password/reset` `{ verificationToken, newPassword }` · `POST /auth/refresh` `{ refreshToken }` · `POST /auth/signout` |
-| Profile | `GET /me` · `PATCH /me` `{ name?, email?, gender?, avatar?, phone? + verificationToken }` · `PUT /me/password` · `PUT /me/location` `{ lat, lng }` → 204 (latest device location, sent once per app session; cleared on deletion) · `DELETE /me` `{ verificationToken }` |
+| Login | `POST /auth/otp/request` `{ phone, purpose: signup·signin·reset·delete-account, payload? }` · `POST /auth/otp/resend` `{ challengeId }` · `POST /auth/otp/verify` `{ challengeId, code }` · `POST /auth/signup/password` · `POST /auth/signin` `{ phone, password }` · `POST /auth/password/reset` `{ verificationToken, newPassword }` · `POST /auth/refresh` `{ refreshToken }` · `POST /auth/signout` |
+| Profile | `GET /me` · `PATCH /me` `{ name?, email?, gender?, avatar? }` (the mobile number is fixed once the account exists: a different `phone` → 400 `phone_locked`) · `PUT /me/password` · `PUT /me/location` `{ lat, lng }` → 204 (latest device location, sent once per app session; cleared on deletion) · `DELETE /me` `{ verificationToken }` |
 | Addresses | `GET /addresses` · `POST /addresses` · `PATCH /addresses/:id` · `DELETE /addresses/:id` · `POST /addresses/:id/default` |
 | Shop | `GET /categories` · `GET /products?categoryId&search` · `GET /products/:id` · `GET /branches` |
 | Favourites, cards | `GET/PUT /favorites` · `GET /cards` · `DELETE /cards/:id` |
-| Cart & checkout | `GET/PUT /cart` `{ items: [{ productId, qty }], promoCode? }` · `POST /checkout/quote` `{ fulfilment?: 'delivery'·'pickup', addressId (delivery), productIds?, location? }` (pickup: nearest-hub estimate from the request, else the last known location, else the usual address — plus the stored cart priced without the delivery fee) |
-| Orders | `POST /orders` `{ fulfilment?: 'delivery'·'pickup', addressId (delivery only), deliveryPhone, payment, idempotencyKey }` (delivery pays card or cash; pickup — no address, no delivery fee — pays card or `{ method: 'branch' }`) · `GET /orders?tab=ongoing·delivered·all&refresh=true` · `GET /orders/:id?refresh=true` (`refresh=true` = re-read ROF now, at most once per 10 s per customer) · `POST /orders/:id/cancel` · `POST /orders/:id/resend-code` |
+| Cart & checkout | `GET/PUT /cart` `{ items: [{ productId, qty }] }` · `POST /checkout/quote` `{ fulfilment?: 'delivery'·'pickup', addressId (delivery), productIds?, location? }` (pickup: nearest-hub estimate from the request, else the last known location, else the usual address — plus the stored cart priced from RSOF prices) |
+| Orders | `POST /orders` `{ fulfilment?: 'delivery'·'pickup', addressId (delivery only), payment, idempotencyKey — the order always carries the account's mobile number; a `deliveryPhone` sent by an older app is ignored }` (delivery pays card or cash; pickup — no address — pays card or `{ method: 'branch' }`) · `GET /orders?tab=ongoing·delivered·all&refresh=true` · `GET /orders/:id?refresh=true` (`refresh=true` = re-read ROF now, at most once per 10 s per customer) · `POST /orders/:id/cancel` · `POST /orders/:id/resend-code` |
 | Notifications | `GET /notifications` · `POST /notifications/:id/read` · `POST /notifications/read-all` |
 
 Products: `{ id, name, description[], price, categoryId, categoryName, images[], inStock, maxQuantity, meta,

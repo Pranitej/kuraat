@@ -6,7 +6,8 @@ import { Button, FieldWrapper, PhoneField, SegmentedControl, Spinner, TextField,
 import { useAuth } from '@/context/AuthContext.jsx';
 import { ROUTES } from '@/config/routes.js';
 import { GENDERS } from '@/config/options.js';
-import { CURRENT_LOCATION, parseAddressText, validateAddressLine, validateMobile, validateName } from '@/domain';
+import { LOCATION_FAILED, parseAddressText, validateAddressLine, validateMobile, validateName } from '@/domain';
+import { getBrowserPosition } from '@/lib/geolocation.js';
 import { useDocumentTitle } from '@/hooks';
 
 /** 03 · Sign up */
@@ -22,18 +23,22 @@ export default function SignUpPage() {
   const [phone, setPhone] = useState(pending?.purpose === 'signup' ? pending.phone : '');
   const [gender, setGender] = useState(prior?.gender || '');
   const [addressText, setAddressText] = useState(prior?.addressText || '');
-  const [located, setLocated] = useState(prior?.address?.location ? prior.address : null);
+  // The pin from "Use my current location" (the device's real position); the address itself is typed.
+  const [located, setLocated] = useState(prior?.address?.location ? { location: prior.address.location } : null);
   const [locating, setLocating] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
   const useCurrentLocation = async () => {
     setLocating(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setLocated(CURRENT_LOCATION);
-    setAddressText(`${CURRENT_LOCATION.line}, ${CURRENT_LOCATION.district}`);
-    setErrors((e) => ({ ...e, address: '' }));
+    const position = await getBrowserPosition({ precise: true });
     setLocating(false);
+    if (!position) {
+      setErrors((e) => ({ ...e, address: LOCATION_FAILED }));
+      return;
+    }
+    setLocated({ location: position });
+    setErrors((e) => ({ ...e, address: '' }));
   };
 
   const submit = async (e) => {
@@ -47,8 +52,7 @@ export default function SignUpPage() {
     setErrors(next);
     if (Object.values(next).some(Boolean)) return;
 
-    const typed = `${located?.line}, ${located?.district}` !== addressText;
-    const address = typed || !located ? parseAddressText(addressText) : located;
+    const address = { ...parseAddressText(addressText), ...(located?.location ? { location: located.location } : {}) };
     setSubmitting(true);
     try {
       await requestOtp(phone, 'signup', { name, gender, address, addressText });
@@ -111,8 +115,9 @@ export default function SignUpPage() {
             className="mt-3 inline-flex items-center gap-2 text-[15px] font-semibold text-maroon hover:underline disabled:opacity-70"
           >
             {locating ? <Spinner size={18} /> : <LocateFixed size={18} strokeWidth={1.8} />}
-            {locating ? 'Finding your location…' : 'Use my current location'}
+            {locating ? 'Finding your location…' : located ? 'Location saved · tap to update' : 'Use my current location'}
           </button>
+          {located && <p className="mt-1.5 text-label font-normal text-muted">{addressText.trim() ? 'Location saved.' : 'Location saved. Now type your building, street and district.'}</p>}
         </div>
 
         {errors.form && <p className="text-label text-hotpink">{errors.form}</p>}

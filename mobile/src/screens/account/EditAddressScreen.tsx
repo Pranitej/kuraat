@@ -10,7 +10,8 @@ import { useAddresses, type AddressInput } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCheckout } from '@/context/CheckoutContext';
 import { useToast } from '@/context/ToastContext';
-import { ADDRESS_LABELS, CITIES, CURRENT_LOCATION, validateMobile, validateRequired } from '@/domain';
+import { ADDRESS_LABELS, CITIES, LOCATION_FAILED, validateMobile, validateRequired } from '@/domain';
+import { getDevicePosition } from '@/lib/location';
 import { colors, radii, shadows } from '@/theme/theme';
 import type { AddressType, LatLng } from '@/types/api';
 
@@ -60,6 +61,9 @@ function AddressForm({ addressId }: { addressId?: string }) {
     location: existing?.location || null,
   }));
   const [errors, setErrors] = useState<Errors>({});
+  // True once the pin is the device's real position (from "Use current location"): then editing the street or
+  // district keeps it; changing the city drops it. Without it, typing a new street or district drops the old pin.
+  const [pinned, setPinned] = useState(false);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -76,24 +80,23 @@ function AddressForm({ addressId }: { addressId?: string }) {
   const set =
     <K extends keyof Form>(k: K) =>
     (v: Form[K]) => {
-      // A typed change to the street, district or city drops the "current location" pin.
-      setForm((f) => ({ ...f, [k]: v, ...(k === 'line' || k === 'district' || k === 'city' ? { location: null } : {}) }));
+      const dropsPin = k === 'city' || (!pinned && (k === 'line' || k === 'district'));
+      if (k === 'city') setPinned(false);
+      setForm((f) => ({ ...f, [k]: v, ...(dropsPin ? { location: null } : {}) }));
       setErrors((e) => ({ ...e, [k]: '' }));
     };
 
   const locate = async () => {
     setLocating(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setForm((f) => ({
-      ...f,
-      line: CURRENT_LOCATION.line,
-      district: CURRENT_LOCATION.district,
-      city: CURRENT_LOCATION.city,
-      location: CURRENT_LOCATION.location,
-    }));
-    setErrors({});
+    const position = await getDevicePosition({ precise: true });
     setLocating(false);
-    toast.show('Location found: Al Rakah, Al Khobar', { tone: 'info' });
+    if (!position) {
+      toast.show(LOCATION_FAILED, { tone: 'error' });
+      return;
+    }
+    setForm((f) => ({ ...f, location: position }));
+    setPinned(true);
+    toast.show('Location saved for this address. Add the building and street.', { tone: 'info' });
   };
 
   const save = async () => {
@@ -156,7 +159,7 @@ function AddressForm({ addressId }: { addressId?: string }) {
         >
           {locating ? <Spinner size={18} /> : <LocateFixed size={18} color={colors.maroon} strokeWidth={1.8} />}
           <Text weight={600} style={styles.locateText} numberOfLines={1}>
-            {locating ? 'Locating…' : 'Use current location'}
+            {locating ? 'Locating…' : pinned ? 'Location saved' : 'Use current location'}
           </Text>
         </Pressable>
       </MapIllustration>

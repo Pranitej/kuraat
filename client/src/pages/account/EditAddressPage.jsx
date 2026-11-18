@@ -9,7 +9,8 @@ import { useAddresses } from '@/context/AddressContext.jsx';
 import { useAuth } from '@/context/AuthContext.jsx';
 import { useCheckout } from '@/context/CheckoutContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { ADDRESS_LABELS, CITIES, CURRENT_LOCATION, validateMobile, validateRequired } from '@/domain';
+import { ADDRESS_LABELS, CITIES, LOCATION_FAILED, validateMobile, validateRequired } from '@/domain';
+import { getBrowserPosition } from '@/lib/geolocation.js';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 
@@ -45,6 +46,9 @@ function AddressForm({ addressId }) {
     location: existing?.location || null,
   }));
   const [errors, setErrors] = useState({});
+  // True once the pin is the device's real position (from "Use current location"): then editing the street or
+  // district keeps it; changing the city drops it. Without it, typing a new street or district drops the old pin.
+  const [pinned, setPinned] = useState(false);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -53,17 +57,23 @@ function AddressForm({ addressId }) {
   if (!isNew && !existing) return <Navigate to={ROUTES.addresses} replace />;
 
   const set = (k) => (v) => {
-    setForm((f) => ({ ...f, [k]: v, ...(k === 'line' || k === 'district' || k === 'city' ? { location: null } : {}) }));
+    const dropsPin = k === 'city' || (!pinned && (k === 'line' || k === 'district'));
+    if (k === 'city') setPinned(false);
+    setForm((f) => ({ ...f, [k]: v, ...(dropsPin ? { location: null } : {}) }));
     setErrors((e) => ({ ...e, [k]: '' }));
   };
 
   const locate = async () => {
     setLocating(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setForm((f) => ({ ...f, line: CURRENT_LOCATION.line, district: CURRENT_LOCATION.district, city: CURRENT_LOCATION.city, location: CURRENT_LOCATION.location }));
-    setErrors({});
+    const position = await getBrowserPosition({ precise: true });
     setLocating(false);
-    toast.show('Location found: Al Rakah, Al Khobar', { tone: 'info' });
+    if (!position) {
+      toast.show(LOCATION_FAILED, { tone: 'error' });
+      return;
+    }
+    setForm((f) => ({ ...f, location: position }));
+    setPinned(true);
+    toast.show('Location saved for this address. Add the building and street.', { tone: 'info' });
   };
 
   const save = async () => {
@@ -117,7 +127,7 @@ function AddressForm({ addressId }) {
               className="absolute bottom-3 right-3 inline-flex h-11 items-center gap-2 rounded-pill bg-white px-4 text-[15px] font-semibold text-ink shadow-float transition hover:bg-cream disabled:opacity-80"
             >
               {locating ? <Spinner size={18} className="text-maroon" /> : <LocateFixed size={18} strokeWidth={1.8} className="text-maroon" />}
-              {locating ? 'Locating…' : 'Use current location'}
+              {locating ? 'Locating…' : pinned ? 'Location saved' : 'Use current location'}
             </button>
           </MapIllustration>
 

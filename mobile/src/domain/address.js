@@ -100,11 +100,5 @@ export function parseAddressText(text, defaultCity = 'Al Khobar') {
   return { line: rest.join(', '), district, city: city || defaultCity };
 }
 
-/** What the device "current location" resolves to in the demo (Al Rakah, Al Khobar). */
-export const CURRENT_LOCATION = {
-  line: 'Building 14, King Fahd Rd',
-  district: 'Al Rakah',
-  city: 'Al Khobar',
-  postcode: '34445',
-  location: { lat: 26.2874, lng: 50.2085 },
-};
+/** Shown when "Use current location" could not read the device position (refused, unsupported, timed out). */
+export const LOCATION_FAILED = "We couldn't get your location. Allow location access, or type your address.";

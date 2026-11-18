@@ -9,7 +9,7 @@ import { Check, Clock, MapPin, Store } from '@/components/icons';
 import { Button, Card, Dialog, DialogLink, IconTile, MaroonPanel, Text } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useOrder } from '@/context/OrderContext';
-import { PENDING_BRANCH, formatAddress, formatDistance, formatOrderDate, formatSAR, formatWindow } from '@/domain';
+import { PENDING_BRANCH, PICKUP, formatAddress, formatDistance, formatOrderDate, formatSAR, formatWindow, isPickup } from '@/domain';
 import { useBackToHome } from '@/hooks';
 import { session } from '@/lib/storage.js';
 import { colors, layout, radii } from '@/theme/theme';
@@ -28,6 +28,7 @@ export default function OrderConfirmedScreen() {
   if (!order) return <Redirect href={ROUTES.orders} />;
   // ROF assigns the branch (design 2026-11-18 §5.2); it may not have done so yet.
   const branch = order.branch;
+  const pickup = isPickup(order);
   const closePopup = () => {
     session.write(popupKey, true);
     setPopup(false);
@@ -55,12 +56,14 @@ export default function OrderConfirmedScreen() {
         <View style={styles.sheet}>
           <View style={styles.column}>
             <View style={styles.eta}>
-              <IconTile icon={Clock} tone="white" />
-              <View>
+              <IconTile icon={pickup ? Store : Clock} tone="white" />
+              <View style={styles.flex}>
                 <Text variant="label" weight={400} color="muted">
-                  Estimated delivery
+                  {pickup ? PICKUP.confirmedCardLabel : 'Estimated delivery'}
                 </Text>
-                <Text variant="h3">{formatWindow(order.window.start, order.window.end)}</Text>
+                <Text variant="h3">
+                  {pickup ? `Show #${order.number} at the pickup counter` : formatWindow(order.window.start, order.window.end)}
+                </Text>
               </View>
             </View>
 
@@ -92,10 +95,10 @@ export default function OrderConfirmedScreen() {
               <IconTile icon={MapPin} size={40} iconSize={19} />
               <View style={styles.flex}>
                 <Text variant="label" weight={400} color="muted">
-                  Delivering to
+                  {pickup ? PICKUP.collectFrom : 'Delivering to'}
                 </Text>
                 <Text weight={600} style={styles.toText}>
-                  {formatAddress(order.address)}
+                  {pickup ? (branch ? branch.name : PENDING_BRANCH.title) : formatAddress(order.address)}
                 </Text>
               </View>
             </Card>
@@ -124,7 +127,7 @@ export default function OrderConfirmedScreen() {
         <View style={styles.popup}>
           <IconTile icon={Store} size={72} iconSize={30} />
           <Text color="muted" align="center" style={styles.popupLead}>
-            Your order will be delivered from
+            {pickup ? PICKUP.confirmedLead : 'Your order will be delivered from'}
           </Text>
           <Text weight={700} align="center" accessibilityRole="header" style={styles.popupName}>
             {branch ? branch.name : PENDING_BRANCH.popupTitle}
@@ -143,11 +146,13 @@ export default function OrderConfirmedScreen() {
           <View style={styles.popupNote}>
             <MapPin size={20} color={colors.maroon} strokeWidth={1.8} />
             <Text color="copy" style={styles.popupNoteText}>
-              {!branch
-                ? PENDING_BRANCH.popupNote
-                : order.distanceKm != null
-                  ? `Chosen for your delivery address, ${formatDistance(order.distanceKm)} away. Stock confirmed at this branch.`
-                  : 'Chosen for your delivery address. Stock confirmed at this branch.'}
+              {pickup
+                ? PICKUP.confirmedNote
+                : !branch
+                  ? PENDING_BRANCH.popupNote
+                  : order.distanceKm != null
+                    ? `Chosen for your delivery address, ${formatDistance(order.distanceKm)} away. Stock confirmed at this branch.`
+                    : 'Chosen for your delivery address. Stock confirmed at this branch.'}
             </Text>
           </View>
           <Button block onPress={closePopup} style={styles.gotIt}>

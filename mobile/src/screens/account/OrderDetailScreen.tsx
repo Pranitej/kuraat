@@ -9,7 +9,7 @@ import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Text,
 import { ROUTES } from '@/lib/routes';
 import { useOrder, useOrders } from '@/context/OrderContext';
 import { useToast } from '@/context/ToastContext';
-import { PENDING_BRANCH, directionsUrl, formatAddress, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
+import { PENDING_BRANCH, PICKUP, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
 import { useCountdown } from '@/hooks';
 import { useOpenUrl } from '@/lib/linking';
 import { colors, radii } from '@/theme/theme';
@@ -98,6 +98,7 @@ export default function OrderDetailScreen() {
   const status = orderStatusView(order) as StatusView;
   const steps = orderTimelineView(order, now) as TimelineRow[];
   const branch = order.branch;
+  const pickup = isPickup(order);
 
   const doCancel = async () => {
     setCancelling(true);
@@ -140,6 +141,21 @@ export default function OrderDetailScreen() {
           {status.id === 'out_for_delivery' ? <DeliveryCodeNote order={order} onResend={resendCode} /> : null}
         </Card>
 
+        {pickup && status.ongoing ? (
+          // Branch pickup: the number to show at the counter (the dashboard's pickup counter searches by order number or phone).
+          <Card style={styles.counter}>
+            <Text variant="label" weight={400} color="muted" align="center">
+              {PICKUP.counterTitle}
+            </Text>
+            <Text weight={700} color="maroon" align="center" style={styles.counterNumber}>
+              #{order.number}
+            </Text>
+            <Text variant="small" color="muted" align="center">
+              {PICKUP.counterHelp(order.number)}
+            </Text>
+          </Card>
+        ) : null}
+
         {branch ? (
           <MaroonPanel style={styles.branch}>
             <View style={styles.branchTop}>
@@ -148,7 +164,7 @@ export default function OrderDetailScreen() {
               </View>
               <View style={styles.flex}>
                 <Text variant="label" weight={400} color="white80">
-                  {branchLabel(status)}
+                  {branchLabel(status, order)}
                 </Text>
                 <Pressable onPress={() => router.push(ROUTES.branch(branch.id))} accessibilityRole="link" hitSlop={6}>
                   <Text weight={700} color="white" numberOfLines={1} style={styles.branchName}>
@@ -186,7 +202,7 @@ export default function OrderDetailScreen() {
               </View>
               <View style={styles.flex}>
                 <Text variant="label" weight={400} color="white80">
-                  {branchLabel(status)}
+                  {branchLabel(status, order)}
                 </Text>
                 <Text weight={700} color="white" numberOfLines={1} style={styles.branchName}>
                   {PENDING_BRANCH.title}
@@ -229,7 +245,7 @@ export default function OrderDetailScreen() {
           <View style={styles.divider} />
           <View style={styles.summary}>
             {order.discount > 0 ? <SummaryRow label={`Discount (${order.promoCode})`} value={`− ${formatSAR(order.discount)}`} /> : null}
-            <SummaryRow label="Delivery" value={order.deliveryFee === 0 ? 'Free' : formatSAR(order.deliveryFee)} />
+            {pickup ? null : <SummaryRow label="Delivery" value={order.deliveryFee === 0 ? 'Free' : formatSAR(order.deliveryFee)} />}
             <SummaryRow label="Total (incl. VAT)" value={formatSAR(order.total)} />
           </View>
         </Card>
@@ -237,7 +253,7 @@ export default function OrderDetailScreen() {
         <Card style={[styles.pad, styles.info]}>
           {(
             [
-              ['Deliver to', formatAddress(order.address)],
+              pickup ? [PICKUP.collectFrom, branch?.name ?? PENDING_BRANCH.title] : ['Deliver to', formatAddress(order.address)],
               ['Phone', formatPhone(order.deliveryPhone)],
               ['Payment', paymentLabel(order.payment)],
             ] as [string, string][]
@@ -275,6 +291,8 @@ export default function OrderDetailScreen() {
 
 const styles = StyleSheet.create({
   statusRow: { flexDirection: 'row' },
+  counter: { padding: 16, alignItems: 'center', gap: 4 },
+  counterNumber: { fontSize: 28, lineHeight: 36 },
   flex: { flex: 1, minWidth: 0 },
   stack: { gap: 12 },
   pad: { padding: 16 },

@@ -7,7 +7,7 @@ import { Check, ChevronRight, RefreshCw, Store, X } from '@/components/icons';
 import { Card, IconButton, Tag, Text, type TagTone } from '@/components/ui';
 import { useToast } from '@/context/ToastContext';
 import { ROUTES } from '@/lib/routes';
-import { PENDING_BRANCH, formatOrderDate, formatSAR, orderItemCount, orderStatusView } from '@/domain';
+import { PENDING_BRANCH, PICKUP, formatOrderDate, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
 
@@ -16,7 +16,7 @@ export type TimelineRow = { id: string; title: string; state: 'done' | 'current'
 
 /** Status tag: dark while on its way, light with a check when delivered, alert when cancelled. */
 export function StatusTag({ status }: { status: StatusView }) {
-  const icon = status.cancelled ? X : status.id === 'delivered' ? Check : undefined;
+  const icon = status.cancelled ? X : status.id === 'delivered' || status.id === 'picked_up' ? Check : undefined;
   return (
     <Tag tone={status.tone} icon={icon} style={styles.statusTag}>
       {status.label}
@@ -62,9 +62,10 @@ export function RefreshButton({ onRefresh, label = 'Refresh status' }: { onRefre
   );
 }
 
-/** "Will be delivered from" / "Delivered from" / "Ordered from" (cancelled). */
-export function branchLabel(status: StatusView): string {
+/** "Will be delivered from" / "Delivered from" / "Ordered from" (cancelled); pickup: "Pick up from" / "Picked up from". */
+export function branchLabel(status: StatusView, order?: Pick<Order, 'fulfilment'>): string {
   if (status.cancelled) return 'Ordered from';
+  if (isPickup(order)) return status.ongoing ? PICKUP.pickupFrom : PICKUP.pickedUpFrom;
   return status.ongoing ? 'Will be delivered from' : 'Delivered from';
 }
 
@@ -121,13 +122,13 @@ export const OrderCard = memo(function OrderCard({ order, now }: { order: Order;
         <Pressable
           onPress={() => router.push(ROUTES.branch(order.branch!.id))}
           accessibilityRole="button"
-          accessibilityLabel={`${branchLabel(status)} ${order.branch.name}`}
+          accessibilityLabel={`${branchLabel(status, order)} ${order.branch.name}`}
           style={({ pressed }) => [styles.branch, pressed && styles.branchPressed]}
         >
           <Store size={20} color={colors.maroon} strokeWidth={1.8} />
           <View style={styles.flex}>
             <Text variant="label" weight={400} color="muted">
-              {branchLabel(status)}
+              {branchLabel(status, order)}
             </Text>
             <Text weight={700} numberOfLines={1} style={styles.branchName}>
               {order.branch.name}
@@ -137,11 +138,11 @@ export const OrderCard = memo(function OrderCard({ order, now }: { order: Order;
         </Pressable>
       ) : !status.cancelled ? (
         // ROF has not assigned a branch yet: the same sand row, not a link (design 2026-11-18 §5.2).
-        <View style={styles.branch} accessible accessibilityLabel={`${branchLabel(status)} ${PENDING_BRANCH.title}`}>
+        <View style={styles.branch} accessible accessibilityLabel={`${branchLabel(status, order)} ${PENDING_BRANCH.title}`}>
           <Store size={20} color={colors.maroon} strokeWidth={1.8} />
           <View style={styles.flex}>
             <Text variant="label" weight={400} color="muted">
-              {branchLabel(status)}
+              {branchLabel(status, order)}
             </Text>
             <Text weight={700} numberOfLines={1} style={styles.branchName}>
               {PENDING_BRANCH.title}

@@ -46,16 +46,16 @@ tokens) and `lib/env.js` (where the API is).
 | 09–10 | Product detail (gallery, details, allergens, delivered-from) | ✅ | ✅ | |
 | 11 | Image zoom, share | ✅ | ✅ | Web: Web Share / copy link · Mobile: native share sheet, pinch to zoom |
 | 12 | Cart (stepper, undo, warnings) | ✅ | ✅ | No promo code field (removed 18 Nov 2026) |
-| 13 | Delivery details (address, phone, delivering branch) | ✅ | ✅ | |
-| 14 | Payment (card, cash on delivery; no UPI) | ✅ | ✅ | Simulated payments until the real gateway |
-| 15 | Payment successful | ✅ | ✅ | "Confirmed by <branch>", or "Sent to the nearest branch" while RSOF has not assigned one (18 Nov 2026) |
-| 16 | Order confirmed + branch popup | ✅ | ✅ | RSOF assigns the branch from the pin we send; until it does, the popup reads "The nearest branch with your items" with "Track order" (shared wording `PENDING_BRANCH`, 18 Nov 2026) |
+| 13 | Delivery details (address, phone, delivering branch) — and **Branch pickup** | ✅ | ✅ | A Delivery | Branch pickup switch (shared `PICKUP` copy). Pickup: no address list, note, phone, "Likely pickup branch" estimate; the total comes priced by the server (no delivery fee) (18 Nov 2026) |
+| 14 | Payment (card, cash on delivery; no UPI) — pickup: **Pay now** or **Pay at branch** | ✅ | ✅ | Simulated payments until the real gateway. Pickup never offers cash on delivery; delivery never offers pay at branch (server refuses it too) |
+| 15 | Payment successful | ✅ | ✅ | "Confirmed by <branch>", or "Sent to the nearest branch" while RSOF has not assigned one (18 Nov 2026) Pay at branch: "Order placed · Pay SAR … at the branch when you collect your order" |
+| 16 | Order confirmed + branch popup | ✅ | ✅ | RSOF assigns the branch from the pin we send; until it does, the popup reads "The nearest branch with your items" with "Track order" (shared wording `PENDING_BRANCH`, 18 Nov 2026) Pickup: "Pickup · Show #KR-… at the pickup counter", "Collect from", popup "Pick up your order from" |
 | 17 | Profile, log out | ✅ | ✅ | |
 | 18 | Account (name, phone change, email, gender, photo) | ✅ | ✅ | Mobile: photo from the gallery |
 | 18 | Delete account (store requirement) | ✅ | ✅ | Account screen → confirm → WhatsApp code |
 | 19 | Password (set / change / forgot) | ✅ | ✅ | |
 | 20–21 | My orders (status dropdown, refresh button, empty states) | ✅ | ✅ | Dropdown groups from the server's status table (`ORDER_FILTERS`). Web: native select · Mobile: `SelectField variant="chip"` + bottom sheet (18 Nov 2026). Cards show "Branch being confirmed" until RSOF assigns a branch |
-| 22 | Order tracking (live status, refresh button, cancel, delivery-code resend) | ✅ | ✅ | Both refresh every 30 s while an order is on its way (mobile: while the app is in front, and on return); the refresh button re-reads RSOF now (`?refresh=true`, at most once per 10 s). Phones show the status tag above the timeline. The maroon branch card reads "Branch being confirmed" (no Call/Directions) until RSOF assigns one |
+| 22 | Order tracking (live status, refresh button, cancel, delivery-code resend) | ✅ | ✅ | Both refresh every 30 s while an order is on its way (mobile: while the app is in front, and on return); the refresh button re-reads RSOF now (`?refresh=true`, at most once per 10 s). Phones show the status tag above the timeline. The maroon branch card reads "Branch being confirmed" (no Call/Directions) until RSOF assigns one Pickup orders: steps Order confirmed · Preparing · Ready for pickup · Picked up, a "Show this at the pickup counter" card with the order number, "Pick up from", no address / delivery fee / delivery code |
 | 23 | Saved addresses | ✅ | ✅ | |
 | 24 | Add / edit address | ✅ | ✅ | |
 | 25 | Our branches (search, cities, map, call, directions) | ✅ | ✅ | |

@@ -54,6 +54,28 @@ const DELIVERED = {
   createdAt: '2026-11-10T09:21:00.000Z',
 };
 
+
+// Branch pickup (design 2026-11-18 §5.3): no address, no window, pickup step titles.
+const PICKUP_STEPS = [
+  { id: 'confirmed', title: 'Order confirmed', state: 'done', time: '2026-11-16T09:21:00.000Z', estimated: false },
+  { id: 'preparing', title: 'Preparing at the branch', state: 'current', time: '2026-11-16T09:25:00.000Z', estimated: false },
+  { id: 'ready_for_pickup', title: 'Ready for pickup', state: 'todo', time: null, estimated: false },
+  { id: 'picked_up', title: 'Picked up', state: 'todo', time: null, estimated: false },
+];
+const PICKUP = {
+  ...ONGOING,
+  id: 'o3',
+  number: 'KR-20420',
+  fulfilment: 'pickup',
+  address: null,
+  window: { start: null, end: null },
+  deliveryFee: 0,
+  total: 185,
+  payment: { method: 'branch', brand: null, last4: null, transactionId: null, paidAt: null },
+  steps: PICKUP_STEPS,
+  canCancel: true,
+};
+
 beforeEach(() => resetRouterMock());
 
 describe('20/21 · My orders', () => {
@@ -124,6 +146,64 @@ describe('20/21 · My orders', () => {
   test('no orders yet: the empty state', async () => {
     await renderScreen(<OrdersScreen />);
     expect(await screen.findByText('No orders yet')).toBeTruthy();
+  });
+});
+
+describe('20/21 · My orders — pickup', () => {
+  test('a pickup order says "Pick up from" its branch', async () => {
+    await renderScreen(<OrdersScreen />, { server: (c) => (c.path === '/orders' ? { body: [PICKUP] } : undefined) });
+    expect(await screen.findByText('Pick up from')).toBeTruthy();
+    expect(screen.getByText('Al Khobar Corniche')).toBeTruthy();
+  });
+
+  test('before RSOF assigns a branch it reads "Pick up from · Branch being confirmed"', async () => {
+    await renderScreen(<OrdersScreen />, { server: (c) => (c.path === '/orders' ? { body: [{ ...PICKUP, branch: null }] } : undefined) });
+    expect(await screen.findByText('Pick up from')).toBeTruthy();
+    expect(screen.getByText('Branch being confirmed')).toBeTruthy();
+  });
+
+  test('a delivery order is unchanged', async () => {
+    await renderScreen(<OrdersScreen />, { server: (c) => (c.path === '/orders' ? { body: [ONGOING] } : undefined) });
+    expect(await screen.findByText('Will be delivered from')).toBeTruthy();
+    expect(screen.queryByText('Pick up from')).toBeNull();
+  });
+});
+
+describe('22 · Order tracking — pickup', () => {
+  test('shows the number to show at the counter, the pickup steps and where to collect; no address or delivery fee', async () => {
+    setMockParams({ orderId: 'o3' });
+    await renderScreen(<OrderDetailScreen />, { server: (c) => (c.path.startsWith('/orders/o3') ? { body: PICKUP } : undefined) });
+    expect(await screen.findByText('Show this at the pickup counter')).toBeTruthy();
+    expect(screen.getByText('#KR-20420')).toBeTruthy();
+    expect(screen.getByText('Staff can find it by the number 20420 or your phone number.')).toBeTruthy();
+    expect(screen.getByText('Ready for pickup')).toBeTruthy();
+    expect(screen.getByText('Picked up')).toBeTruthy();
+    expect(screen.getByText('Pick up from')).toBeTruthy();
+    expect(screen.getByText('Collect from')).toBeTruthy();
+    expect(screen.getByText('Pay at branch')).toBeTruthy();
+    expect(screen.queryByText('Deliver to')).toBeNull();
+    expect(screen.queryByText('Delivery')).toBeNull();
+    expect(screen.queryByText('Resend code')).toBeNull();
+  });
+
+  test('a pickup order with no branch yet says so in the card and the info row', async () => {
+    setMockParams({ orderId: 'o3' });
+    await renderScreen(<OrderDetailScreen />, { server: (c) => (c.path.startsWith('/orders/o3') ? { body: { ...PICKUP, branch: null } } : undefined) });
+    expect((await screen.findAllByText('Branch being confirmed')).length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('once picked up the counter card is gone', async () => {
+    setMockParams({ orderId: 'o3' });
+    const done = {
+      ...PICKUP,
+      canCancel: false,
+      status: { id: 'picked_up', code: 'PickUpByCustomer', label: 'Picked up', group: 'completed', step: 3, cancelled: false },
+      steps: PICKUP_STEPS.map((x) => ({ ...x, state: 'done', time: '2026-11-16T10:00:00.000Z' })),
+    };
+    await renderScreen(<OrderDetailScreen />, { server: (c) => (c.path.startsWith('/orders/o3') ? { body: done } : undefined) });
+    expect((await screen.findAllByText('Picked up')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Show this at the pickup counter')).toBeNull();
+    expect(screen.getByText('Picked up from')).toBeTruthy();
   });
 });
 

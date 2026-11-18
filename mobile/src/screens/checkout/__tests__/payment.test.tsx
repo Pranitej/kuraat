@@ -284,4 +284,27 @@ describe('16 · Order confirmed', () => {
     await renderScreen(<OrderConfirmedScreen />, { server: (c) => (c.path === '/orders/o1' ? { body: { ...ORDER, distanceKm: null } } : shop(() => undefined)(c)) });
     expect(await screen.findByText('Chosen for your delivery address. Stock confirmed at this branch.')).toBeTruthy();
   });
+
+  test('a pickup order: "Pickup · Show #… at the pickup counter", "Collect from" and a popup that leads with "Pick up your order from"', async () => {
+    setMockParams({ orderId: 'o1' });
+    const pickup = { ...ORDER, fulfilment: 'pickup', address: null, window: { start: null, end: null }, deliveryFee: 0 };
+    await renderScreen(<OrderConfirmedScreen />, { server: (c) => (c.path === '/orders/o1' ? { body: pickup } : shop(() => undefined)(c)) });
+    expect(await screen.findByText('Pick up your order from')).toBeTruthy();
+    expect(screen.getByText('Chosen near you. Stock is confirmed by the branch.')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Got it' }));
+    expect(screen.getByText('Show #KR-20418 at the pickup counter')).toBeTruthy();
+    expect(screen.getByText('Collect from')).toBeTruthy();
+    expect(screen.getByText('Al Khobar Corniche')).toBeTruthy();
+    expect(screen.queryByText('Estimated delivery')).toBeNull();
+    expect(screen.queryByText('Delivering to')).toBeNull();
+  });
+
+  test('a pickup order without a branch yet: "Collect from · Branch being confirmed"', async () => {
+    setMockParams({ orderId: 'o1' });
+    session.write('branch-popup-seen:o1', true);
+    const pickup = { ...ORDER, fulfilment: 'pickup', address: null, window: { start: null, end: null }, branch: null, distanceKm: null };
+    await renderScreen(<OrderConfirmedScreen />, { server: (c) => (c.path === '/orders/o1' ? { body: pickup } : shop(() => undefined)(c)) });
+    expect(await screen.findByText('Collect from')).toBeTruthy();
+    expect(screen.getByText('Branch being confirmed')).toBeTruthy();
+  });
 });

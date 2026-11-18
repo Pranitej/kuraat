@@ -6,6 +6,7 @@ import { jestFetch, type FetchCall } from '@/test/jestFetch';
 import { AppProviders } from '@/context/AppProviders';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import { useCatalog } from '@/context/CatalogContext';
 import { useCheckout } from '@/context/CheckoutContext';
 import { useOrders } from '@/context/OrderContext';
 
@@ -122,6 +123,29 @@ describe('AuthProvider', () => {
     expect(calls.filter((c) => c.path === '/auth/refresh')).toHaveLength(1);
     await waitFor(() => expect(result.current.auth.user).toBeNull());
     expect(tokenStore.read()).toBeNull();
+  });
+});
+
+describe('CatalogProvider', () => {
+  test('a product page opened again within a minute is not re-downloaded; after a minute it is', async () => {
+    tokenStore.write(TOKENS);
+    const calls = server((c) => (c.path === '/products/p1' ? { body: { ...PRODUCT, details: [] } } : undefined));
+    const { result } = await renderHook(() => ({ auth: useAuth(), catalog: useCatalog() }), { wrapper: AppProviders });
+    await waitFor(() => expect(result.current.catalog.status).toBe('ready'));
+    const detailReads = () => calls.filter((c) => c.path === '/products/p1').length;
+    await act(async () => {
+      await Promise.all([result.current.catalog.loadProduct('p1'), result.current.catalog.loadProduct('p1')]); // two screens at once
+      await result.current.catalog.loadProduct('p1'); // opened again
+    });
+    expect(detailReads()).toBe(1);
+    expect(result.current.catalog.getProduct('p1')).toMatchObject({ id: 'p1', details: [] });
+    const realNow = Date.now();
+    const spy = jest.spyOn(Date, 'now').mockReturnValue(realNow + 60_001);
+    await act(async () => {
+      await result.current.catalog.loadProduct('p1');
+    });
+    spy.mockRestore();
+    expect(detailReads()).toBe(2);
   });
 });
 

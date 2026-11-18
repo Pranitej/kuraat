@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { BRANCH_IDS, PRODUCT_IDS } from '../support/rof-double/seed.js';
 import { signInDemo } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
@@ -21,6 +21,8 @@ const api = (method, path, body) => {
   return body === undefined ? req : req.send(body);
 };
 const rofProduct = (key) => t.mockRof.store.data.products.find((p) => p.id === PRODUCT_IDS[key]);
+// A product change reaches the cart screen within CART_PRODUCT_MAX_AGE_MS (5 s): move the clock past it.
+const afterCartWindow = () => t.clock.advance(5_001);
 const pdfCart = { items: [{ productId: PRODUCT_IDS.classic, qty: 1 }, { productId: PRODUCT_IDS.croissant, qty: 2 }] };
 
 describe('cart', () => {
@@ -60,6 +62,7 @@ describe('cart', () => {
   test('a deactivated product shows as unavailable and leaves the totals', async () => {
     await api('put', '/cart', pdfCart);
     rofProduct('croissant').status = 'Inactive';
+    afterCartWindow();
     const res = await api('get', '/cart');
     expect(res.body.items[1]).toMatchObject({ available: false, warning: 'unavailable', product: null });
     expect(res.body.totals).toMatchObject({ count: 1, subtotal: 185, total: 200 });
@@ -71,6 +74,7 @@ describe('cart', () => {
       t.mockRof.store.data.stock[PRODUCT_IDS.croissant][branchId] = 1;
     }
     rofProduct('croissant').sellingPrice = 70;
+    afterCartWindow();
     const res = await api('get', '/cart');
     expect(res.body.items[0]).toMatchObject({ qty: 6, warning: 'qty_reduced', product: { price: 70 } });
     const again = await api('get', '/cart');
@@ -80,8 +84,21 @@ describe('cart', () => {
   test('a price change since the customer last saw the cart is flagged', async () => {
     await api('put', '/cart', pdfCart);
     rofProduct('classic').sellingPrice = 190;
+    afterCartWindow();
     const res = await api('get', '/cart');
     expect(res.body.items[0]).toMatchObject({ warning: 'price_changed', lineTotal: 190 });
+  });
+
+  test('cart reads within a few seconds share one RSOF read per product; after that the cart is re-read', async () => {
+    await api('put', '/cart', pdfCart); // reads both products once
+    const reads = vi.spyOn(t.ctx.rof, 'getProduct');
+    await api('get', '/cart');
+    await api('put', '/cart', { ...pdfCart, items: [{ productId: PRODUCT_IDS.classic, qty: 3 }, pdfCart.items[1]] });
+    await api('get', '/cart');
+    expect(reads).not.toHaveBeenCalled(); // 3 more cart requests × 2 lines: no RSOF calls
+    afterCartWindow();
+    await api('get', '/cart');
+    expect(reads).toHaveBeenCalledTimes(2); // one per product again
   });
 
   test('invalid quantities are refused', async () => {
@@ -111,6 +128,20 @@ describe('checkout quote', () => {
     await api('put', '/cart', { items: [{ productId: PRODUCT_IDS.praline, qty: 1 }] });
     const res = await api('post', '/checkout/quote', { addressId: await homeId() });
     expect(res.body).toMatchObject({ branch: { id: BRANCH_IDS.dhahran }, isNearest: false, inStock: true, distanceKm: 7.4 });
+  });
+
+  test('per-branch stock is read once per 20 s for every quote, then read again', async () => {
+    t.ctx.config.rof.inventoryCheck = true;
+    await api('put', '/cart', { items: [{ productId: PRODUCT_IDS.praline, qty: 1 }] });
+    const stock = vi.spyOn(t.ctx.rof, 'listStockBalances');
+    const addressId = await homeId();
+    for (let i = 0; i < 3; i += 1) {
+      expect((await api('post', '/checkout/quote', { addressId })).body).toMatchObject({ branch: { id: BRANCH_IDS.dhahran }, inStock: true });
+    }
+    expect(stock).toHaveBeenCalledTimes(1);
+    t.clock.advance(20_001);
+    await api('post', '/checkout/quote', { addressId });
+    expect(stock).toHaveBeenCalledTimes(2);
   });
 
   test('productIds can be given instead of the cart (product page "Delivered from")', async () => {

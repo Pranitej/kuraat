@@ -13,6 +13,8 @@ import { notify } from '../notifications/service.js';
 import { presentOrder } from './present.js';
 
 const RESEND_SECONDS = 60;
+/** Same rule as the orders list and the poller: cancelled, or at the last step (delivered / picked up). */
+const isFinished = (row) => Boolean(row.cancelled) || (row.step ?? 0) >= 3;
 const sar = (n) => `SAR ${Number(n).toFixed(2)}`;
 
 function cancellationBody(payment) {
@@ -41,6 +43,22 @@ export function createOrdersService(ctx) {
     return presentOrder(row, { payment, branch, media });
   }
 
+  // One RSOF read per order at a time: the tracking screen, the orders list, the poller and a second
+  // tab often ask for the same order at the same moment — they share the read instead of each paying
+  // two RSOF calls. Each caller still handles errors and saves the result itself.
+  const reading = new Map(); // order id → Promise<[snapshot, timeline]>
+  function readFromRof(row) {
+    let pending = reading.get(row.id);
+    if (!pending) {
+      pending = Promise.all([
+        ctx.rof.getOrder(row.rof_order_id).then(toOrderSnapshot),
+        ctx.rof.getOrderTimeline(row.rof_order_id).then(toTimeline),
+      ]).finally(() => reading.delete(row.id));
+      reading.set(row.id, pending);
+    }
+    return pending;
+  }
+
   /**
    * Re-reads ROF unless the row was synced less than maxAgeMs ago. ROF errors keep the last known
    * row — except for the refresh button (failIfUnavailable), which must say RSOF could not be reached.
@@ -51,10 +69,7 @@ export function createOrdersService(ctx) {
     let snapshot;
     let timeline;
     try {
-      [snapshot, timeline] = await Promise.all([
-        ctx.rof.getOrder(row.rof_order_id).then(toOrderSnapshot),
-        ctx.rof.getOrderTimeline(row.rof_order_id).then(toTimeline),
-      ]);
+      [snapshot, timeline] = await readFromRof(row);
     } catch (error) {
       if (!isRofError(error)) throw error;
       ctx.logger.warn(`[orders] could not refresh KR-${row.rof_order_number} from ROF (${error.kind}): ${error.message}`);
@@ -188,6 +203,9 @@ export function createOrdersService(ctx) {
 
     async get(userId, id, { refresh: refreshAsked = false } = {}) {
       const row = await mine(userId, id);
+      // Delivered, picked up or cancelled: the status can no longer change, so RSOF is not asked again
+      // (the list already skips these; the detail screen did not).
+      if (isFinished(row)) return present(row);
       const maxAgeMs = maxAge(userId, refreshAsked, 15_000);
       const forced = refreshAsked && maxAgeMs === 0;
       return present(await whileForced(userId, forced, () => refresh(row, { maxAgeMs, failIfUnavailable: forced })));

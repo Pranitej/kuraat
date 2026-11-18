@@ -31,11 +31,18 @@ export async function isFirstOrder(db, userId) {
   return Number(n) === 0;
 }
 
-/** Prices a cart with fresh ROF product data. */
-export async function priceForUser(ctx, userId, cart, { fulfilment = 'delivery' } = {}) {
+/** How old a product may be on the cart screen and in quotes: changes still show within seconds. */
+export const CART_PRODUCT_MAX_AGE_MS = 5_000;
+
+/**
+ * Prices a cart. The cart screen and quotes share each product read for CART_PRODUCT_MAX_AGE_MS across
+ * all customers and taps (one RSOF call per product per few seconds instead of one per line per
+ * request); placing an order passes `fresh`, so every line is re-read from ROF right then.
+ */
+export async function priceForUser(ctx, userId, cart, { fulfilment = 'delivery', fresh = false } = {}) {
   return priceCart(cart, {
     fulfilment,
-    getProduct: (id) => ctx.catalog.getProduct(id, { fresh: true }),
+    getProduct: (id) => ctx.catalog.getProduct(id, fresh ? { fresh: true } : { maxAgeMs: CART_PRODUCT_MAX_AGE_MS }),
     isFirstOrder: await isFirstOrder(ctx.db, userId),
     pricesIncludeVat: ctx.config.pricesIncludeVat,
     promos: ctx.config.promos,

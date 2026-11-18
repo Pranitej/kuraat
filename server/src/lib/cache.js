@@ -29,9 +29,10 @@ export function createTtlCache({ ttlMs, now = () => Date.now() }) {
   }
 
   return {
-    async get(key, loader, { fresh = false } = {}) {
+    /** maxAgeMs: accept a cached value only this young (default: the cache's ttlMs). */
+    async get(key, loader, { fresh = false, maxAgeMs = ttlMs } = {}) {
       const entry = entries.get(key);
-      if (!fresh && entry && now() - entry.at < ttlMs) return entry.value;
+      if (!fresh && entry && now() - entry.at < maxAgeMs) return entry.value;
       try {
         return await load(key, loader);
       } catch (error) {

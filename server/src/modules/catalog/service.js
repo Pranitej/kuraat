@@ -36,8 +36,12 @@ export function createCatalogService({ rof, baseUrl, now = () => Date.now(), ttl
         .filter((p) => !q || [p.name, p.categoryName, p.subtitle, ...p.description].join(' ').toLowerCase().includes(q));
     },
 
-    /** Active product by id, or null (unknown or Inactive). `fresh` bypasses the cache (cart, checkout). */
-    async getProduct(id, { fresh = false } = {}) {
+    /**
+     * Active product by id, or null (unknown or Inactive). `fresh` bypasses the cache (placing an order);
+     * `maxAgeMs` accepts only a copy that young (the cart: a few seconds, so every customer and every tap
+     * in that window shares one RSOF read per product, while changes still show almost at once).
+     */
+    async getProduct(id, { fresh = false, maxAgeMs } = {}) {
       return cache.get(
         `product:${id}`,
         async () => {
@@ -51,7 +55,7 @@ export function createCatalogService({ rof, baseUrl, now = () => Date.now(), ttl
             throw error;
           }
         },
-        { fresh },
+        { fresh, ...(maxAgeMs !== undefined ? { maxAgeMs } : {}) },
       );
     },
   };

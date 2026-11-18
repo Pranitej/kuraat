@@ -32,7 +32,7 @@ export async function deliveryCandidates(ctx, location, items) {
   const nearestId = ranked[0]?.branch.id ?? null;
   if (!ctx.config.rof.inventoryCheck || !items.length || !ranked.length) return { candidates: ranked, nearestId, inStock: null };
   try {
-    const { items: balances } = await ctx.rof.listStockBalances();
+    const { items: balances } = await ctx.branches.stockBalances();
     const stocked = withStock(ranked, toStockMap(balances), items);
     // Nobody nearby has everything: keep the full list; ROF's assignment decides at order time.
     return stocked.length ? { candidates: stocked, nearestId, inStock: true } : { candidates: ranked, nearestId, inStock: false };

@@ -45,12 +45,16 @@ describe('withStock', () => {
 
 describe('deliveryCandidates (stock check from GET /api/inventory/balances)', () => {
   const row = (productId, branchId, available, extra = {}) => ({ productId, branchId, onHand: available, reserved: 0, available, allowOversell: false, ...extra });
-  const ctxWith = (balances, { check = true } = {}) => ({
-    config: { rof: { inventoryCheck: check } },
-    logger: { warn: vi.fn() },
-    branches: { listDeliveryBranches: async () => [corniche, dhahran] },
-    rof: { listStockBalances: vi.fn(async () => ({ items: balances })) },
-  });
+  // The branch service's (cached) stockBalances() reads ROF; here it goes straight to the spied ROF call.
+  const ctxWith = (balances, { check = true } = {}) => {
+    const ctx = {
+      config: { rof: { inventoryCheck: check } },
+      logger: { warn: vi.fn() },
+      branches: { listDeliveryBranches: async () => [corniche, dhahran], stockBalances: () => ctx.rof.listStockBalances() },
+      rof: { listStockBalances: vi.fn(async () => ({ items: balances })) },
+    };
+    return ctx;
+  };
   const items = [{ productId: 'praline', qty: 2 }];
 
   test('skips a nearer branch that has none left and says stock was checked', async () => {

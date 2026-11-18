@@ -105,6 +105,16 @@ describe('placing an order', () => {
     });
   });
 
+  test('placing reads every product live: a price change seconds after the cart was priced is still caught', async () => {
+    await api('put', '/cart', pdfCart); // the cart screen priced it just now (shared copy)
+    t.mockRof.store.data.products.find((p) => p.id === PRODUCT_IDS.classic).sellingPrice = 190;
+    const res = await place(); // same instant — inside the cart's few-second window
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('cart_changed');
+    expect(res.body.message).toContain('190.00');
+    expect(rofOrders()).toHaveLength(0);
+  });
+
   test('RSOF sees which app placed the order: the website is "Website", the app (or an older build) "MobileApp"', async () => {
     await api('put', '/cart', pdfCart);
     expect((await place({ channel: 'web' })).status).toBe(201);

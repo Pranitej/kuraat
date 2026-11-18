@@ -99,7 +99,8 @@ export async function placeOrder(ctx, userId, input) {
   const addressRow = pickup ? null : await ctx.db('addresses').where({ user_id: userId, id: input.addressId }).first();
   if (!pickup && !addressRow) throw notFound('not_found', 'This address no longer exists.');
   const promoCode = input.promoCode !== undefined ? input.promoCode : cart.promoCode;
-  const priced = await priceForUser(ctx, userId, { items: cart.items, promoCode }, { fulfilment: pickup ? 'pickup' : 'delivery' });
+  // Fresh from ROF for every line: the money and stock check that counts.
+  const priced = await priceForUser(ctx, userId, { items: cart.items, promoCode }, { fulfilment: pickup ? 'pickup' : 'delivery', fresh: true });
   const problem = cartProblem(priced);
   if (problem) throw conflict('cart_changed', problem);
   const items = priced.items.map((l) => ({ productId: l.productId, qty: l.qty }));

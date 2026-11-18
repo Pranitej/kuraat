@@ -9,8 +9,12 @@ import { toBranch } from '../../rof/adapter.js';
 
 export const hoursFor = (branchId) => BRANCH_HOURS_OVERRIDES[branchId] || DEFAULT_BRANCH_HOURS;
 
-export function createBranchService({ rof, now = () => Date.now(), ttlMs = 60_000 }) {
+export function createBranchService({ rof, now = () => Date.now(), ttlMs = 60_000, stockTtlMs = 20_000 }) {
   const cache = createTtlCache({ ttlMs, now });
+  // Per-branch stock pages through every product × branch row, and every delivery quote used to ask
+  // for it. A 20 s copy serves all customers; it only steers the "likely branch" estimate — RSOF
+  // still decides the branch and checks stock when the order arrives.
+  const stockCache = createTtlCache({ ttlMs: stockTtlMs, now });
 
   const present = (branch) => {
     const hours = hoursFor(branch.id);
@@ -22,6 +26,9 @@ export function createBranchService({ rof, now = () => Date.now(), ttlMs = 60_00
     cache.get('branches', async () => (await rof.listBranches({ hubOnly: true })).items.map(toBranch).filter((b) => b.isHub));
 
   return {
+    /** RSOF's per-branch stock rows ({ items }), at most stockTtlMs old. */
+    stockBalances: () => stockCache.get('balances', () => rof.listStockBalances()),
+
     /** Branches customers can be delivered from, with hours and openNow (Saudi time). */
     async listDeliveryBranches() {
       return (await hubs()).map(present);

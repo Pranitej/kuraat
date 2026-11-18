@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { signInDemo, signUp } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
 import { advance, placePickupTestOrder, placeTestOrder } from '../helpers/orders.js';
@@ -44,6 +44,48 @@ describe('order detail and tracking', () => {
     const res = await api('get', `/orders/${order.id}`);
     expect(res.body.status.id).toBe('delivered');
     expect(res.body.steps.every((s) => s.state === 'done')).toBe(true);
+  });
+
+  test('a delivered order is not read from RSOF again (its status can no longer change)', async () => {
+    const order = await placeTestOrder(t, me);
+    minutes(1);
+    await advance(t, order.number, 'Delivered');
+    expect((await api('get', `/orders/${order.id}`)).body.status.id).toBe('delivered'); // learns it is delivered
+    minutes(5);
+    const reads = vi.spyOn(t.ctx.rof, 'getOrder');
+    const timeline = vi.spyOn(t.ctx.rof, 'getOrderTimeline');
+    const res = await api('get', `/orders/${order.id}?refresh=true`);
+    expect(res.status).toBe(200);
+    expect(res.body.status.id).toBe('delivered');
+    expect(res.body.steps.every((s) => s.state === 'done')).toBe(true);
+    expect(reads).not.toHaveBeenCalled();
+    expect(timeline).not.toHaveBeenCalled();
+  });
+
+  test('a cancelled order is not read from RSOF again', async () => {
+    const order = await placeTestOrder(t, me);
+    expect((await api('post', `/orders/${order.id}/cancel`)).status).toBe(200);
+    minutes(5);
+    const reads = vi.spyOn(t.ctx.rof, 'getOrder');
+    const res = await api('get', `/orders/${order.id}`);
+    expect(res.body.status.cancelled).toBe(true);
+    expect(reads).not.toHaveBeenCalled();
+  });
+
+  test('simultaneous refreshes of one order share a single RSOF read (2 calls, not 6)', async () => {
+    const order = await placeTestOrder(t, me);
+    minutes(1);
+    await advance(t, order.number, 'Preparing');
+    const row = await t.db('orders').where({ id: order.id }).first();
+    const reads = vi.spyOn(t.ctx.rof, 'getOrder');
+    const timeline = vi.spyOn(t.ctx.rof, 'getOrderTimeline');
+    const results = await Promise.all([t.ctx.orders.refresh(row), t.ctx.orders.refresh(row), t.ctx.orders.refresh(row)]);
+    expect(reads).toHaveBeenCalledTimes(1);
+    expect(timeline).toHaveBeenCalledTimes(1);
+    expect(results.map((r) => r.step)).toEqual([1, 1, 1]);
+    // The next refresh after the shared read is finished asks RSOF again (nothing is cached for good).
+    await t.ctx.orders.refresh(row);
+    expect(reads).toHaveBeenCalledTimes(2);
   });
 
   test('an unknown ROF status keeps the last known step', async () => {

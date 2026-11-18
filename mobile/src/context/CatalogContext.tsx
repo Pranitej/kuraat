@@ -26,14 +26,28 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>(EMPTY);
   const [full, setFull] = useState<Record<string, Product | null>>({});
   const loadedAt = useRef(0);
+  const fullAt = useRef<Record<string, number>>({}); // product id → when its full copy arrived
+  const fullLoading = useRef(new Set<string>());
 
-  /** Product screen: the full product once per session (the list copy shows meanwhile). */
+  /**
+   * Product screen: the full product (the list copy shows meanwhile). Opened again within STALE_MS it
+   * is not re-downloaded — the server would answer from its own 60 s copy anyway — and two screens
+   * asking at once share one request.
+   */
   const loadProduct = useCallback(async (id: string) => {
+    if (fullLoading.current.has(id) || Date.now() - (fullAt.current[id] ?? 0) < STALE_MS) return;
+    fullLoading.current.add(id);
     try {
       const product = await getProductDetail(id);
+      fullAt.current[id] = Date.now();
       setFull((f) => ({ ...f, [id]: product }));
     } catch (error) {
-      if ((error as { code?: string }).code === 'not_found') setFull((f) => ({ ...f, [id]: null }));
+      if ((error as { code?: string }).code === 'not_found') {
+        fullAt.current[id] = Date.now();
+        setFull((f) => ({ ...f, [id]: null }));
+      }
+    } finally {
+      fullLoading.current.delete(id);
     }
   }, []);
 
@@ -51,6 +65,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isAuthenticated) {
       loadedAt.current = 0;
+      fullAt.current = {};
       setState(EMPTY);
       setFull({});
       return;

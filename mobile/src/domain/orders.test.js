@@ -1,8 +1,8 @@
-// Runs in America/New_York (vitest.config.js): every label must still be Saudi time.
+// Runs in America/New_York (vitest.config.js, UTC-5 in November): every label is in the device zone, not Saudi time.
 import { describe, expect, test } from 'vitest';
 import { ORDER_FILTERS, PICKUP, cancelRefundText, filterOrders, isPickup, orderItemCount, orderStatusView, orderTimelineView, paidLater, paymentLabel } from './orders.js';
 
-const NOW = new Date('2026-11-15T09:30:00Z'); // 12:30 in Saudi Arabia
+const NOW = new Date('2026-11-15T09:30:00Z'); // 04:30 in New York
 const step = (id, title, state, time, extra = {}) => ({ id, title, state, time, timeEnd: null, estimated: false, ...extra });
 
 const preparing = {
@@ -21,8 +21,8 @@ const preparing = {
 };
 
 describe('orderTimelineView', () => {
-  test('reached steps show their time, the rest their estimate — in Saudi time', () => {
-    expect(orderTimelineView(preparing, NOW).map((s) => s.time)).toEqual(['12:21', '12:25', 'Estimated 4:30 PM', 'Estimated 5:00 – 7:00 PM']);
+  test('reached steps show their time, the rest their estimate — in the device time zone', () => {
+    expect(orderTimelineView(preparing, NOW).map((s) => s.time)).toEqual(['04:21', '04:25', 'Estimated 8:30 AM', 'Estimated 9:00 – 11:00 AM']);
     expect(orderTimelineView(preparing, NOW).map((s) => s.state)).toEqual(['done', 'current', 'todo', 'todo']);
   });
 
@@ -34,7 +34,7 @@ describe('orderTimelineView', () => {
         step('preparing', 'Preparing at the branch', 'todo', '2026-11-16T07:00:00Z', { estimated: true }),
       ],
     };
-    expect(orderTimelineView(later, NOW).map((s) => s.time)).toEqual(['8 Nov, 13:05', 'Estimated Tomorrow, 10:00']);
+    expect(orderTimelineView(later, NOW).map((s) => s.time)).toEqual(['8 Nov, 05:05', 'Estimated Tomorrow, 02:00']);
   });
 
   test('a cancelled order shows the steps it reached, then a cancelled row', () => {
@@ -46,8 +46,8 @@ describe('orderTimelineView', () => {
     };
     const rows = orderTimelineView(cancelled, NOW);
     expect(rows.map((r) => [r.id, r.state, r.time])).toEqual([
-      ['confirmed', 'done', '12:21'],
-      ['cancelled', 'cancelled', '12:40'],
+      ['confirmed', 'done', '04:21'],
+      ['cancelled', 'cancelled', '04:40'],
     ]);
     expect(rows[1].title).toBe('Order cancelled');
   });

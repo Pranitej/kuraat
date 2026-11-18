@@ -1,8 +1,8 @@
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
-// Same rule as the web app: run somewhere that is not Saudi time, so a formatter that forgets the
-// UTC+3 shift fails here and not on a customer's phone.
+// Same rule as the web app: times follow the device zone, so run in New York: a formatter that hard-codes
+// a zone (Saudi time, UTC) fails here and not on a customer's phone.
 process.env.TZ = 'America/New_York';
 
 const src = (p) => fileURLToPath(new URL(`./src/${p}`, import.meta.url));

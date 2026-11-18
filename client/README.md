@@ -51,7 +51,7 @@ Everything the shop shows comes from the real RSOF, so it is only as full as RSO
 
 Orders placed on RSOF's test system (UAT) are real orders there: cancel the ones you do not need.
 
-Times are always shown in Saudi time (UTC+3), whatever the device's time zone.
+Times and dates are shown in the time zone of the device (browser or phone): the server sends UTC and each device converts it. Branch opening hours are a Saudi-time rule of the branch and shown as they are.
 
 ## Project structure
 

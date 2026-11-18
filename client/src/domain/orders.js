@@ -1,6 +1,6 @@
 /**
  * Order display helpers (pure) for the server's orders: status from RSOF folded into the four
- * tracking steps (+ cancelled), with real or estimated times. Times are shown in Saudi time.
+ * tracking steps (+ cancelled), with real or estimated times. Times are shown in the device time zone.
  */
 import { formatDayMonth, formatSAR, formatTime, formatTime12, formatWindow, isSameDay } from './format.js';
 

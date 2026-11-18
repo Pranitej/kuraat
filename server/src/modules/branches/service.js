@@ -1,6 +1,6 @@
 /**
- * Delivery branches from ROF (guide §10). Only branches with branchType = 'hub' take app orders
- * (lead's rule). Opening hours are not in ROF, so they come from config/business.js.
+ * Delivery branches from ROF (guide §10). Only branches with branchType = 'hub' are offered at checkout
+ * (lead's rule); an order can still end up at another branch when RSOF assigns it. Opening hours are not in ROF, so they come from config/business.js.
  */
 import { BRANCH_HOURS_OVERRIDES, DEFAULT_BRANCH_HOURS } from '../../config/business.js';
 import { createTtlCache } from '../../lib/cache.js';
@@ -26,9 +26,21 @@ export function createBranchService({ rof, now = () => Date.now(), ttlMs = 60_00
     async listDeliveryBranches() {
       return (await hubs()).map(present);
     },
+    /**
+     * Hubs first; RSOF may also assign a branch that is not a hub (its rule is "the nearest branch
+     * with availability"), so any other id is read from RSOF once and cached.
+     */
     async getBranch(id) {
-      const hit = (await hubs()).find((b) => b.id === id);
-      return hit ? present(hit) : null;
+      const hit = (await hubs()).find((x) => x.id === id);
+      if (hit) return present(hit);
+      const other = await cache.get(`branch:${id}`, async () => {
+        try {
+          return toBranch(await rof.getBranch(id));
+        } catch {
+          return null; // unknown or unreachable: the order falls back to the branch name it stored
+        }
+      });
+      return other ? present(other) : null;
     },
   };
 }

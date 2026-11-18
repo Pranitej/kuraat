@@ -191,9 +191,11 @@ export async function placeOrder(ctx, userId, input) {
   try {
     await ctx.rof.shareOrderLocation(created.rofOrderId, address.location);
   } catch (error) {
-    if (!isRofError(error)) throw error;
+    // Whatever went wrong, the order is placed and the payment is held: never fail or lock it here.
     locationShared = false;
-    ctx.logger.warn(`[orders] could not send the pin for KR-${created.orderNumber} to ROF (${error.kind}): ${error.message} — RSOF staff must assign a branch`);
+    const kind = isRofError(error) ? ` (${error.kind})` : '';
+    const level = isRofError(error) ? 'warn' : 'error';
+    ctx.logger[level](`[orders] could not send the pin for KR-${created.orderNumber} to ROF${kind}: ${error.message} — RSOF staff must assign a branch`);
   }
 
   // 8 — done: payment captured, then read the order once so an instant auto-assignment shows.
@@ -215,7 +217,7 @@ export async function placeOrder(ctx, userId, input) {
     if (paid.method !== 'cod') {
       await notify(trx, userId, { type: 'payment', title: 'Payment received', body: `${sar(amount)} paid with ${paymentLabel(paid)}.`, link }, doneAt);
     }
-    const body = branchName ? `It will be delivered from ${branchName}.` : "We'll tell you which branch once it's confirmed.";
+    const body = branchName ? `It will be delivered from ${branchName}.` : "Your order screen shows the branch once it's confirmed.";
     await notify(trx, userId, { type: 'order', title: `Order #${number} confirmed`, body, link }, new Date(doneAt.getTime() + 1));
   });
   await saveCart(ctx.db, userId, { items: [], promoCode: null }, doneAt);

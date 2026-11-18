@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { BRANCH_IDS, PRODUCT_IDS } from '../../mock-rof/seed.js';
+import { RofError } from '../../src/rof/errors.js';
 import { signInDemo } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
 
@@ -146,6 +147,35 @@ describe('placing an order', () => {
     expect(await t.db('orders')).toHaveLength(0);
   });
 
+  test('an unexpected error while sending the pin never fails or locks a paid order (review: Important 1)', async () => {
+    await api('put', '/cart', pdfCart);
+    t.ctx.rof.shareOrderLocation = async () => {
+      throw new TypeError('pin bug');
+    };
+    const idempotencyKey = randomUUID();
+    const res = await place({ idempotencyKey });
+    expect(res.status).toBe(201);
+    expect((await payment()).status).toBe('captured');
+    expect((await t.db('orders').first()).location_shared).toBeFalsy();
+    expect((await api('get', '/cart')).body.items).toEqual([]);
+    expect(t.logs.some(([level, line]) => level === 'error' && line.includes('pin bug'))).toBe(true);
+    // a retry with the same key is the same order, not "in progress" forever
+    const again = await place({ idempotencyKey });
+    expect(again.status).toBe(200);
+    expect(again.body.id).toBe(res.body.id);
+  });
+
+  test('the pin call timing out still places the order', async () => {
+    await api('put', '/cart', pdfCart);
+    t.ctx.rof.shareOrderLocation = async () => {
+      throw new RofError('unavailable', 'ROF did not answer in time');
+    };
+    const res = await place();
+    expect(res.status).toBe(201);
+    expect(res.body.branch).toBeNull();
+    expect((await payment()).status).toBe('captured');
+  });
+
   test('no hub has the stock → still placed; ROF leaves it for staff, no branch yet, cancel allowed', async () => {
     const stock = t.mockRof.store.data.stock[PRODUCT_IDS.classic];
     for (const branchId of Object.keys(stock)) stock[branchId] = 0;
@@ -155,7 +185,7 @@ describe('placing an order', () => {
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ branch: null, distanceKm: null, canCancel: true, status: { code: 'SharedLocationManually', label: 'Location received' } });
     expect((await payment()).status).toBe('captured');
-    expect((await t.db('notifications').where({ type: 'order' }).first()).body).toBe("We'll tell you which branch once it's confirmed.");
+    expect((await t.db('notifications').where({ type: 'order' }).first()).body).toBe("Your order screen shows the branch once it's confirmed.");
     expect((await api('post', `/orders/${res.body.id}/cancel`)).status).toBe(200);
   });
 
@@ -230,5 +260,21 @@ describe('placing an order', () => {
     expect((await place()).body.code).toBe('empty_cart');
     await api('put', '/cart', pdfCart);
     expect((await place({ addressId: randomUUID() })).status).toBe(404);
+  });
+
+  test('RSOF assigns a branch that is not a hub (e.g. the master branch): the order shows its details after a refresh (review: Important 2)', async () => {
+    await api('put', '/cart', { items: [{ productId: PRODUCT_IDS.classic, qty: 1 }] });
+    await fault({ locationReject: 'Location not accepted' });
+    const placed = await place();
+    expect(placed.body.branch).toBeNull();
+    const rofId = rofOrders()[0].id;
+    t.mockRof.store.data.stock[PRODUCT_IDS.classic][BRANCH_IDS.warehouse] = 5;
+    const assigned = await t.mockRof.call('put', `/api/orders/${rofId}/assign/branch?BranchId=${BRANCH_IDS.warehouse}`);
+    expect(assigned.body.success).toBe(true);
+    t.clock.advance(60_000);
+    const res = await api('get', `/orders/${placed.body.id}?refresh=true`);
+    expect(res.status).toBe(200);
+    expect(res.body.branch).toMatchObject({ id: BRANCH_IDS.warehouse, name: expect.any(String), address: expect.any(String), location: { lat: expect.any(Number), lng: expect.any(Number) } });
+    expect(res.body.distanceKm).toEqual(expect.any(Number));
   });
 });

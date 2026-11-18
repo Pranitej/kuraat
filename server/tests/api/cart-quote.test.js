@@ -173,6 +173,17 @@ describe('checkout quote', () => {
       expect(ok.body.window).toBeTruthy();
     });
 
+    test('the branch estimate failing does not take the prices down (review: Important 2)', async () => {
+      await api('put', '/cart', pdfCart);
+      t.ctx.branches.listDeliveryBranches = async () => {
+        throw new Error('branch list unavailable');
+      };
+      const res = await api('post', '/checkout/quote', { fulfilment: 'pickup', location: AL_RAKAH });
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ fulfilment: 'pickup', branch: null, distanceKm: null, totals: { total: 313, delivery: 0 } });
+      expect(t.logs.some(([level, line]) => level !== 'info' && line.includes('branch list unavailable'))).toBe(true);
+    });
+
     test('an out-of-range location is refused', async () => {
       const res = await api('post', '/checkout/quote', { fulfilment: 'pickup', location: { lat: 200, lng: 0 } });
       expect(res.status).toBe(400);

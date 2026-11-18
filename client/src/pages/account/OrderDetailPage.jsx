@@ -6,14 +6,9 @@ import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Whats
 import { OrderTimeline, RefreshButton, StatusTag, branchLabel } from '@/components/account/OrderParts.jsx';
 import { useOrder, useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { PENDING_BRANCH, PICKUP, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
+import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useCountdown, useDocumentTitle } from '@/hooks';
-
-function refundText(order) {
-  if (!order.payment || order.payment.method === 'cod') return 'Nothing has been charged.';
-  return `We will refund ${formatSAR(order.total)} to ${paymentLabel(order.payment)}.`;
-}
 
 /** "Your delivery code is sent on WhatsApp" + Resend (only while RSOF says out for delivery). */
 function DeliveryCodeNote({ order, onResend }) {
@@ -119,7 +114,7 @@ export default function OrderDetailPage() {
             // Branch pickup: the number to show at the counter (the dashboard's pickup counter searches by order number or phone).
             <Card className="p-4 text-center">
               <p className="text-label font-normal text-muted">{PICKUP.counterTitle}</p>
-              <p className="tabular mt-1 text-[28px] font-bold leading-9 text-maroon">#{order.number}</p>
+              <p className="tabular mt-1 text-title text-maroon">#{order.number}</p>
               <p className="mt-1 text-small text-muted">{PICKUP.counterHelp(order.number)}</p>
             </Card>
           )}
@@ -229,7 +224,7 @@ export default function OrderDetailPage() {
         loading={cancelling}
         icon={PackageX}
         title="Cancel this order?"
-        message={`You can cancel until the branch starts preparing it. ${refundText(order)}`}
+        message={`You can cancel until the branch starts preparing it. ${cancelRefundText(order)}`}
         confirmLabel="Cancel order"
         cancelLabel="Keep order"
       />

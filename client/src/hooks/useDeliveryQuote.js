@@ -23,29 +23,32 @@ function cachedQuote(addressId, productIds) {
  * Pickup (design 2026-11-18 §5.3): `fulfilment: 'pickup'` needs no address. The quote is the nearest
  * branch to where the customer is (its `branch` may be null) and the stored cart priced without the
  * delivery fee (`totals`) — prices must never be stale, so a pickup quote is never reused.
+ * `retry()` asks again after a failure. A quote of the other kind is never shown while a new one loads.
  */
 export function useDeliveryQuote({ addressId, productIds = [], fulfilment = 'delivery' }) {
   const key = productIds.join(',');
   const pickup = fulfilment === 'pickup';
   const enabled = pickup || Boolean(addressId);
-  const [state, setState] = useState({ quote: null, loading: enabled, error: null });
+  const [state, setState] = useState({ quote: null, pickup, loading: enabled, error: null });
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!enabled) {
-      setState({ quote: null, loading: false, error: null });
+      setState({ quote: null, pickup, loading: false, error: null });
       return undefined;
     }
     let alive = true;
-    setState((s) => ({ ...s, loading: true, error: null }));
+    // Keep the last quote of the same kind while refreshing; never show a delivery quote as a pickup one.
+    setState((s) => ({ quote: s.pickup === pickup ? s.quote : null, pickup, loading: true, error: null }));
     const ids = key ? key.split(',') : [];
     const request = pickup ? getQuote({ fulfilment: 'pickup', productIds: ids.length ? ids : undefined }) : cachedQuote(addressId, ids);
     request
-      .then((quote) => alive && setState({ quote, loading: false, error: null }))
-      .catch((error) => alive && setState({ quote: null, loading: false, error }));
+      .then((quote) => alive && setState({ quote, pickup, loading: false, error: null }))
+      .catch((error) => alive && setState({ quote: null, pickup, loading: false, error }));
     return () => {
       alive = false;
     };
-  }, [enabled, pickup, addressId, key]);
+  }, [enabled, pickup, addressId, key, attempt]);
 
-  return state;
+  return { quote: state.quote, loading: state.loading, error: state.error, retry: () => setAttempt((n) => n + 1) };
 }

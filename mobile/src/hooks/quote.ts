@@ -14,4 +14,6 @@ export const useDeliveryQuote = useDeliveryQuoteJs as unknown as (args: {
   quote: Quote | null;
   loading: boolean;
   error: (Error & { code?: string }) | null;
+  /** Asks again after a failure. */
+  retry: () => void;
 };

@@ -269,4 +269,12 @@ describe('22 · Order tracking', () => {
     await waitFor(() => expect(calls.some((c) => c.path === '/orders/o1/resend-code')).toBe(true));
     expect(await screen.findByRole('button', { name: /Resend in 0:/ })).toBeDisabled();
   });
+
+  test('cancelling a pay-at-branch order does not promise a refund (nothing was charged)', async () => {
+    setMockParams({ orderId: 'o3' });
+    await renderScreen(<OrderDetailScreen />, { server: (c) => (c.path.startsWith('/orders/o3') ? { body: PICKUP } : undefined) });
+    await fireEvent.press(await screen.findByRole('button', { name: 'Cancel order' }));
+    expect(screen.getByText(/Nothing has been charged\./)).toBeTruthy();
+    expect(screen.queryByText(/will refund/)).toBeNull();
+  });
 });

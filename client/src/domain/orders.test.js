@@ -1,6 +1,6 @@
 // Runs in America/New_York (vitest.config.js): every label must still be Saudi time.
 import { describe, expect, test } from 'vitest';
-import { ORDER_FILTERS, PICKUP, filterOrders, isPickup, orderItemCount, orderStatusView, orderTimelineView, paymentLabel } from './orders.js';
+import { ORDER_FILTERS, PICKUP, cancelRefundText, filterOrders, isPickup, orderItemCount, orderStatusView, orderTimelineView, paidLater, paymentLabel } from './orders.js';
 
 const NOW = new Date('2026-11-15T09:30:00Z'); // 12:30 in Saudi Arabia
 const step = (id, title, state, time, extra = {}) => ({ id, title, state, time, timeEnd: null, estimated: false, ...extra });
@@ -122,5 +122,25 @@ describe('pickup (design 2026-11-18 §5.3)', () => {
   test('the counter help names the plain RSOF number and the phone', () => {
     expect(PICKUP.counterHelp('KR-20418')).toBe('Staff can find it by the number 20418 or your phone number.');
     expect(PICKUP.counterHelp('20418')).toBe('Staff can find it by the number 20418 or your phone number.');
+  });
+});
+
+describe('paid later, and what the cancel dialog promises (review: Important 1)', () => {
+  test('cash on delivery and pay at branch are paid later; a card is not', () => {
+    expect(paidLater({ method: 'cod' })).toBe(true);
+    expect(paidLater({ method: 'branch' })).toBe(true);
+    expect(paidLater({ method: 'card' })).toBe(false);
+    expect(paidLater(null)).toBe(false);
+  });
+
+  test('nothing is refunded when nothing was charged', () => {
+    for (const method of ['cod', 'branch']) {
+      expect(cancelRefundText({ payment: { method }, total: 313 })).toBe('Nothing has been charged.');
+    }
+    expect(cancelRefundText({ payment: null, total: 313 })).toBe('Nothing has been charged.');
+  });
+
+  test('a card payment is refunded to the card', () => {
+    expect(cancelRefundText({ payment: { method: 'card', brand: 'Visa', last4: '4242' }, total: 313 })).toBe('We will refund SAR 313.00 to Visa •••• 4242.');
   });
 });

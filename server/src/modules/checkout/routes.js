@@ -48,7 +48,15 @@ export function checkoutRoutes(ctx) {
     if (req.body.fulfilment === 'pickup') {
       const location = await pickupLocation(req.userId, req.body.location);
       const { totals } = await priceForUser(ctx, req.userId, cart, { fulfilment: 'pickup' });
-      const found = location ? await deliveryCandidates(ctx, location, items) : null;
+      // The branch is only an estimate: if RSOF's branch list is down the customer still gets their prices.
+      let found = null;
+      if (location) {
+        try {
+          found = await deliveryCandidates(ctx, location, items);
+        } catch (error) {
+          ctx.logger.warn(`[checkout] pickup branch estimate unavailable: ${error.message}`);
+        }
+      }
       const chosen = found?.candidates[0] ?? null;
       return res.json({
         fulfilment: 'pickup',

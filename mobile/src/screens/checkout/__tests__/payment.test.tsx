@@ -223,6 +223,30 @@ describe('14 · Payment — branch pickup (design 2026-11-18 §5.3)', () => {
     expect(calls.find((c) => c.path === '/orders' && c.method === 'POST')?.body).toMatchObject({ fulfilment: 'delivery', addressId: 'a1', payment: { method: 'cod' } });
   });
 
+  test('the pickup quote failing says so, explains the disabled button and recovers on Try again (review: Important 2)', async () => {
+    let up = false;
+    await renderScreen(<PaymentScreen />, {
+      server: (c) =>
+        c.path === '/checkout/quote'
+          ? up
+            ? { body: { fulfilment: 'pickup', branch: null, distanceKm: null, isNearest: null, inStock: null, totals: PICKUP_TOTALS } }
+            : { status: 503, body: { code: 'rof_unavailable', message: "We can't reach the store right now." } }
+          : shop(() => ({ status: 201, body: PICKUP_ORDER }))(c),
+    });
+    expect(await screen.findByText("We can't reach the store right now.")).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Pay' })).toBeDisabled();
+    up = true;
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('button', { name: 'Pay SAR 185.00' })).toBeEnabled();
+  });
+
+  test('while the pickup total is on its way the screen says so', async () => {
+    await renderScreen(<PaymentScreen />, {
+      server: (c) => (c.path === '/checkout/quote' ? new Promise(() => {}) as never : shop(() => ({ status: 201, body: PICKUP_ORDER }))(c)),
+    });
+    expect(await screen.findByText('Getting your total…')).toBeTruthy();
+  });
+
   test('a delivery draft that remembered "pay at branch" starts on card', async () => {
     session.write('checkout', { fulfilment: 'delivery', addressId: 'a1', deliveryPhone: '501234821', paymentMethod: 'branch', idempotencyKey: null, lastOrderId: null });
     await renderScreen(<PaymentScreen />, { server: pickupShop(() => ({ status: 201, body: ORDER })) });

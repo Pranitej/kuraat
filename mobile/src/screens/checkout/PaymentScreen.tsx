@@ -59,7 +59,11 @@ export default function PaymentScreen() {
   const METHODS = pickup ? PICKUP_METHODS : DELIVERY_METHODS;
   const address = pickup ? null : addresses.find((a) => a.id === checkout.addressId) || defaultAddress;
   const productIds = useMemo(() => cart.items.map((i) => i.productId), [cart.items]);
-  const { quote: delivery } = useDeliveryQuote({ addressId: address?.id, productIds, fulfilment: pickup ? 'pickup' : 'delivery' });
+  const { quote: delivery, error: quoteError, retry: retryQuote } = useDeliveryQuote({
+    addressId: address?.id,
+    productIds,
+    fulfilment: pickup ? 'pickup' : 'delivery',
+  });
   const { ensureIdempotencyKey } = checkout;
 
   // One key per checkout, made when the payment screen opens and reused on every retry.
@@ -136,6 +140,11 @@ export default function PaymentScreen() {
       keyboard
       bottomBar={
         <BottomBar>
+          {!totals && !quoteError ? (
+            <Text color="muted" style={styles.gettingTotal} accessibilityLiveRegion="polite">
+              Getting your total…
+            </Text>
+          ) : null}
           {totals ? (
             <View style={styles.totalRow}>
               <Text color="muted">
@@ -160,6 +169,19 @@ export default function PaymentScreen() {
         <View style={styles.formError} accessibilityRole="alert">
           <TriangleAlert size={20} color={colors.hotpink} strokeWidth={1.8} />
           <Text style={styles.formErrorText}>{errors.form}</Text>
+        </View>
+      ) : null}
+
+      {!totals && quoteError ? (
+        // Pickup prices come with the quote: say so when it fails, and let the customer try again.
+        <View style={styles.quoteError} accessibilityRole="alert">
+          <View style={styles.quoteErrorRow}>
+            <TriangleAlert size={20} color={colors.hotpink} strokeWidth={1.8} />
+            <Text style={styles.formErrorText}>{quoteError.message}</Text>
+          </View>
+          <Button variant="secondary" size="sm" onPress={retryQuote}>
+            Try again
+          </Button>
         </View>
       ) : null}
 
@@ -276,6 +298,19 @@ export default function PaymentScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, minWidth: 0 },
+  gettingTotal: { marginBottom: 12, paddingHorizontal: 4 },
+  quoteError: {
+    marginTop: 12,
+    gap: 12,
+    alignItems: 'flex-start',
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(237,59,92,0.4)',
+    backgroundColor: 'rgba(237,59,92,0.06)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  quoteErrorRow: { flexDirection: 'row', gap: 10 },
   title: { marginTop: 16 },
   formError: {
     marginTop: 12,

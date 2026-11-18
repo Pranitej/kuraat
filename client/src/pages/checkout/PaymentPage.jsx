@@ -47,7 +47,7 @@ export default function PaymentPage() {
   const pickup = checkout.fulfilment === 'pickup';
   const METHODS = pickup ? PICKUP_METHODS : DELIVERY_METHODS;
   const address = pickup ? null : addresses.find((a) => a.id === checkout.addressId) || defaultAddress;
-  const { quote: delivery } = useDeliveryQuote({ addressId: address?.id, productIds: cart.items.map((i) => i.productId), fulfilment: pickup ? 'pickup' : 'delivery' });
+  const { quote: delivery, error: quoteError, retry: retryQuote } = useDeliveryQuote({ addressId: address?.id, productIds: cart.items.map((i) => i.productId), fulfilment: pickup ? 'pickup' : 'delivery' });
   const { ensureIdempotencyKey } = checkout;
 
   // One key per checkout, made when the payment screen opens and reused on every retry.
@@ -121,7 +121,13 @@ export default function PaymentPage() {
       steps={<CheckoutSteps current={2} />}
       aside={
         <div className="flex flex-col gap-4">
-          {totals ? <OrderSummary totals={totals} fulfilment={pickup ? 'pickup' : 'delivery'} title="Order summary" /> : <Skeleton className="h-[180px] rounded-xl" />}
+          {totals ? (
+            <OrderSummary totals={totals} fulfilment={pickup ? 'pickup' : 'delivery'} title="Order summary" />
+          ) : quoteError ? null : (
+            <div role="status" aria-busy="true" aria-label="Getting your total">
+              <Skeleton className="h-[180px] rounded-xl" />
+            </div>
+          )}
           {delivery?.branch && <DeliveryFromCard icon="store" label={pickup ? PICKUP.likely : undefined} branch={delivery.branch} distanceKm={delivery.distanceKm} showDistance />}
           {cta}
         </div>
@@ -132,6 +138,19 @@ export default function PaymentPage() {
         <div role="alert" className="mt-3 flex gap-2.5 rounded-lg border border-hotpink/40 bg-hotpink/[0.06] px-4 py-3 text-[15px] text-ink">
           <TriangleAlert size={20} strokeWidth={1.8} className="mt-px shrink-0 text-hotpink" aria-hidden />
           {errors.form}
+        </div>
+      )}
+
+      {!totals && quoteError && (
+        // Pickup prices come with the quote: say so when it fails, and let the customer try again.
+        <div role="alert" className="mt-3 flex flex-col items-start gap-3 rounded-lg border border-hotpink/40 bg-hotpink/[0.06] px-4 py-3 text-[15px] text-ink">
+          <span className="flex gap-2.5">
+            <TriangleAlert size={20} strokeWidth={1.8} className="mt-px shrink-0 text-hotpink" aria-hidden />
+            {quoteError.message}
+          </span>
+          <Button variant="secondary" size="sm" onClick={retryQuote}>
+            Try again
+          </Button>
         </div>
       )}
 
@@ -220,6 +239,7 @@ export default function PaymentPage() {
 
       {!isDesktop && (
         <BottomBar>
+          {!totals && !quoteError && <p className="mb-3 px-1 text-body text-muted">Getting your total…</p>}
           {totals && (
             <div className="mb-3 flex items-baseline justify-between px-1">
               <span className="text-body text-muted">

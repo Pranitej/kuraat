@@ -2,7 +2,7 @@
  * Order display helpers (pure) for the server's orders: status from RSOF folded into the four
  * tracking steps (+ cancelled), with real or estimated times. Times are shown in Saudi time.
  */
-import { formatDayMonth, formatTime, formatTime12, formatWindow, isSameDay } from './format.js';
+import { formatDayMonth, formatSAR, formatTime, formatTime12, formatWindow, isSameDay } from './format.js';
 
 const DAY_MS = 24 * 3600 * 1000;
 
@@ -106,6 +106,15 @@ export function orderTimelineView(order, now = new Date()) {
 
 export function orderItemCount(order) {
   return order.items.reduce((s, i) => s + i.qty, 0);
+}
+
+/** Cash on delivery and pay at branch are paid later: nothing is charged when the order is placed. */
+export const paidLater = (payment) => payment?.method === 'cod' || payment?.method === 'branch';
+
+/** What the "cancel this order?" dialog says about the money. */
+export function cancelRefundText(order) {
+  if (!order.payment || paidLater(order.payment)) return 'Nothing has been charged.';
+  return `We will refund ${formatSAR(order.total)} to ${paymentLabel(order.payment)}.`;
 }
 
 export function paymentLabel(payment) {

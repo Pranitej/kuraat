@@ -9,16 +9,11 @@ import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Text,
 import { ROUTES } from '@/lib/routes';
 import { useOrder, useOrders } from '@/context/OrderContext';
 import { useToast } from '@/context/ToastContext';
-import { PENDING_BRANCH, PICKUP, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
+import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
 import { useCountdown } from '@/hooks';
 import { useOpenUrl } from '@/lib/linking';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
-
-function refundText(order: Order): string {
-  if (!order.payment || order.payment.method === 'cod') return 'Nothing has been charged.';
-  return `We will refund ${formatSAR(order.total)} to ${paymentLabel(order.payment)}.`;
-}
 
 /** "Your delivery code is sent on WhatsApp" + Resend (only while RSOF says out for delivery). */
 function DeliveryCodeNote({ order, onResend }: { order: Order; onResend: () => Promise<{ resendAt: string }> }) {
@@ -147,7 +142,7 @@ export default function OrderDetailScreen() {
             <Text variant="label" weight={400} color="muted" align="center">
               {PICKUP.counterTitle}
             </Text>
-            <Text weight={700} color="maroon" align="center" style={styles.counterNumber}>
+            <Text variant="title" color="maroon" align="center" style={styles.counterNumber}>
               #{order.number}
             </Text>
             <Text variant="small" color="muted" align="center">
@@ -281,7 +276,7 @@ export default function OrderDetailScreen() {
         loading={cancelling}
         icon={PackageX}
         title="Cancel this order?"
-        message={`You can cancel until the branch starts preparing it. ${refundText(order)}`}
+        message={`You can cancel until the branch starts preparing it. ${cancelRefundText(order)}`}
         confirmLabel="Cancel order"
         cancelLabel="Keep order"
       />
@@ -292,7 +287,7 @@ export default function OrderDetailScreen() {
 const styles = StyleSheet.create({
   statusRow: { flexDirection: 'row' },
   counter: { padding: 16, alignItems: 'center', gap: 4 },
-  counterNumber: { fontSize: 28, lineHeight: 36 },
+  counterNumber: { marginTop: 4 },
   flex: { flex: 1, minWidth: 0 },
   stack: { gap: 12 },
   pad: { padding: 16 },

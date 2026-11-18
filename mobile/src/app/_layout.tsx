@@ -9,6 +9,8 @@ import { ErrorFallback, OfflineBanner } from '@/components/layout';
 import { AppProviders } from '@/context/AppProviders';
 import { useAuth } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
+import { setClockReader } from '@/domain';
+import { readPhoneClock } from '@/lib/clock';
 import { initMonitoring } from '@/lib/monitoring';
 import { useAppFonts } from '@/theme/fonts';
 import { colors } from '@/theme/theme';
@@ -19,6 +21,8 @@ I18nManager.forceRTL(false);
 SplashScreen.preventAutoHideAsync().catch(() => {});
 SplashScreen.setOptions({ fade: true, duration: 200 });
 initMonitoring();
+// Every time on screen follows the phone's 12/24-hour setting.
+setClockReader(readPhoneClock);
 
 /** Any screen that throws shows a friendly retry screen instead of a blank one. */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {

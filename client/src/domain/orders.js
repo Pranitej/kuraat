@@ -2,7 +2,7 @@
  * Order display helpers (pure) for the server's orders: status from RSOF folded into the four
  * tracking steps (+ cancelled), with real or estimated times. Times are shown in the device time zone.
  */
-import { formatDayMonth, formatSAR, formatTime, formatTime12, formatWindow, isSameDay } from './format.js';
+import { formatDayMonth, formatSAR, formatTime, formatWindow, isSameDay } from './format.js';
 
 const DAY_MS = 24 * 3600 * 1000;
 
@@ -91,7 +91,6 @@ function stepTime(s, now) {
   const prefix = dayPrefix(s.time, now);
   if (!s.estimated) return `${prefix}${formatTime(s.time)}`;
   if (s.id === 'delivered' && s.timeEnd) return `Estimated ${formatWindow(s.time, s.timeEnd, now).replace(/^Today, /, '')}`;
-  if (s.id === 'out_for_delivery') return `Estimated ${prefix}${formatTime12(s.time, { compact: false })}`;
   return `Estimated ${prefix}${formatTime(s.time)}`;
 }
 

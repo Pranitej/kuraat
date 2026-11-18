@@ -51,21 +51,60 @@ export function isYesterday(date, now = new Date()) {
   return isSameDay(date, new Date(toDate(now).getTime() - DAY_MS));
 }
 
-/** 24h clock "12:21" — as used across the PDF. */
-export function formatTime(value) {
-  const d = toDate(value);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+/* ---------------- 12- or 24-hour clock: the device's own choice ---------------- */
+
+let localeClock; // cached: the locale's clock style does not change while the page/app runs
+/** The device locale's clock style (browser: from its language settings). Unknown → 12-hour. */
+function localeUses24() {
+  if (localeClock === undefined) {
+    localeClock = false;
+    try {
+      const o = new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions();
+      if (o.hourCycle) localeClock = o.hourCycle === 'h23' || o.hourCycle === 'h24';
+      else if (typeof o.hour12 === 'boolean') localeClock = !o.hour12;
+    } catch {
+      /* no Intl: keep 12-hour */
+    }
+  }
+  return localeClock;
 }
 
-/** 12h clock without minutes when on the hour: "5 PM", "4:30 PM", "12 AM". */
-export function formatTime12(value, { compact = true } = {}) {
+let readDeviceClock = () => null;
+
+/**
+ * Platform hook: how to read the device's 12/24-hour setting. The phone app passes the phone's own
+ * setting (expo-localization); the web leaves it, so the browser locale decides. The reader may return
+ * true (24-hour), false (12-hour) or null when it cannot tell (then the locale decides).
+ */
+export function setClockReader(read) {
+  readDeviceClock = typeof read === 'function' ? read : () => null;
+}
+
+/** true when every time on screen should use the 24-hour clock ("19:19"), false for "7:19 PM". */
+export function uses24HourClock() {
+  try {
+    const setting = readDeviceClock();
+    if (typeof setting === 'boolean') return setting;
+  } catch {
+    /* fall back to the locale */
+  }
+  return localeUses24();
+}
+
+const hour12 = (h) => (h % 12 === 0 ? 12 : h % 12);
+const meridiem = (h) => (h >= 12 ? 'PM' : 'AM');
+
+/** A clock time in the device's format: "19:19" (24-hour) or "7:19 PM" (12-hour). Every time on screen uses this. */
+export function formatTime(value) {
   const d = toDate(value);
   const h = d.getHours();
-  const m = d.getMinutes();
-  const suffix = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  if (compact && m === 0) return `${h12} ${suffix}`;
-  return `${h12}:${pad(m)} ${suffix}`;
+  return uses24HourClock() ? `${pad(h)}:${pad(d.getMinutes())}` : `${hour12(h)}:${pad(d.getMinutes())} ${meridiem(h)}`;
+}
+
+/** An hour of the day (0–24) in the device's format: "10:00" / "00:00" or "10 AM" / "12 AM" (branch opening hours). */
+export function formatHour(hour) {
+  const h = ((Number(hour) % 24) + 24) % 24;
+  return uses24HourClock() ? `${pad(h)}:00` : `${hour12(h)} ${meridiem(h)}`;
 }
 
 /** "15 Nov 2026" */
@@ -92,20 +131,22 @@ export function formatOrderDate(value, now = new Date()) {
   return formatDate(value);
 }
 
-/** Delivery window: "Today, 5:00 – 7:00 PM" / "Tomorrow, 12:00 – 2:00 PM". */
+/**
+ * Delivery window in the device's clock format:
+ *   24-hour  "Today, 17:00 – 19:00"
+ *   12-hour  "Today, 5:00 – 7:00 PM" (long) / "Today, 5 – 7 PM" (short, product page);
+ *            the AM/PM is written once when both ends share it, on each end otherwise ("11:00 PM – 1:00 AM").
+ */
 export function formatWindow(start, end, now = new Date(), { long = true } = {}) {
   const tomorrow = new Date(toDate(now).getTime() + DAY_MS);
   const day = isSameDay(start, now) ? 'Today' : isSameDay(start, tomorrow) ? 'Tomorrow' : formatDayMonth(start);
   const s = toDate(start);
   const e = toDate(end);
-  if (!long) {
-    // "Today, 5 – 7 PM"
-    const sameSuffix = (s.getHours() >= 12) === (e.getHours() >= 12 || e.getHours() === 0);
-    const startLabel = sameSuffix ? formatTime12(start).replace(/ (AM|PM)$/, '') : formatTime12(start);
-    return `${day}, ${startLabel} – ${formatTime12(end)}`;
-  }
-  const h12 = (d) => (d.getHours() % 12 === 0 ? 12 : d.getHours() % 12);
-  return `${day}, ${h12(s)}:${pad(s.getMinutes())} – ${h12(e)}:${pad(e.getMinutes())} ${e.getHours() >= 12 ? 'PM' : 'AM'}`;
+  if (uses24HourClock()) return `${day}, ${formatTime(s)} – ${formatTime(e)}`;
+  const part = (d) => (!long && d.getMinutes() === 0 ? `${hour12(d.getHours())}` : `${hour12(d.getHours())}:${pad(d.getMinutes())}`);
+  const sameHalf = meridiem(s.getHours()) === meridiem(e.getHours());
+  const from = sameHalf ? part(s) : `${part(s)} ${meridiem(s.getHours())}`;
+  return `${day}, ${from} – ${part(e)} ${meridiem(e.getHours())}`;
 }
 
 export function formatDistance(km) {

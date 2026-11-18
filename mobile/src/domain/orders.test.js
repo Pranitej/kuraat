@@ -1,6 +1,11 @@
 // Runs in America/New_York (vitest.config.js, UTC-5 in November): every label is in the device zone, not Saudi time.
-import { describe, expect, test } from 'vitest';
+// The 12/24-hour style follows the device: these use a 24-hour device unless a test says otherwise.
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { setClockReader } from './format.js';
 import { ORDER_FILTERS, PICKUP, cancelRefundText, filterOrders, isPickup, orderItemCount, orderStatusView, orderTimelineView, paidLater, paymentLabel } from './orders.js';
+
+beforeEach(() => setClockReader(() => true));
+afterEach(() => setClockReader(null));
 
 const NOW = new Date('2026-11-15T09:30:00Z'); // 04:30 in New York
 const step = (id, title, state, time, extra = {}) => ({ id, title, state, time, timeEnd: null, estimated: false, ...extra });
@@ -22,8 +27,13 @@ const preparing = {
 
 describe('orderTimelineView', () => {
   test('reached steps show their time, the rest their estimate — in the device time zone', () => {
-    expect(orderTimelineView(preparing, NOW).map((s) => s.time)).toEqual(['04:21', '04:25', 'Estimated 8:30 AM', 'Estimated 9:00 – 11:00 AM']);
+    expect(orderTimelineView(preparing, NOW).map((s) => s.time)).toEqual(['04:21', '04:25', 'Estimated 08:30', 'Estimated 09:00 – 11:00']);
     expect(orderTimelineView(preparing, NOW).map((s) => s.state)).toEqual(['done', 'current', 'todo', 'todo']);
+  });
+
+  test('a 12-hour device gets AM/PM on every row — reached times and estimates alike', () => {
+    setClockReader(() => false);
+    expect(orderTimelineView(preparing, NOW).map((s) => s.time)).toEqual(['4:21 AM', '4:25 AM', 'Estimated 8:30 AM', 'Estimated 9:00 – 11:00 AM']);
   });
 
   test('other days get the date in front, tomorrow says so', () => {

@@ -2,6 +2,7 @@
  * Branch helpers for the server's delivery branches (server/README.md → Shop: GET /branches gives
  * id, name, address, city, phone, location, hours and openNow in Saudi time).
  */
+import { formatHour } from './format.js';
 import { roundedDistance } from './geo.js';
 
 /** The cities the server's branches are in: each once, alphabetical. */
@@ -84,15 +85,9 @@ export function mapPins(branches) {
   });
 }
 
-/** "10 AM – 12 AM" */
+/** Opening hours in the device's clock format: "10 AM – 12 AM" or "10:00 – 00:00". */
 export function formatHours(hours) {
-  const fmt = (h) => {
-    const hh = h % 24;
-    const suffix = hh >= 12 ? 'PM' : 'AM';
-    const h12 = hh % 12 === 0 ? 12 : hh % 12;
-    return `${h12} ${suffix}`;
-  };
-  return `${fmt(hours.open)} – ${fmt(hours.close)}`;
+  return `${formatHour(hours.open)} – ${formatHour(hours.close)}`;
 }
 
 export function mapsUrl(location, label = '') {

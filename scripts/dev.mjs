@@ -14,9 +14,16 @@
  * opens in its own Windows Terminal tab (one "kuraat" window); close a tab to stop that server.
  * Without Windows Terminal (or with --inline) they run here with [name] prefixes; Ctrl+C stops them.
  *
- * Options:  --dev-client  Expo for the EAS dev build instead of Expo Go
+ * Options:  --uat         the real RSOF test system (rofuat.rsof.com.sa) instead of the fake one: steps 3 and 4
+ *                         are skipped and the API runs `npm run dev:uat`, which reads server/.env.uat
+ *                         (git-ignored; copy server/.env.uat.example and fill in the login). Your server/.env
+ *                         is not touched. The shop shows RSOF's own products, so it is only as full as RSOF's stock.
+ *           --dev-client  Expo for the EAS dev build instead of Expo Go
  *           --no-expo     skip Expo        --no-web   skip the web app
  *           --inline      everything in this terminal
+ *
+ * Plain `npm run dev` stays on the fake RSOF on purpose: it has stock at every branch, so the whole flow
+ * (ordering, branch assignment, statuses) can be tried offline. `npm run dev:uat` is the real thing.
  *
  * Zero dependencies on purpose: the root is not an app (each of client/, mobile/, server/ is
  * installed and run on its own). Ports and addresses come from server/.env and mobile/.env.
@@ -175,12 +182,19 @@ async function server({ name, port, cwd, command, colour, ready = () => portOpen
 // ── preflight ───────────────────────────────────────────────────────────────────────────
 const wantWeb = !args.has('--no-web');
 const wantExpo = !args.has('--no-expo');
+const wantUat = args.has('--uat');
 
 for (const [app, dir] of Object.entries(DIR)) {
   if ((app === 'client' && !wantWeb) || (app === 'mobile' && !wantExpo)) continue;
   if (!existsSync(join(dir, 'node_modules'))) fail(`${app}/ has no node_modules.`, `Run: cd ${app} && npm install`);
 }
 if (!existsSync(join(DIR.server, '.env'))) fail('server/.env is missing.', 'Run: cd server && cp .env.example .env');
+if (wantUat) {
+  const uatFile = join(DIR.server, '.env.uat');
+  if (!existsSync(uatFile)) fail('server/.env.uat is missing — it holds the RSOF UAT login and is never committed.', 'Run: cd server && cp .env.uat.example .env.uat, then fill in ROF_EMAIL and ROF_PASSWORD.');
+  const uatEnv = readEnv(uatFile);
+  if (!uatEnv.ROF_EMAIL || !uatEnv.ROF_PASSWORD) fail('server/.env.uat has no ROF_EMAIL / ROF_PASSWORD yet.', 'Fill in the UAT login (ask RSOF) and run this again.');
+}
 
 console.log(c.bold('\nkuraat — starting the local stack\n'));
 
@@ -214,8 +228,10 @@ else {
 run('Database migrations', 'npm run --silent db:migrate', DIR.server);
 
 // ── 3. fake RSOF, 4. demo data ─────────────────────────────────────────────────────────
-const rofIsFake = /localhost|127\.0\.0\.1/.test(serverEnv.ROF_BASE_URL || 'http://localhost');
-if (rofIsFake) {
+const rofIsFake = !wantUat && /localhost|127\.0\.0\.1/.test(serverEnv.ROF_BASE_URL || 'http://localhost');
+if (wantUat) {
+  step('Using the real RSOF UAT (server/.env.uat) — not starting the fake RSOF or seeding demo data');
+} else if (rofIsFake) {
   await server({ name: 'Fake RSOF', port: PORTS.rof, cwd: DIR.server, command: 'npm run mock-rof', colour: c.magenta });
   run('Demo data (skips what already exists)', 'npm run --silent db:seed', DIR.server);
 } else {
@@ -223,7 +239,8 @@ if (rofIsFake) {
 }
 
 // ── 5. API ─────────────────────────────────────────────────────────────────────────────
-await server({ name: 'API', port: PORTS.api, cwd: DIR.server, command: 'npm run dev', colour: c.green, ready: apiHealthy });
+const apiState = await server({ name: 'API', port: PORTS.api, cwd: DIR.server, command: wantUat ? 'npm run dev:uat' : 'npm run dev', colour: c.green, ready: apiHealthy });
+if (wantUat && apiState === 'running') warn('If the API was already running it was left as is — it may still be on the fake RSOF. Stop it and run this again to switch.');
 
 // ── 6. web app ─────────────────────────────────────────────────────────────────────────
 if (wantWeb) await server({ name: 'Web', port: PORTS.web, cwd: DIR.client, command: 'npm run dev', colour: c.cyan });

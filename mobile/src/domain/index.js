@@ -14,3 +14,5 @@ export * from './catalog.js';
 export * from './cart.js';
 export * from './orders.js';
 export * from './address.js';
+export * from './phone.js';
+export * from './countries.js';

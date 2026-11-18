@@ -190,6 +190,7 @@ describe('other mappings', () => {
 
   test('toRofPhone adds the 966 country code', () => {
     expect(toRofPhone('501234821')).toBe('966501234821');
+    expect(toRofPhone('+917905793532')).toBe('917905793532'); // other countries: the plus goes, nothing is added
   });
 
   test('stock map from the balances reply: sellable = available, oversell = unlimited, never negative', () => {

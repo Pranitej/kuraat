@@ -22,6 +22,7 @@
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "knex": "^3.3.0",
+    "libphonenumber-js": "^1.13.16",
     "mysql2": "^3.24.6",
     "zod": "^4.6.7"
   },

@@ -3,12 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Check, ChevronRight, Mail, MapPin, Pencil, Phone, Trash2, User } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import BottomBar from '@/components/layout/BottomBar.jsx';
-import { Avatar, Button, ConfirmDialog, FieldWrapper, IconTile, SegmentedControl, Tag, TextField, inputBase, inputShell } from '@/components/ui';
+import { Avatar, Button, ConfirmDialog, FieldWrapper, IconTile, PhoneField, SegmentedControl, Tag, TextField } from '@/components/ui';
 import { GENDERS } from '@/config/options.js';
 import { useAuth } from '@/context/AuthContext.jsx';
 import { useAddresses } from '@/context/AddressContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { formatAddress, formatPhone, formatPhoneLocal, onlyDigits, validateEmail, validateMobile, validateName } from '@/domain';
+import { formatAddress, formatPhone, validateEmail, validateMobile, validateName } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 
@@ -163,25 +163,15 @@ export default function AccountPage() {
           <div className="mt-5 flex flex-col gap-5">
             <TextField label="Full name" icon={User} value={form.name} onChange={(e) => set('name')(e.target.value)} autoComplete="name" error={errors.name} />
 
-            <FieldWrapper id="account-phone" label="Mobile number (WhatsApp)" error={errors.phone} helper="Changing your number needs a new WhatsApp code.">
-              <div className={inputShell({ error: errors.phone })}>
-                <Phone size={20} strokeWidth={1.8} className="shrink-0 text-maroon" aria-hidden />
-                <span className="text-input text-ink" aria-hidden>
-                  +966
-                </span>
-                <input
-                  id="account-phone"
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel-national"
-                  value={formatPhoneLocal(form.phone)}
-                  onChange={(e) => set('phone')(onlyDigits(e.target.value).slice(0, 9))}
-                  aria-invalid={Boolean(errors.phone) || undefined}
-                  className={inputBase}
-                />
-                {phoneChanged ? <Tag>Needs code</Tag> : <Tag icon={Check}>Verified</Tag>}
-              </div>
-            </FieldWrapper>
+            <PhoneField
+              id="account-phone"
+              label="Mobile number (WhatsApp)"
+              value={form.phone}
+              onChange={set('phone')}
+              error={errors.phone}
+              helper="Changing your number needs a new WhatsApp code."
+              trailing={phoneChanged ? <Tag>Needs code</Tag> : <Tag icon={Check}>Verified</Tag>}
+            />
 
             <TextField
               label="Email (optional)"

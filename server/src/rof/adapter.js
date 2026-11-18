@@ -122,7 +122,9 @@ export function toStockMap(rows = []) {
 }
 
 /** Our 9-digit local mobile → ROF format (guide §7.1: digits with country code). */
-export const toRofPhone = (localPhone) => `966${String(localPhone).replace(/\D/g, '').replace(/^966/, '').replace(/^0/, '')}`;
+// Saudi numbers are stored as 9 digits (966 is added); every other country is stored as "+<country code><number>" (the plus goes).
+export const toRofPhone = (phone) =>
+  String(phone).startsWith('+') ? String(phone).slice(1).replace(/\D/g, '') : `966${String(phone).replace(/\D/g, '').replace(/^966/, '').replace(/^0/, '')}`;
 
 const formatLocalPhone = (d) => `${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5)}`;
 
@@ -163,7 +165,7 @@ export function toRofOrderPayload({ user, address, deliveryPhone, items, payment
   const pickup = fulfilment === 'pickup';
   const remarks = [];
   if (!pickup && !isBlank(address.landmark)) remarks.push(`Landmark: ${address.landmark.trim()}`);
-  if (deliveryPhone !== user.phone) remarks.push(`Account phone: +966 ${formatLocalPhone(user.phone)}`);
+  if (deliveryPhone !== user.phone) remarks.push(`Account phone: ${String(user.phone).startsWith('+') ? user.phone : `+966 ${formatLocalPhone(user.phone)}`}`);
   const money = moneyRemark(payment, total);
   if (money) remarks.push(money);
   // A pickup order has no street address: ROF still wants one, so it gets a plain label (and the

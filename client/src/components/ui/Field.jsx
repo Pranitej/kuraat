@@ -1,7 +1,7 @@
-import { forwardRef, useId, useState } from 'react';
+import { forwardRef, useEffect, useId, useState } from 'react';
 import { ChevronDown, Eye, EyeOff, Lock } from 'lucide-react';
 import { cn } from '@/lib/cn.js';
-import { formatPhoneLocal, onlyDigits } from '@/domain';
+import { COUNTRIES, countryOf, formatNationalInput, phonePlaceholder, splitPhone, toApiPhone } from '@/domain';
 
 /** Label + control + helper/error (PDF: label 13/600 maroon, 8 pt gap). */
 export function FieldWrapper({ id, label, error, helper, className, children, labelAction }) {
@@ -92,24 +92,65 @@ export const PasswordField = forwardRef(function PasswordField({ showIcon = true
   );
 });
 
-/** "+966 ⌄" country box + 9-digit number (PDF screens 03, 06, 13). */
+/**
+ * Country code picker (every country, Saudi Arabia selected by default) + the number (PDF screens 03, 06, 13).
+ * `value` and `onChange` use the API form (domain/phone.js): Saudi Arabia → the 9 digits, any other country →
+ * "+" and the full number, so forms and requests need no changes. `trailing` sits at the end of the number box.
+ */
 export const PhoneField = forwardRef(function PhoneField(
-  { label = 'Mobile number', value, onChange, error, helper, className, id: idProp, autoFocus, disabled, placeholder = '50 123 4821', ...rest },
+  { label = 'Mobile number', value, onChange, error, helper, className, id: idProp, autoFocus, disabled, placeholder, trailing, ...rest },
   ref,
 ) {
   const autoId = useId();
   const id = idProp || autoId;
+  const [iso, setIso] = useState(() => splitPhone(value).iso);
+  const [text, setText] = useState(() => {
+    const s = splitPhone(value);
+    return formatNationalInput(s.iso, s.national);
+  });
+  // The value changed from outside (a form restored or cleared): follow it. Our own typing keeps value === toApiPhone(iso, text).
+  useEffect(() => {
+    if (value === toApiPhone(iso, text)) return;
+    const s = splitPhone(value, iso);
+    setIso(s.iso);
+    setText(formatNationalInput(s.iso, s.national));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const country = countryOf(iso);
+  const pickCountry = (next) => {
+    const reformatted = formatNationalInput(next, text);
+    setIso(next);
+    setText(reformatted);
+    onChange(toApiPhone(next, reformatted));
+  };
+  const type = (raw) => {
+    const next = formatNationalInput(iso, raw);
+    setText(next);
+    onChange(toApiPhone(iso, next));
+  };
+
   return (
     <FieldWrapper id={id} label={label} error={error} helper={helper} className={className}>
       <div className="flex gap-3">
-        <div className={inputShell({ disabled, padded: false, className: 'relative w-[90px] shrink-0 justify-between gap-1 px-3.5' })}>
+        <div className={inputShell({ disabled, padded: false, className: 'relative w-[100px] shrink-0 justify-between gap-1 px-3.5' })}>
           <span className="text-input text-ink" aria-hidden>
-            +966
+            +{country.dial}
           </span>
           <ChevronDown size={18} strokeWidth={1.8} className="shrink-0 text-ink" aria-hidden />
-          {/* Native select keeps it keyboard/screen-reader friendly; kuraat delivers in Saudi Arabia only. */}
-          <select aria-label="Country code" disabled={disabled} defaultValue="+966" className="absolute inset-0 cursor-pointer opacity-0">
-            <option value="+966">Saudi Arabia (+966)</option>
+          {/* A native select keeps it keyboard and screen-reader friendly, and every phone has a good picker for it. */}
+          <select
+            aria-label="Country code"
+            disabled={disabled}
+            value={iso}
+            onChange={(e) => pickCountry(e.target.value)}
+            className="absolute inset-0 cursor-pointer opacity-0"
+          >
+            {COUNTRIES.map((c) => (
+              <option key={c.iso} value={c.iso}>
+                {c.name} (+{c.dial})
+              </option>
+            ))}
           </select>
         </div>
         <div className={cn(inputShell({ error, disabled }), 'min-w-0 flex-1')}>
@@ -117,18 +158,20 @@ export const PhoneField = forwardRef(function PhoneField(
             ref={ref}
             id={id}
             type="tel"
-            inputMode="numeric"
+            inputMode="tel"
             autoComplete="tel-national"
             autoFocus={autoFocus}
             disabled={disabled}
-            placeholder={placeholder}
-            value={formatPhoneLocal(value)}
-            onChange={(e) => onChange(onlyDigits(e.target.value).slice(0, 9))}
+            placeholder={placeholder || phonePlaceholder(iso)}
+            value={text}
+            maxLength={iso === 'SA' ? 11 : 20}
+            onChange={(e) => type(e.target.value)}
             aria-invalid={Boolean(error) || undefined}
             aria-describedby={error ? `${id}-error` : helper ? `${id}-helper` : undefined}
             className={inputBase}
             {...rest}
           />
+          {trailing}
         </div>
       </div>
     </FieldWrapper>

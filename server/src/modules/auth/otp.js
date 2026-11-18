@@ -36,7 +36,7 @@ function newCode(ctx) {
 
 async function deliver(ctx, { phone, purpose }, code) {
   if (ctx.config.otp.mode === 'test') {
-    ctx.logger.info(`[otp] ${purpose} code for +966 ${phone}: ${code} (OTP_MODE=test — nothing sent)`);
+    ctx.logger.info(`[otp] ${purpose} code for ${String(phone).startsWith('+') ? phone : `+966 ${phone}`}: ${code} (OTP_MODE=test — nothing sent)`);
     return;
   }
   ctx.logger.error('[otp] OTP_MODE=whatsapp but no WhatsApp provider is integrated yet');

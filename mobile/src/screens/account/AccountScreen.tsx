@@ -10,18 +10,18 @@ import {
   Field,
   FieldWrapper,
   IconTile,
+  PhoneField,
   Segmented,
   Tag,
   Text,
   TextLink,
-  inputShellStyle,
 } from '@/components/ui';
 import { GENDERS } from '@/config/options.js';
 import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { formatAddress, formatPhone, formatPhoneLocal, onlyDigits, validateEmail, validateMobile, validateName } from '@/domain';
+import { formatAddress, formatPhone, validateEmail, validateMobile, validateName } from '@/domain';
 import { pickAvatar } from '@/lib/photo';
 import { FONT_FAMILY, MAX_FONT_SCALE, colors, radii, shadows } from '@/theme/theme';
 import type { Gender, User as UserType } from '@/types/api';
@@ -45,7 +45,6 @@ export default function AccountScreen() {
   const [sendingCode, setSendingCode] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [sendingDeleteCode, setSendingDeleteCode] = useState(false);
-  const [phoneFocused, setPhoneFocused] = useState(false);
 
   const dirty = (['name', 'email', 'gender', 'avatar', 'phone'] as const).some((k) => (form[k] || '') !== (initial[k] || ''));
   const phoneChanged = form.phone !== u.phone;
@@ -169,28 +168,14 @@ export default function AccountScreen() {
           error={errors.name}
         />
 
-        <FieldWrapper label="Mobile number (WhatsApp)" error={errors.phone} helper="Changing your number needs a new WhatsApp code.">
-          <View style={inputShellStyle({ focused: phoneFocused, error: Boolean(errors.phone) })}>
-            <Phone size={20} color={colors.maroon} strokeWidth={1.8} />
-            <Text variant="input">+966</Text>
-            <TextInput
-              value={formatPhoneLocal(form.phone)}
-              onChangeText={(t) => set('phone')(onlyDigits(t).slice(0, 9))}
-              keyboardType="number-pad"
-              autoComplete="tel-national"
-              textContentType="telephoneNumber"
-              maxLength={11}
-              accessibilityLabel="Mobile number (WhatsApp)"
-              maxFontSizeMultiplier={MAX_FONT_SCALE}
-              selectionColor={colors.maroon}
-              cursorColor={colors.maroon}
-              onFocus={() => setPhoneFocused(true)}
-              onBlur={() => setPhoneFocused(false)}
-              style={styles.phoneInput}
-            />
-            {phoneChanged ? <Tag>Needs code</Tag> : <Tag icon={Check}>Verified</Tag>}
-          </View>
-        </FieldWrapper>
+        <PhoneField
+          label="Mobile number (WhatsApp)"
+          value={form.phone}
+          onChange={set('phone')}
+          error={errors.phone}
+          helper="Changing your number needs a new WhatsApp code."
+          trailing={phoneChanged ? <Tag>Needs code</Tag> : <Tag icon={Check}>Verified</Tag>}
+        />
 
         <Field
           label="Email (optional)"
@@ -293,7 +278,6 @@ const styles = StyleSheet.create({
   },
   removePhoto: { marginTop: 8, alignSelf: 'center' },
   form: { marginTop: 20, gap: 20 },
-  phoneInput: { flex: 1, height: '100%', paddingVertical: 0, fontSize: 16, fontFamily: FONT_FAMILY[500], color: colors.ink },
   address: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,4 +1,5 @@
 /** Formatting helpers (pure — shared with the future React Native app). */
+import { formatInternationalPhone, isInternationalPhone } from './phone.js';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -16,9 +17,10 @@ export function formatPhoneLocal(digits = '') {
   return `${d.slice(0, 2)} ${d.slice(2, 5)} ${d.slice(5)}`;
 }
 
-/** "+966 50 123 4821" */
-export function formatPhone(digits = '', code = '+966') {
-  return `${code} ${formatPhoneLocal(digits)}`;
+/** "+966 50 123 4821" for a Saudi number; "+91 79057 93532" for a number of another country (stored as "+…"). */
+export function formatPhone(value = '', code = '+966') {
+  if (isInternationalPhone(value)) return formatInternationalPhone(value) || String(value);
+  return `${code} ${formatPhoneLocal(value)}`;
 }
 
 export function onlyDigits(value = '') {

@@ -1,6 +1,7 @@
 /** Field validators. Each returns an error message string, or '' when valid. */
 
 import { onlyDigits } from './format.js';
+import { internationalPhoneProblem, isInternationalPhone } from './phone.js';
 
 export function validateName(value) {
   const v = (value || '').trim();
@@ -10,8 +11,12 @@ export function validateName(value) {
   return '';
 }
 
-/** Saudi mobile: 9 digits starting with 5 (e.g. 50 123 4821). */
+/**
+ * Mobile number in the API form (see domain/phone.js): a Saudi number is 9 digits starting with 5 (e.g. 50 123 4821);
+ * a number of another country is "+" and the full number, checked with that country's mobile rules.
+ */
 export function validateMobile(value) {
+  if (isInternationalPhone(value)) return internationalPhoneProblem(value);
   const d = onlyDigits(value);
   if (!d) return 'Enter your mobile number';
   if (d.length !== 9 || d[0] !== '5') return 'Enter a valid Saudi mobile number, e.g. 50 123 4821';

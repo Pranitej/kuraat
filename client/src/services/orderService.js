@@ -1,5 +1,5 @@
 /** Orders on the server (server/README.md → Orders): placed in RSOF, tracked from RSOF. */
-import { onlyDigits } from '@/domain';
+import { onlyDigits, toWirePhone } from '@/domain';
 import { apiRequest } from './api.js';
 
 const path = (id) => `/orders/${encodeURIComponent(id)}`;
@@ -20,7 +20,7 @@ export const placeOrder = ({ fulfilment = 'delivery', addressId, deliveryPhone, 
     body: {
       fulfilment,
       ...(fulfilment === 'pickup' ? {} : { addressId }),
-      deliveryPhone: onlyDigits(deliveryPhone),
+      deliveryPhone: toWirePhone(deliveryPhone),
       payment,
       idempotencyKey,
     },

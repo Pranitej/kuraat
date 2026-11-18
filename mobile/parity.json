@@ -41,6 +41,9 @@
     "hooks/useDeliveryQuote.js",
     "services/productImage.js",
     "services/productImage.test.js",
-    "hooks/useProductImage.js"
+    "hooks/useProductImage.js",
+    "domain/phone.js",
+    "domain/phone.test.js",
+    "domain/countries.js"
   ]
 }

@@ -5,7 +5,7 @@
  * The pending WhatsApp verification is kept in session storage so "Edit number", the OTP screen and
  * the set-password screen survive a refresh; the server holds the code itself.
  */
-import { locateAddress, onlyDigits, postcodeFor } from '@/domain';
+import { locateAddress, onlyDigits, postcodeFor, toWirePhone } from '@/domain';
 import { session } from '../lib/storage.js';
 import { ApiError, apiRequest, clearTokens, getTokens, setTokens } from './api.js';
 
@@ -85,7 +85,7 @@ function remember(view, extra) {
  * @param {object} [form] the sign-up form (kept locally whole, sent without UI-only fields)
  */
 export async function requestOtp(phone, purpose, form = null) {
-  const body = { phone: onlyDigits(phone), purpose };
+  const body = { phone: toWirePhone(phone), purpose };
   if (purpose === 'signup') body.payload = { name: form.name, gender: form.gender, address: signupAddress(form.address) };
   const view = await apiRequest('/auth/otp/request', { method: 'POST', body });
   return remember(view, { payload: form });
@@ -126,7 +126,7 @@ export async function verifyOtp(code) {
 /* ---------------- Passwords ---------------- */
 
 export async function signInWithPassword(phone, password) {
-  return signedIn(await apiRequest('/auth/signin', { method: 'POST', body: { phone: onlyDigits(phone), password } }));
+  return signedIn(await apiRequest('/auth/signin', { method: 'POST', body: { phone: toWirePhone(phone), password } }));
 }
 
 /** "Set a password instead" during sign-up (PDF screen 05): creates the account with a password. */
@@ -163,7 +163,7 @@ export async function updateProfile(changes) {
   const pending = getPendingOtp();
   const verifiedPhone = pending?.purpose === 'change-phone' && pending.verificationToken ? pending : null;
   if (body.phone !== undefined) {
-    body.phone = onlyDigits(body.phone);
+    body.phone = toWirePhone(body.phone);
     if (verifiedPhone && verifiedPhone.phone === body.phone) body.verificationToken = verifiedPhone.verificationToken;
   }
   const user = await apiRequest('/me', { method: 'PATCH', body });

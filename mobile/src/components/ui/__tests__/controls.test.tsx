@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Button, Field, PhoneField, Segmented, Stepper, Toggle } from '@/components/ui';
 
 describe('Button', () => {
@@ -57,6 +58,34 @@ describe('fields', () => {
     const input = screen.getByDisplayValue('50 123 4821');
     await fireEvent.changeText(input, '55 999 88 77 66');
     expect(onChange).toHaveBeenLastCalledWith('559998877');
+  });
+
+  test('PhoneField starts on Saudi Arabia (+966)', async () => {
+    await render(<PhoneField value="" onChange={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Country code: Saudi Arabia, plus 966. Change' })).toBeTruthy();
+    expect(screen.getByText('+966')).toBeTruthy();
+  });
+
+  test('PhoneField: pick another country from the list, then type: reports + and the full number', async () => {
+    const onChange = jest.fn();
+    const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } };
+    await render(
+      <SafeAreaProvider initialMetrics={metrics}>
+        <PhoneField value="" onChange={onChange} />
+      </SafeAreaProvider>,
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Country code: Saudi Arabia, plus 966. Change' }));
+    await fireEvent.changeText(screen.getByLabelText('Search country or code'), 'india');
+    await fireEvent.press(screen.getByRole('button', { name: 'India, plus 91' }));
+    expect(screen.getByRole('button', { name: 'Country code: India, plus 91. Change' })).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText('Mobile number'), '79057 93532');
+    expect(onChange).toHaveBeenLastCalledWith('+917905793532');
+  });
+
+  test('PhoneField shows an existing foreign number with its own country', async () => {
+    await render(<PhoneField value="+917905793532" onChange={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Country code: India, plus 91. Change' })).toBeTruthy();
+    expect(screen.getByDisplayValue('79057 93532')).toBeTruthy();
   });
 
   test('Field shows its error under the input', async () => {

@@ -1,5 +1,5 @@
 import { ChevronDown, Eye, EyeOff, Lock, type LucideIcon } from '@/components/icons';
-import { useState, type ReactNode, type Ref } from 'react';
+import { useEffect, useState, type ReactNode, type Ref } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -10,9 +10,12 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
-import { formatPhoneLocal, onlyDigits } from '@/domain';
+import { COUNTRIES, countryOf, formatNationalInput, phonePlaceholder, splitPhone, toApiPhone } from '@/domain';
 import { FONT_FAMILY, MAX_FONT_SCALE, colors, radii, shadows, sizes } from '@/theme/theme';
+import { BottomSheet } from './BottomSheet';
 import { Text } from './Text';
+
+type Country = { iso: string; name: string; dial: string };
 
 type WrapperProps = {
   label?: string;
@@ -161,40 +164,121 @@ export function PasswordField({ showIcon = true, ...props }: FieldProps & { show
   );
 }
 
-type PhoneProps = Omit<FieldProps, 'value' | 'onChangeText' | 'onChange'> & { value: string; onChange: (digits: string) => void };
+type PhoneProps = Omit<FieldProps, 'value' | 'onChangeText' | 'onChange'> & {
+  /** The API form (domain/phone.js): Saudi Arabia → the 9 digits, any other country → "+" and the full number. */
+  value: string;
+  onChange: (value: string) => void;
+  /** Sits at the end of the number box (e.g. a "Verified" tag). */
+  trailing?: ReactNode;
+};
 
-/** "+966 ⌄" box + 9-digit Saudi mobile shown as "50 123 4821" (PDF screens 03, 06, 13). */
-export function PhoneField({
-  label = 'Mobile number',
-  value,
-  onChange,
-  error,
-  helper,
-  style,
-  disabled,
-  placeholder = '50 123 4821',
-  ref,
-  ...rest
-}: PhoneProps) {
+/** Every country with its calling code, searchable, in a bottom sheet. */
+function CountrySheet({ open, onClose, selected, onPick }: { open: boolean; onClose: () => void; selected: string; onPick: (iso: string) => void }) {
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase().replace(/^\+/, '');
+  const list = q ? (COUNTRIES as Country[]).filter((c) => c.name.toLowerCase().includes(q) || c.dial.startsWith(q) || c.iso.toLowerCase() === q) : (COUNTRIES as Country[]);
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Country code">
+      <View style={styles.search}>
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search country or code"
+          placeholderTextColor={colors.placeholder}
+          accessibilityLabel="Search country or code"
+          autoCorrect={false}
+          maxFontSizeMultiplier={MAX_FONT_SCALE}
+          selectionColor={colors.maroon}
+          style={styles.searchInput}
+        />
+      </View>
+      {list.length ? (
+        list.map((c) => (
+          <Pressable
+            key={c.iso}
+            onPress={() => {
+              onPick(c.iso);
+              setQuery('');
+              onClose();
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: c.iso === selected }}
+            accessibilityLabel={`${c.name}, plus ${c.dial}`}
+            style={styles.countryRow}
+          >
+            <Text weight={c.iso === selected ? 700 : 500} style={styles.countryName} numberOfLines={1}>
+              {c.name}
+            </Text>
+            <Text weight={c.iso === selected ? 700 : 400} color={c.iso === selected ? 'maroon' : 'muted'}>
+              +{c.dial}
+            </Text>
+          </Pressable>
+        ))
+      ) : (
+        <Text color="muted">No country matches “{query}”.</Text>
+      )}
+    </BottomSheet>
+  );
+}
+
+/**
+ * Country code picker (every country, Saudi Arabia selected by default) + the number (PDF screens 03, 06, 13).
+ * `value` / `onChange` use the API form, so forms and requests need no changes (same as the web).
+ */
+export function PhoneField({ label = 'Mobile number', value, onChange, error, helper, style, disabled, placeholder, trailing, ref, ...rest }: PhoneProps) {
   const [focused, setFocused] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const [iso, setIso] = useState(() => splitPhone(value).iso as string);
+  const [text, setText] = useState(() => {
+    const s = splitPhone(value);
+    return formatNationalInput(s.iso, s.national) as string;
+  });
+  // The value changed from outside (a form restored or cleared): follow it. Our own typing keeps value === toApiPhone(iso, text).
+  useEffect(() => {
+    if (value === toApiPhone(iso, text)) return;
+    const s = splitPhone(value, iso);
+    setIso(s.iso);
+    setText(formatNationalInput(s.iso, s.national));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const country = countryOf(iso) as Country;
+  const pickCountry = (next: string) => {
+    const reformatted = formatNationalInput(next, text) as string;
+    setIso(next);
+    setText(reformatted);
+    onChange(toApiPhone(next, reformatted));
+  };
+  const type = (raw: string) => {
+    const next = formatNationalInput(iso, raw) as string;
+    setText(next);
+    onChange(toApiPhone(iso, next));
+  };
+
   return (
     <FieldWrapper label={label} error={error} helper={helper} style={style}>
       <View style={styles.phoneRow}>
-        <View style={[inputShellStyle({ disabled }), styles.country]} accessibilityLabel="Country code Saudi Arabia, plus 966">
-          <Text variant="input">+966</Text>
+        <Pressable
+          onPress={() => setPicking(true)}
+          disabled={disabled}
+          accessibilityRole="button"
+          accessibilityLabel={`Country code: ${country.name}, plus ${country.dial}. Change`}
+          style={[inputShellStyle({ disabled }), styles.country]}
+        >
+          <Text variant="input">+{country.dial}</Text>
           <ChevronDown size={18} color={colors.ink} strokeWidth={1.8} />
-        </View>
+        </Pressable>
         <View style={[inputShellStyle({ focused, error: Boolean(error), disabled }), styles.flex]}>
           <TextInput
             ref={ref}
-            value={formatPhoneLocal(value)}
-            onChangeText={(text) => onChange(onlyDigits(text).slice(0, 9))}
-            keyboardType="number-pad"
+            value={text}
+            onChangeText={type}
+            keyboardType="phone-pad"
             textContentType="telephoneNumber"
             autoComplete="tel-national"
-            maxLength={11}
+            maxLength={iso === 'SA' ? 11 : 20}
             editable={!disabled}
-            placeholder={placeholder}
+            placeholder={placeholder || (phonePlaceholder(iso) as string)}
             placeholderTextColor={colors.placeholder}
             selectionColor={colors.maroon}
             cursorColor={colors.maroon}
@@ -206,8 +290,10 @@ export function PhoneField({
             style={styles.input}
             {...rest}
           />
+          {trailing}
         </View>
       </View>
+      {picking ? <CountrySheet open onClose={() => setPicking(false)} selected={iso} onPick={pickCountry} /> : null}
     </FieldWrapper>
   );
 }
@@ -233,6 +319,10 @@ const styles = StyleSheet.create({
   input: { flex: 1, height: '100%', paddingVertical: 0, fontSize: 16, fontFamily: FONT_FAMILY[500], color: colors.ink },
   eye: { width: 36, height: 36, marginRight: -4, alignItems: 'center', justifyContent: 'center', borderRadius: 18 },
   phoneRow: { flexDirection: 'row', gap: 12 },
-  country: { width: 90, paddingHorizontal: 14, justifyContent: 'space-between', gap: 4 },
+  country: { width: 100, paddingHorizontal: 14, justifyContent: 'space-between', gap: 4 },
+  search: { height: 48, justifyContent: 'center', paddingHorizontal: 16, marginBottom: 8, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface },
+  searchInput: { height: '100%', paddingVertical: 0, fontSize: 16, fontFamily: FONT_FAMILY[500], color: colors.ink },
+  countryRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottomWidth: 1, borderBottomColor: colors.divider },
+  countryName: { flex: 1 },
   flex: { flex: 1 },
 });

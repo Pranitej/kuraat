@@ -134,16 +134,30 @@ creation times out is **never re-sent**; its payment is marked `needs_review` an
 
 1. RSOF sets up the kuraat tenant: hub branches (`branchType = 'hub'`, with latitude/longitude), products with images
    and custom fields, and a service user that is not tied to a branch.
-2. In `.env`: `ROF_BASE_URL=https://rofuat.rsof.com.sa`, `ROF_EMAIL=…`, `ROF_PASSWORD=…`
-   (and `ROF_INVENTORY_CHECK=true` if `Inventory.Read` is granted).
+2. Either put these in `.env` (`ROF_BASE_URL=https://rofuat.rsof.com.sa`, `ROF_EMAIL=…`, `ROF_PASSWORD=…`, and
+   `ROF_INVENTORY_CHECK=true` if `Inventory.Read` is granted), **or** copy `.env.uat.example` to `.env.uat` (git-ignored),
+   fill in the login and use `npm run dev:uat` / `npm run rof:check:uat` — your `.env` and the fake RSOF stay untouched.
 3. `npm run rof:check` — every line should be `OK`. A `MISMATCH` names the field; fix it in `src/rof/adapter.js` or
    `src/rof/fields.js` (e.g. if RSOF named the weight field `weight` instead of `weight_g`).
-4. Optional, after agreeing with RSOF: `npm run rof:check -- --write` creates one test order, sends it a pin, reports
-   whether RSOF auto-assigned it, reads it and cancels it.
+4. Optional, after agreeing with RSOF: `npm run rof:check -- --write` creates **two** test orders (one delivery, one
+   pickup), sends each a pin, reports whether RSOF auto-assigned them, reads them and cancels them. RSOF does not check
+   stock when an order is created, so they are created even with no stock.
 5. Place one real order from the app and ask branch staff to move it through the statuses.
 
-Assumptions to confirm on UAT (not shown in the guide): the inventory reply shape
-`data: [{ branchId, quantity }]`, and the wording of resend-code refusals.
+**Verified on the real UAT (18 Nov 2026, phase 4):** login and the token; categories, products (list and detail), photos
+(`/uploads/...` load), branches and a non-hub branch lookup; the inventory reply
+`data: { productId, productName, baseUnitName, branches: [{ branchId, branchName, onHand, reserved, available, incoming }] }`;
+the create call with our delivery **and pickup** payloads (`fulfillmentType` is validated strictly: `"Delivery"` and
+`"Pickup"` work, `"pickup"` and `"Bogus"` are refused with "Validation Failed"; a pickup order is stored as
+`"Pickup"`, a delivery order as `null`); `PUT /orders/{id}/location/shared` (Created → SharedLocationManually); cancel;
+the timeline (names) and the numeric statuses in the embedded detail timeline. RSOF does **not** validate `source`,
+`orderType`, the phone or an empty name, and does **not** check stock at create — our own validation and the cart's
+stock check (`availableToSell`) are what protect it.
+
+**Still to confirm on UAT (needs stock at a hub):** that RSOF auto-assigns the nearest branch with stock after the pin
+(none was assigned in the tests because every product has 0 stock), the resend-code refusal wording, and how counter
+staff find a pickup order (`20418`, `KR-20418` or the phone — the dashboard's pickup counter takes "Order number / phone /
+approval number").
 
 ## Project layout
 

@@ -36,12 +36,16 @@ describe('rof:check (contract check against the guide)', () => {
     expect(rof.store.data.orders).toHaveLength(0);
   });
 
-  test('--write creates, assigns, reads and cancels one order', async () => {
+  test('--write creates, pins, reads and cancels a delivery order AND a pickup order', async () => {
     const report = await runRofCheck({ ...settings(), write: true, log });
     expect(report.ok).toBe(true);
-    expect(rof.store.data.orders).toHaveLength(1);
-    expect(rof.store.data.orders[0].status).toBe('Canceled');
-    expect(lines.some((l) => /^OK +order cancel/.test(l))).toBe(true);
+    expect(rof.store.data.orders).toHaveLength(2);
+    expect(rof.store.data.orders.map((o) => [o.fulfillmentType, o.status])).toEqual([
+      ['Delivery', 'Canceled'],
+      ['Pickup', 'Canceled'],
+    ]);
+    expect(lines.filter((l) => /^OK +(pickup )?order cancel/.test(l))).toHaveLength(2);
+    expect(lines.some((l) => /pickup order create/.test(l))).toBe(true);
   });
 
   test('a renamed field is reported as a mismatch', async () => {

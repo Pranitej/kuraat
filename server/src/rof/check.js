@@ -104,37 +104,45 @@ export async function runRofCheck({ baseUrl, email, password, timeoutMs = 10000,
   }
 
   if (write && firstActive && hubs.length) {
-    const created = await call('order create', () =>
-      rof.createOrder({
-        customerName: 'kuraat contract check',
-        phoneNumber: '966500000000',
-        address: 'Contract check — not a real delivery',
-        city: hubs[0].city,
-        remarks: 'Automated kuraat contract check — safe to ignore; cancelled immediately',
-        source: 'MobileApp',
-        fulfillmentType: 'Delivery',
-        orderType: 0,
-        country: 'Saudi Arabia',
-        items: [{ productId: firstActive.id, quantity: 1 }],
-      }),
-    );
-    if (created && check('order create', createdOrderSchema, created, `#${created.orderNumber}`)) {
+    // One delivery order and one pickup order (design 2026-11-18 §5.3): RSOF validates fulfillmentType
+    // strictly ("Delivery" / "Pickup"), and a pickup order has no street address. RSOF does not check
+    // stock when an order is created — only when a branch takes it — so these are created even with no
+    // stock, and cancelled at once.
+    for (const kind of ['Delivery', 'Pickup']) {
+      const pickup = kind === 'Pickup';
+      const created = await call(`${pickup ? 'pickup ' : ''}order create`, () =>
+        rof.createOrder({
+          customerName: 'kuraat contract check',
+          phoneNumber: '966500000000',
+          address: pickup ? 'Branch pickup' : 'Contract check — not a real delivery',
+          city: hubs[0].city,
+          remarks: 'Automated kuraat contract check — safe to ignore; cancelled immediately',
+          source: 'MobileApp',
+          fulfillmentType: kind,
+          orderType: 0,
+          country: 'Saudi Arabia',
+          items: [{ productId: firstActive.id, quantity: 1 }],
+        }),
+      );
+      if (!(created && check(`${pickup ? 'pickup ' : ''}order create`, createdOrderSchema, created, `#${created.orderNumber}`))) continue;
+      const tag = pickup ? 'pickup ' : '';
       // We never assign: ROF's auto-assignment picks the branch from the pin (design 2026-11-18 §5.2).
       const pin = hubs[0].location;
-      const shared = await call('order pin', () => rof.shareOrderLocation(created.id, pin));
-      if (shared !== undefined) line('OK', 'order pin', `${pin.lat}, ${pin.lng}`);
-      const afterPin = await call('order detail after pin', () => rof.getOrder(created.id));
-      if (afterPin?.assignedToBranch) line('OK', 'order auto-assign', afterPin.assignBranchName || afterPin.assignedToBranch);
-      else if (afterPin) line('WARN', 'order auto-assign', `not assigned yet (status ${afterPin.status}) — auto-assignment may be off; staff would assign by hand`);
-      const order = await call('order detail', () => rof.getOrder(created.id));
-      if (order) check('order detail', orderDetailSchema, order, `status ${order.status}`);
-      const timeline = await call('order timeline', () => rof.getOrderTimeline(created.id));
-      if (timeline && check('order timeline', timelineSchema, timeline, `${timeline.length} rows`)) {
-        const unknown = timeline.map((r) => r.statusTo).filter((s) => stepOf(s) === null);
-        if (unknown.length) line('WARN', 'order timeline', `unknown statuses: ${[...new Set(unknown)].join(', ')}`);
+      const shared = await call(`${tag}order pin`, () => rof.shareOrderLocation(created.id, pin));
+      if (shared !== undefined) line('OK', `${tag}order pin`, `${pin.lat}, ${pin.lng}`);
+      const afterPin = await call(`${tag}order detail after pin`, () => rof.getOrder(created.id));
+      if (afterPin?.assignedToBranch) line('OK', `${tag}order auto-assign`, afterPin.assignBranchName || afterPin.assignedToBranch);
+      else if (afterPin) line('WARN', `${tag}order auto-assign`, `not assigned yet (status ${afterPin.status}) — no stock at any branch, or auto-assignment is off; staff would assign by hand`);
+      if (pickup && afterPin && afterPin.fulfillmentType !== 'Pickup') line('WARN', 'pickup order', `RSOF stored fulfillmentType ${JSON.stringify(afterPin.fulfillmentType)}, not "Pickup"`);
+      const order = await call(`${tag}order detail`, () => rof.getOrder(created.id));
+      if (order) check(`${tag}order detail`, orderDetailSchema, order, `status ${order.status}`);
+      const timeline = await call(`${tag}order timeline`, () => rof.getOrderTimeline(created.id));
+      if (timeline && check(`${tag}order timeline`, timelineSchema, timeline, `${timeline.length} rows`)) {
+        const unknown = timeline.map((r) => r.statusTo).filter((x) => stepOf(x) === null);
+        if (unknown.length) line('WARN', `${tag}order timeline`, `unknown statuses: ${[...new Set(unknown)].join(', ')}`);
       }
-      const cancelled = await call('order cancel', () => rof.cancelOrder(created.id));
-      if (cancelled !== undefined) line('OK', 'order cancel');
+      const cancelled = await call(`${tag}order cancel`, () => rof.cancelOrder(created.id));
+      if (cancelled !== undefined) line('OK', `${tag}order cancel`);
     }
   }
 

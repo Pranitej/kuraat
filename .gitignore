@@ -9,6 +9,7 @@ coverage
 .env
 .env.*
 !.env.example
+!.env.uat.example
 
 # Source PDFs stay local (design + RSOF's internal API guide); see DESIGN_SYSTEM.md
 /*.pdf

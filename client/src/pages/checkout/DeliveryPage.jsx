@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Store } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import BottomBar from '@/components/layout/BottomBar.jsx';
-import { Button, PhoneField } from '@/components/ui';
+import { Button, InfoBanner, PhoneField, SegmentedControl, Skeleton } from '@/components/ui';
 import { CheckoutLayout, CheckoutSteps, OrderSummary } from '@/components/checkout/CheckoutParts.jsx';
 import DeliveryFromCard from '@/components/shop/DeliveryFromCard.jsx';
 import { AddAddressTile, AddressOption } from '@/components/shop/DeliverTo.jsx';
@@ -12,30 +12,34 @@ import { useAuth } from '@/context/AuthContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { useCheckout } from '@/context/CheckoutContext.jsx';
 import { useDeliveryQuote } from '@/hooks/useDeliveryQuote.js';
-import { deliveryAddress, validateMobile } from '@/domain';
+import { PICKUP, deliveryAddress, validateMobile } from '@/domain';
+import { offeredMethod } from '@/services/orderService.js';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
 
-/** 13 · Delivery details */
+/** 13 · Delivery details (and, for branch pickup, Pickup details) */
 export default function DeliveryPage() {
-  useDocumentTitle('Delivery details');
+  const checkout = useCheckout();
+  const pickup = checkout.fulfilment === 'pickup';
+  useDocumentTitle(pickup ? 'Pickup details' : 'Delivery details');
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
   const { user } = useAuth();
   const { items, totals, status: cartStatus } = useCart();
   const { addresses } = useAddresses();
-  const checkout = useCheckout();
   const selected = deliveryAddress(addresses, checkout.addressId);
   const [phone, setPhone] = useState(checkout.deliveryPhone || selected?.phone || user?.phone || '');
   const [phoneTouched, setPhoneTouched] = useState(Boolean(checkout.deliveryPhone));
   const [errors, setErrors] = useState({});
   const productIds = useMemo(() => items.map((i) => i.productId), [items]);
-  const { quote: delivery, error: quoteError } = useDeliveryQuote({ addressId: selected?.id, productIds });
+  const { quote: delivery, error: quoteError } = useDeliveryQuote({ addressId: pickup ? null : selected?.id, productIds, fulfilment: pickup ? 'pickup' : 'delivery' });
 
   // Follow the selected address's phone until the user edits the field
   useEffect(() => {
-    if (!phoneTouched && selected?.phone) setPhone(selected.phone);
-  }, [selected, phoneTouched]);
+    if (phoneTouched) return;
+    const follow = pickup ? user?.phone : selected?.phone;
+    if (follow) setPhone(follow);
+  }, [selected, phoneTouched, pickup, user]);
 
   // After a reload the cart is still on its way from the server: wait instead of bouncing to the cart.
   if (!items.length && cartStatus === 'loading') return <div className="min-h-[60dvh]" aria-busy="true" />;
@@ -46,13 +50,26 @@ export default function DeliveryPage() {
     setErrors((e) => ({ ...e, address: '' }));
   };
 
+  // Delivery or pickup: the payment methods differ, so a remembered one that the other way does not
+  // offer falls back to card.
+  const chooseFulfilment = (value) => {
+    setErrors({});
+    checkout.patch({ fulfilment: value, paymentMethod: offeredMethod(checkout.paymentMethod, value) });
+  };
+
   const next = () => {
-    const errs = { address: selected ? '' : 'Choose a delivery address', phone: validateMobile(phone) };
+    const errs = { address: pickup || selected ? '' : 'Choose a delivery address', phone: validateMobile(phone) };
     setErrors(errs);
     if (errs.address || errs.phone) return;
-    checkout.patch({ addressId: selected.id, deliveryPhone: phone });
+    checkout.patch(pickup ? { deliveryPhone: phone } : { addressId: selected.id, deliveryPhone: phone });
     navigate(ROUTES.payment);
   };
+
+  const summary = pickup ? (
+    delivery?.totals ? <OrderSummary totals={delivery.totals} fulfilment="pickup" title="Order summary" /> : <Skeleton className="h-[180px] rounded-xl" />
+  ) : (
+    <OrderSummary totals={totals} title="Order summary" />
+  );
 
   const cta = (
     <Button block rightIcon={ChevronRight} onClick={next}>
@@ -62,16 +79,52 @@ export default function DeliveryPage() {
 
   return (
     <CheckoutLayout
-      header={<ScreenHeader title="Delivery details" backFallback={ROUTES.cart} />}
+      header={<ScreenHeader title={pickup ? 'Pickup details' : 'Delivery details'} backFallback={ROUTES.cart} />}
       steps={<CheckoutSteps current={1} />}
       aside={
         <div className="flex flex-col gap-4">
-          <OrderSummary totals={totals} title="Order summary" />
+          {summary}
           {cta}
         </div>
       }
     >
-      <div className="flex items-center justify-between">
+      <SegmentedControl
+        label={PICKUP.switchLabel}
+        options={[
+          { value: 'delivery', label: PICKUP.delivery },
+          { value: 'pickup', label: PICKUP.pickup },
+        ]}
+        value={pickup ? 'pickup' : 'delivery'}
+        onChange={chooseFulfilment}
+      />
+
+      {pickup ? (
+        <>
+          <InfoBanner icon={Store} className="mt-5">
+            {PICKUP.note}
+          </InfoBanner>
+          <PhoneField
+            className="mt-6"
+            label={PICKUP.phoneLabel}
+            value={phone}
+            onChange={(v) => {
+              setPhone(v);
+              setPhoneTouched(true);
+              setErrors((e) => ({ ...e, phone: '' }));
+            }}
+            error={errors.phone}
+            helper={PICKUP.phoneHelper}
+          />
+          {delivery?.branch && <DeliveryFromCard className="mt-5" icon="store" label={PICKUP.likely} branch={delivery.branch} distanceKm={delivery.distanceKm} showDistance />}
+          {quoteError && (
+            <p role="alert" className="mt-5 text-label text-hotpink">
+              {quoteError.message}
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+      <div className="mt-6 flex items-center justify-between">
         <h2 className="text-h3 text-ink">Deliver to</h2>
         <Link to={ROUTES.addresses} className="text-[15px] font-bold text-maroon hover:underline">
           Manage
@@ -107,6 +160,8 @@ export default function DeliveryPage() {
         <p role="alert" className="mt-5 text-label text-hotpink">
           {quoteError.message}
         </p>
+      )}
+        </>
       )}
 
       {!isDesktop && <BottomBar>{cta}</BottomBar>}

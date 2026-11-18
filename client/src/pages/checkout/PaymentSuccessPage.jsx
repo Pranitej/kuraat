@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { Button, Card, CirclePattern, ProgressBar, WhatsAppIcon } from '@/components/ui';
 import { useOrder } from '@/context/OrderContext.jsx';
-import { PENDING_BRANCH, formatDateTime, formatSAR, paymentLabel } from '@/domain';
+import { PENDING_BRANCH, PICKUP, formatDateTime, formatSAR, paymentLabel } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 
@@ -12,8 +12,9 @@ export default function PaymentSuccessPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { order, loading } = useOrder(orderId);
-  const cod = order?.payment?.method === 'cod';
-  useDocumentTitle(cod ? 'Order placed' : 'Payment successful');
+  // Cash on delivery and pay at the branch: placed now, paid later.
+  const later = order?.payment?.method === 'cod' || order?.payment?.method === 'branch';
+  useDocumentTitle(later ? 'Order placed' : 'Payment successful');
   const [progress, setProgress] = useState(8);
   const confirmed = progress >= 100;
 
@@ -32,11 +33,11 @@ export default function PaymentSuccessPage() {
   if (!order && loading) return <div className="min-h-[calc(100dvh-76px)]" aria-busy="true" />;
   if (!order) return <Navigate to={ROUTES.orders} replace />;
 
-  const rows = cod
+  const rows = later
     ? [
         ['Order number', `#${order.number}`],
         ['Date', formatDateTime(order.createdAt)],
-        ['Method', 'Cash on delivery'],
+        ['Method', paymentLabel(order.payment)],
         ['Amount due', formatSAR(order.total)],
       ]
     : [
@@ -55,9 +56,13 @@ export default function PaymentSuccessPage() {
             <Check size={56} strokeWidth={2.6} className="animate-check-draw [stroke-dasharray:48]" />
           </span>
         </div>
-        <h1 className="mt-8 text-center text-title text-ink">{cod ? 'Order placed' : 'Payment successful'}</h1>
+        <h1 className="mt-8 text-center text-title text-ink">{later ? 'Order placed' : 'Payment successful'}</h1>
         <p className="mt-2 text-center text-body text-muted">
-          {cod ? `Pay ${formatSAR(order.total)} in cash when your order arrives` : `${formatSAR(order.total)} paid with ${paymentLabel(order.payment)}`}
+          {order.payment.method === 'branch'
+            ? PICKUP.paidLater(formatSAR(order.total))
+            : later
+              ? `Pay ${formatSAR(order.total)} in cash when your order arrives`
+              : `${formatSAR(order.total)} paid with ${paymentLabel(order.payment)}`}
         </p>
 
         <Card className="mt-6 px-4 py-2">
@@ -73,7 +78,7 @@ export default function PaymentSuccessPage() {
 
         <p className="mt-8 flex items-center justify-center gap-2.5 text-body text-copy">
           <WhatsAppIcon size={20} className="text-muted" />
-          {cod ? 'Your order details have been sent to your WhatsApp' : 'A receipt has been sent to your WhatsApp'}
+          {later ? 'Your order details have been sent to your WhatsApp' : 'A receipt has been sent to your WhatsApp'}
         </p>
 
         <div className="mt-auto pt-10">

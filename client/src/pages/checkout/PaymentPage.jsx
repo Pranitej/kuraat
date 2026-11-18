@@ -1,34 +1,37 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { Banknote, CreditCard, Lock, TriangleAlert } from 'lucide-react';
+import { Banknote, CreditCard, Lock, Store, TriangleAlert } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import BottomBar from '@/components/layout/BottomBar.jsx';
-import { Button, RadioDot, TextField, Toggle } from '@/components/ui';
+import { Button, RadioDot, Skeleton, TextField, Toggle } from '@/components/ui';
 import { CheckoutLayout, CheckoutSteps, OrderSummary } from '@/components/checkout/CheckoutParts.jsx';
 import DeliveryFromCard from '@/components/shop/DeliveryFromCard.jsx';
 import { useAddresses } from '@/context/AddressContext.jsx';
+import { useAuth } from '@/context/AuthContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { useCheckout } from '@/context/CheckoutContext.jsx';
 import { useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
 import { useDeliveryQuote } from '@/hooks/useDeliveryQuote.js';
-import { PAYMENT_METHODS, toPaymentBody } from '@/services/orderService.js';
-import { formatCardNumber, formatExpiry, formatSAR, onlyDigits, validateCardNumber, validateCvv, validateExpiry } from '@/domain';
+import { offeredMethod, toPaymentBody } from '@/services/orderService.js';
+import { PICKUP, formatCardNumber, formatExpiry, formatSAR, onlyDigits, validateCardNumber, validateCvv, validateExpiry } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
 import { cn } from '@/lib/cn.js';
 
-// Saudi Arabia: card (incl. Mada) and cash on delivery. UPI (shown in the PDF) was removed — it is India-only.
-const METHODS = [
+// Saudi Arabia: card (incl. Mada) and cash on delivery; branch pickup pays now (card) or at the branch.
+// UPI (shown in the PDF) was removed — it is India-only.
+const DELIVERY_METHODS = [
   { id: 'card', title: 'Credit / debit card', subtitle: 'Visa, Mastercard, Mada', icon: CreditCard },
   { id: 'cod', title: 'Cash on delivery', subtitle: 'Pay when your order arrives', icon: Banknote },
+];
+const PICKUP_METHODS = [
+  { id: 'card', title: PICKUP.payNow, subtitle: PICKUP.payNowSub, icon: CreditCard },
+  { id: 'branch', title: PICKUP.payAtBranch, subtitle: PICKUP.payAtBranchSub, icon: Store },
 ];
 
 /** Server field names → this form's error slots. */
 const FIELD_ERRORS = { 'card.number': 'number', 'card.expiry': 'expiry', 'card.cvv': 'cvv' };
-
-/** The method remembered in the checkout draft, if it is still offered (a draft may say "upi"). */
-const offered = (method) => (PAYMENT_METHODS.includes(method) ? method : 'card');
 
 /** 14 · Payment */
 export default function PaymentPage() {
@@ -37,11 +40,14 @@ export default function PaymentPage() {
   const toast = useToast();
   const isDesktop = useIsDesktop();
   const cart = useCart();
+  const { user } = useAuth();
   const { addresses, defaultAddress, loaded: addressesLoaded } = useAddresses();
   const { placeOrder } = useOrders();
   const checkout = useCheckout();
-  const address = addresses.find((a) => a.id === checkout.addressId) || defaultAddress;
-  const { quote: delivery } = useDeliveryQuote({ addressId: address?.id, productIds: cart.items.map((i) => i.productId) });
+  const pickup = checkout.fulfilment === 'pickup';
+  const METHODS = pickup ? PICKUP_METHODS : DELIVERY_METHODS;
+  const address = pickup ? null : addresses.find((a) => a.id === checkout.addressId) || defaultAddress;
+  const { quote: delivery } = useDeliveryQuote({ addressId: address?.id, productIds: cart.items.map((i) => i.productId), fulfilment: pickup ? 'pickup' : 'delivery' });
   const { ensureIdempotencyKey } = checkout;
 
   // One key per checkout, made when the payment screen opens and reused on every retry.
@@ -49,7 +55,8 @@ export default function PaymentPage() {
     ensureIdempotencyKey();
   }, [ensureIdempotencyKey]);
 
-  const [method, setMethod] = useState(() => offered(checkout.paymentMethod));
+  // The remembered method if this way of getting the order still offers it (a draft may even say "upi").
+  const [method, setMethod] = useState(() => offeredMethod(checkout.paymentMethod, checkout.fulfilment));
   const [card, setCard] = useState({ number: '', expiry: '', cvv: '' });
   const [save, setSave] = useState(true);
   const [errors, setErrors] = useState({});
@@ -58,9 +65,10 @@ export default function PaymentPage() {
   // After a reload the cart and addresses are still on their way from the server: wait for them.
   if (!processing && ((!cart.items.length && cart.status === 'loading') || !addressesLoaded)) return <div className="min-h-[60dvh]" aria-busy="true" />;
   if (!cart.items.length && !processing) return <Navigate to={ROUTES.cart} replace />;
-  if (!address && !processing) return <Navigate to={ROUTES.delivery} replace />;
+  if (!pickup && !address && !processing) return <Navigate to={ROUTES.delivery} replace />;
 
-  const { totals } = cart;
+  // Pickup has no delivery fee: its totals come priced from the server with the quote.
+  const totals = pickup ? delivery?.totals : cart.totals;
   const choose = (id) => {
     setMethod(id);
     setErrors({});
@@ -68,6 +76,7 @@ export default function PaymentPage() {
   };
 
   const validate = () => {
+    if (!totals) return false;
     let errs = {};
     if (method === 'card') errs = { number: validateCardNumber(card.number), expiry: validateExpiry(card.expiry), cvv: validateCvv(card.cvv) };
     setErrors(errs);
@@ -81,13 +90,14 @@ export default function PaymentPage() {
     try {
       await cart.flush(); // the server places the cart it has
       const order = await placeOrder({
-        addressId: address.id,
-        deliveryPhone: checkout.deliveryPhone || address.phone,
+        fulfilment: pickup ? 'pickup' : 'delivery',
+        addressId: address?.id,
+        deliveryPhone: checkout.deliveryPhone || address?.phone || user?.phone,
         payment: toPaymentBody(method, { card, saveCard: save }),
         idempotencyKey: ensureIdempotencyKey(),
       });
       cart.reload(); // the server emptied it
-      checkout.reset({ lastOrderId: order.id, paymentMethod: method });
+      checkout.reset({ lastOrderId: order.id, paymentMethod: method, fulfilment: pickup ? 'pickup' : 'delivery' });
       navigate(ROUTES.paymentSuccess(order.id), { replace: true });
     } catch (err) {
       if (err.code === 'idempotency_conflict') checkout.renewIdempotencyKey();
@@ -97,9 +107,10 @@ export default function PaymentPage() {
     }
   };
 
-  const payLabel = method === 'cod' ? `Place order · ${formatSAR(totals.total)}` : `Pay ${formatSAR(totals.total)}`;
+  const later = method === 'cod' || method === 'branch';
+  const payLabel = !totals ? 'Pay' : later ? `Place order · ${formatSAR(totals.total)}` : `Pay ${formatSAR(totals.total)}`;
   const cta = (
-    <Button block leftIcon={method === 'cod' ? undefined : Lock} loading={processing} onClick={pay}>
+    <Button block leftIcon={later ? undefined : Lock} loading={processing} disabled={!totals} onClick={pay}>
       {payLabel}
     </Button>
   );
@@ -110,8 +121,8 @@ export default function PaymentPage() {
       steps={<CheckoutSteps current={2} />}
       aside={
         <div className="flex flex-col gap-4">
-          <OrderSummary totals={totals} title="Order summary" />
-          {delivery && <DeliveryFromCard icon="store" branch={delivery.branch} distanceKm={delivery.distanceKm} showDistance />}
+          {totals ? <OrderSummary totals={totals} fulfilment={pickup ? 'pickup' : 'delivery'} title="Order summary" /> : <Skeleton className="h-[180px] rounded-xl" />}
+          {delivery?.branch && <DeliveryFromCard icon="store" label={pickup ? PICKUP.likely : undefined} branch={delivery.branch} distanceKm={delivery.distanceKm} showDistance />}
           {cta}
         </div>
       }
@@ -195,11 +206,13 @@ export default function PaymentPage() {
                 </fieldset>
               )}
 
-              {checked && m.id === 'cod' && (
+              {checked && m.id === 'cod' && totals && (
                 <p className="animate-fade-in px-4 pb-4 text-small text-muted">
                   Please keep {formatSAR(totals.total)} ready. The courier carries change and a card machine.
                 </p>
               )}
+
+              {checked && m.id === 'branch' && totals && <p className="animate-fade-in px-4 pb-4 text-small text-muted">{PICKUP.payAtBranchHint(formatSAR(totals.total))}</p>}
             </div>
           );
         })}
@@ -207,12 +220,14 @@ export default function PaymentPage() {
 
       {!isDesktop && (
         <BottomBar>
-          <div className="mb-3 flex items-baseline justify-between px-1">
-            <span className="text-body text-muted">
-              Total · {totals.count} {totals.count === 1 ? 'item' : 'items'}
-            </span>
-            <span className="tabular text-[18px] font-bold text-ink">{formatSAR(totals.total)}</span>
-          </div>
+          {totals && (
+            <div className="mb-3 flex items-baseline justify-between px-1">
+              <span className="text-body text-muted">
+                Total · {totals.count} {totals.count === 1 ? 'item' : 'items'}
+              </span>
+              <span className="tabular text-[18px] font-bold text-ink">{formatSAR(totals.total)}</span>
+            </div>
+          )}
           {cta}
         </BottomBar>
       )}

@@ -107,22 +107,30 @@ export function FilterSheet({ open, onClose, categories = [], category, sort, on
   );
 }
 
-/** "Nearest branch to Al Rakah, Al Khobar · Kuraat · Al Khobar Corniche · 2.4 km" */
-export function NearestBranchStrip({ delivery, className }) {
-  if (!delivery) return null;
+/**
+ * "Nearest branch to Al Rakah, Al Khobar · Kuraat · Al Khobar Corniche · 2.4 km" — only when the address has a location.
+ * Without one no branch is "nearest" (nothing can be measured), so the same card just opens the branch list.
+ */
+export function NearestBranchStrip({ delivery, showAll = false, className }) {
+  if (!delivery && !showAll) return null;
+  const near = Boolean(delivery);
   return (
     <Link
-      to={ROUTES.branch(delivery.branch.id)}
+      to={near ? ROUTES.branch(delivery.branch.id) : ROUTES.branches}
       className={cn('flex min-h-16 items-center gap-3 rounded-lg bg-sand px-3.5 py-3 transition hover:bg-[#EFD5C7]', className)}
     >
       <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-maroon" aria-hidden>
         <Store size={20} strokeWidth={1.8} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-label font-normal text-muted">Nearest branch to {delivery.area}</span>
-        <span className="block truncate text-[15px] font-bold leading-5 text-ink">{delivery.branch.displayName}</span>
+        <span className="block truncate text-label font-normal text-muted">{near ? `Nearest branch to ${delivery.area}` : 'Find a branch'}</span>
+        <span className="block truncate text-[15px] font-bold leading-5 text-ink">{near ? delivery.branch.displayName : 'View all branches'}</span>
       </span>
-      <Tag tone="dark">{formatDistance(delivery.distanceKm)}</Tag>
+      {near ? (
+        delivery.distanceKm != null && <Tag tone="dark">{formatDistance(delivery.distanceKm)}</Tag>
+      ) : (
+        <ChevronRight size={20} strokeWidth={1.8} className="shrink-0 text-maroon" aria-hidden />
+      )}
     </Link>
   );
 }

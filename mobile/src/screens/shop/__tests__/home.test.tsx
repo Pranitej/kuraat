@@ -66,6 +66,37 @@ describe('07/08 · Home footer', () => {
   });
 });
 
+describe('07 · Home — the nearest branch strip needs a location', () => {
+  const branch = (id: string, name: string, lat: number, lng: number) => ({
+    id, name, displayName: name, address: '', city: 'Al Khobar', phone: '', type: 'hub', isHub: true, location: { lat, lng }, hours: { open: 10, close: 24 }, openNow: true,
+  });
+  const BRANCHES = [branch('b1', 'Kuraat · Dammam Central', 26.42, 50.1), branch('b2', 'Kuraat · Al Khobar Corniche', 26.29, 50.22)];
+  const address = (location: { lat: number; lng: number } | null) => ({
+    id: 'a1', label: 'Home', type: 'home', line: 'Building 7', district: 'Al Rakah', city: 'Al Khobar', postcode: '', landmark: '', contactName: 'Sara', location, isDefault: true,
+  });
+  const serverWith = (location: { lat: number; lng: number } | null) => (c: { path: string }) => {
+    if (c.path === '/branches') return { body: BRANCHES };
+    if (c.path === '/addresses') return { body: [address(location)] };
+    return undefined;
+  };
+
+  test('with an address that has a location: the nearest branch and its distance are shown', async () => {
+    await renderScreen(<HomeScreen />, { server: serverWith({ lat: 26.2874, lng: 50.2085 }) });
+    expect(await screen.findByText(/Nearest branch to/)).toBeTruthy();
+    expect(screen.getByText('Kuraat · Al Khobar Corniche')).toBeTruthy(); // the closer of the two, not the first in the list
+    // The strip's own label carries the distance (the branch cards below show distances too).
+    expect(screen.getByRole('button', { name: /^Nearest branch to .*Al Khobar Corniche, \d+\.\d km$/ })).toBeTruthy();
+  });
+
+  test('with an address that has no location (the customer did not share one): no branch is called nearest, no empty distance chip; the card opens the branch list', async () => {
+    await renderScreen(<HomeScreen />, { server: serverWith(null) });
+    expect(await screen.findByText('Truffle Box · Classic')).toBeTruthy();
+    expect(screen.queryByText(/Nearest branch to/)).toBeNull();
+    await fireEvent.press(await screen.findByRole('button', { name: 'View all branches' }));
+    expect(mockRouter.push).toHaveBeenCalledWith('/branches');
+  });
+});
+
 describe('07 · Home — no location prompt at login', () => {
   test('Home does not ask for the device location or send one: it is asked when adding an address or signing up', async () => {
     const { calls } = await renderScreen(<HomeScreen />);

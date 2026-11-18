@@ -47,7 +47,9 @@ export default function HomePage() {
   const activeCategory = showCategories ? category : 'all';
   const products = useMemo(() => filterProducts(catalog.products, { query, category: activeCategory, sort }), [catalog.products, query, activeCategory, sort]);
   const branches = useMemo(() => withDistances(allBranches, address?.location), [allBranches, address]);
-  const delivery = branches[0] && address ? { branch: branches[0], distanceKm: branches[0].distanceKm, area: areaLabel(address) } : null;
+  // "Nearest" is only known when the address has a location (the customer may not have shared one): without it the
+  // branches are not ordered by distance, so no branch is called the nearest and no distance is shown.
+  const delivery = address?.location && branches[0]?.distanceKm != null ? { branch: branches[0], distanceKm: branches[0].distanceKm, area: areaLabel(address) } : null;
   const loading = catalog.status === 'loading';
   const failed = catalog.status === 'error';
 
@@ -68,8 +70,9 @@ export default function HomePage() {
           />
         )}
 
-        <div className="mt-3.5 flex flex-col gap-4 lg:mt-5 lg:grid lg:grid-cols-[1fr_360px] lg:items-stretch lg:gap-6">
-          <NearestBranchStrip delivery={delivery} className="lg:order-2 lg:h-full lg:flex-col lg:items-start lg:justify-center lg:gap-4 lg:p-7" />
+        {/* Two columns (banner + branch card) while the card is there; the banner takes the whole width when it is not. */}
+        <div className={`mt-3.5 flex flex-col gap-4 lg:mt-5 lg:grid lg:items-stretch lg:gap-6 ${delivery || branches.length ? 'lg:grid-cols-[1fr_360px]' : 'lg:grid-cols-1'}`}>
+          <NearestBranchStrip delivery={delivery} showAll={branches.length > 0} className="lg:order-2 lg:h-full lg:flex-col lg:items-start lg:justify-center lg:gap-4 lg:p-7" />
           <PromoBanner
             className="lg:order-1"
             onShop={() => {

@@ -62,6 +62,8 @@ Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test
 | `ROF_INVENTORY_CHECK` | `false` | `true` only if the service user has `Inventory.Read`; checkout then skips a nearer branch that is out of stock, with one `GET /api/inventory/balances` call |
 | `ROF_TIMEOUT_MS` | `10000` | Per ROF call (20000 suits UAT) |
 | `OTP_MODE`, `OTP_TEST_CODE` | `test`, `123456` | `test`: no WhatsApp message; the code is printed in the server log |
+| `WHATSAPP_API_USER`, `WHATSAPP_API_PASSWORD`, `WHATSAPP_SENDER`, `WHATSAPP_TEMPLATE_NAME` | — | Needed only with `OTP_MODE=whatsapp`: a random 6-digit code is sent through RSOF's messaging API (`POST /messaging/auth/token`, then `POST /messaging/send_template_message` with the approved AUTHENTICATION template). The server refuses to start in that mode if any is missing. The real user/password stay in `.env`, never in git. While RSOF's WhatsApp number is in testing it can message only the numbers RSOF allowed; any other number fails with "We can't send WhatsApp codes right now" and nothing is stored |
+| `WHATSAPP_API_BASE_URL`, `WHATSAPP_TEMPLATE_LANGUAGE`, `WHATSAPP_TIMEOUT_MS` | `https://app.rofconsole.com/messaging`, `en`, `10000` | The messaging API address, the template language, and the timeout per call |
 | `ORDER_POLL_INTERVAL_MS` | `60000` | How often unfinished orders are re-read from ROF |
 | `PASSWORD_HASH_COST` | `12` | bcrypt cost |
 | `AUTH_RATE_LIMIT_PER_MINUTE` | `20` | Per IP, for `/auth/*` |

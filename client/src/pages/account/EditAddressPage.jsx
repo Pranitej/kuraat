@@ -9,7 +9,7 @@ import { useAddresses } from '@/context/AddressContext.jsx';
 import { useBranches } from '@/context/BranchContext.jsx';
 import { useCheckout } from '@/context/CheckoutContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { ADDRESS_LABELS, LOCATION_FAILED, deliveryCities, validateRequired } from '@/domain';
+import { ADDRESS_LABELS, LOCATION_FAILED, LOCATION_OUTSIDE, deliveryCities, isInSaudi, validateRequired } from '@/domain';
 import { getBrowserPosition } from '@/lib/geolocation.js';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
@@ -65,7 +65,7 @@ function AddressForm({ addressId }) {
       setLocating(true);
       const position = await getBrowserPosition({ precise: true });
       setLocating(false);
-      if (!position) return;
+      if (!isInSaudi(position)) return; // refused, failed or outside Saudi Arabia: no location, the address can still be saved
       setForm((f) => (f.location ? f : { ...f, location: position }));
       setPinned(true);
     })();
@@ -85,8 +85,8 @@ function AddressForm({ addressId }) {
     setLocating(true);
     const position = await getBrowserPosition({ precise: true });
     setLocating(false);
-    if (!position) {
-      toast.show(LOCATION_FAILED, { tone: 'error' });
+    if (!position || !isInSaudi(position)) {
+      toast.show(position ? LOCATION_OUTSIDE : LOCATION_FAILED, { tone: 'error' });
       return;
     }
     setForm((f) => ({ ...f, location: position }));

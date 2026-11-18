@@ -23,7 +23,7 @@ export default function BranchesPage() {
   const cardRefs = useRef({});
 
   const all = useMemo(() => withDistances(branches, defaultAddress?.location), [branches, defaultAddress]);
-  const nearestId = defaultAddress ? all[0]?.id : null;
+  const nearestId = defaultAddress?.location ? all[0]?.id : null; // no location, no "nearest"
   // Pills come from the branches we have; a city that is no longer there falls back to All.
   const filters = useMemo(() => cityFilters(all), [all]);
   const city = filters.includes(chosenCity) ? chosenCity : 'All';

@@ -7,8 +7,8 @@ import { createBranchService } from './modules/branches/service.js';
 import { createCatalogService } from './modules/catalog/service.js';
 import { createOrdersService } from './modules/orders/service.js';
 
-export function createContext({ config, db, rof = null, clock = { now: () => new Date() }, logger = console, ...overrides }) {
-  const ctx = { config, db, rof, clock, logger };
+export function createContext({ config, db, rof = null, whatsapp = null, clock = { now: () => new Date() }, logger = console, ...overrides }) {
+  const ctx = { config, db, rof, whatsapp, clock, logger };
   if (rof) {
     const now = () => clock.now().getTime();
     // Photo links are built for the apps, so they use the media base (see ROF_MEDIA_BASE_URL).

@@ -31,6 +31,15 @@ const schema = z.object({
   ROF_TIMEOUT_MS: integer(10000),
   OTP_MODE: z.preprocess(blankToUndefined, z.enum(['test', 'whatsapp']).default('test')),
   OTP_TEST_CODE: z.preprocess(blankToUndefined, z.string().regex(/^\d{6}$/, 'must be 6 digits').default('123456')),
+  // WhatsApp login codes (OTP_MODE=whatsapp): RSOF's messaging API. User, password, sender and template are
+  // needed only in that mode; the template is the approved AUTHENTICATION template filled with the code.
+  WHATSAPP_API_BASE_URL: z.preprocess(blankToUndefined, z.url().default('https://app.rofconsole.com/messaging')),
+  WHATSAPP_API_USER: optionalText(),
+  WHATSAPP_API_PASSWORD: optionalText(),
+  WHATSAPP_SENDER: optionalText(),
+  WHATSAPP_TEMPLATE_NAME: optionalText(),
+  WHATSAPP_TEMPLATE_LANGUAGE: z.preprocess(blankToUndefined, z.string().trim().min(2).default('en')),
+  WHATSAPP_TIMEOUT_MS: integer(10000),
   ORDER_POLL_INTERVAL_MS: integer(60000),
   PASSWORD_HASH_COST: z.preprocess(blankToUndefined, z.coerce.number().int().min(4).max(15).default(12)),
   AUTH_RATE_LIMIT_PER_MINUTE: integer(20),
@@ -56,6 +65,10 @@ export function loadConfig(env = process.env) {
     throw new Error(`Invalid configuration: ${problems}`);
   }
   const e = result.data;
+  if (e.OTP_MODE === 'whatsapp') {
+    const missing = ['WHATSAPP_API_USER', 'WHATSAPP_API_PASSWORD', 'WHATSAPP_SENDER', 'WHATSAPP_TEMPLATE_NAME'].filter((key) => !e[key]);
+    if (missing.length) throw new Error(`Invalid configuration: OTP_MODE=whatsapp needs ${missing.join(', ')}.`);
+  }
   if (e.NODE_ENV === 'production' && e.OTP_MODE === 'test' && !e.OTP_ALLOW_TEST_IN_PRODUCTION) {
     throw new Error(`Invalid configuration: ${TEST_OTP_IN_PRODUCTION}`);
   }
@@ -80,6 +93,15 @@ export function loadConfig(env = process.env) {
       timeoutMs: e.ROF_TIMEOUT_MS,
     },
     otp: { mode: e.OTP_MODE, testCode: e.OTP_TEST_CODE },
+    whatsapp: {
+      baseUrl: e.WHATSAPP_API_BASE_URL.replace(/\/+$/, ''),
+      user: e.WHATSAPP_API_USER ?? null,
+      password: e.WHATSAPP_API_PASSWORD ?? null,
+      sender: e.WHATSAPP_SENDER ?? null,
+      templateName: e.WHATSAPP_TEMPLATE_NAME ?? null,
+      language: e.WHATSAPP_TEMPLATE_LANGUAGE,
+      timeoutMs: e.WHATSAPP_TIMEOUT_MS,
+    },
     pollIntervalMs: e.ORDER_POLL_INTERVAL_MS,
     passwordHashCost: e.PASSWORD_HASH_COST,
     authRateLimitPerMinute: e.AUTH_RATE_LIMIT_PER_MINUTE,

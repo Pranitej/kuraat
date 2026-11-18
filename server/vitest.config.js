@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config';
 
 // Tests read the same .env as the app for the database (TEST_DATABASE_URL…). The RSOF settings are pinned below:
 // the real RSOF login in .env must never reach a test, because a test that placed an order would create a real one.
+// The same goes for the WhatsApp settings: a test that asked for a code must never send a real message.
 if (existsSync('.env')) process.loadEnvFile('.env');
 
 export default defineConfig({
@@ -23,6 +24,14 @@ export default defineConfig({
       ROF_PASSWORD: 'test-only',
       ROF_INVENTORY_CHECK: 'false',
       ROF_TIMEOUT_MS: '10000',
+      // Login codes: always the fixed test code, never a real WhatsApp message, whatever the developer's .env says
+      // (tests that need WhatsApp mode set it on the test config and use a stub client).
+      OTP_MODE: 'test',
+      OTP_TEST_CODE: '123456',
+      WHATSAPP_API_USER: '',
+      WHATSAPP_API_PASSWORD: '',
+      WHATSAPP_SENDER: '',
+      WHATSAPP_TEMPLATE_NAME: '',
     },
   },
 });

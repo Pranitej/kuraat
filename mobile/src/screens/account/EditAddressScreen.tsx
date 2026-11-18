@@ -10,7 +10,7 @@ import { useAddresses, type AddressInput } from '@/context/AddressContext';
 import { useBranches } from '@/context/BranchContext';
 import { useCheckout } from '@/context/CheckoutContext';
 import { useToast } from '@/context/ToastContext';
-import { ADDRESS_LABELS, LOCATION_FAILED, deliveryCities, validateRequired } from '@/domain';
+import { ADDRESS_LABELS, LOCATION_FAILED, LOCATION_OUTSIDE, deliveryCities, isInSaudi, validateRequired } from '@/domain';
 import { getDevicePosition } from '@/lib/location';
 import { colors, radii, shadows } from '@/theme/theme';
 import type { AddressType, LatLng } from '@/types/api';
@@ -79,7 +79,7 @@ function AddressForm({ addressId }: { addressId?: string }) {
       setLocating(true);
       const position = await getDevicePosition({ precise: true });
       setLocating(false);
-      if (!position) return;
+      if (!isInSaudi(position)) return; // refused, failed or outside Saudi Arabia: no location, the address can still be saved
       setForm((f) => (f.location ? f : { ...f, location: position }));
       setPinned(true);
     })();
@@ -107,8 +107,8 @@ function AddressForm({ addressId }: { addressId?: string }) {
     setLocating(true);
     const position = await getDevicePosition({ precise: true });
     setLocating(false);
-    if (!position) {
-      toast.show(LOCATION_FAILED, { tone: 'error' });
+    if (!position || !isInSaudi(position)) {
+      toast.show(position ? LOCATION_OUTSIDE : LOCATION_FAILED, { tone: 'error' });
       return;
     }
     setForm((f) => ({ ...f, location: position }));

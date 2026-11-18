@@ -6,7 +6,7 @@ import { Button, FieldWrapper, PhoneField, SegmentedControl, Spinner, TextField,
 import { useAuth } from '@/context/AuthContext.jsx';
 import { ROUTES } from '@/config/routes.js';
 import { GENDERS } from '@/config/options.js';
-import { LOCATION_FAILED, parseAddressText, validateAddressLine, validateMobile, validateName } from '@/domain';
+import { LOCATION_FAILED, LOCATION_OUTSIDE, isInSaudi, parseAddressText, validateAddressLine, validateMobile, validateName } from '@/domain';
 import { getBrowserPosition } from '@/lib/geolocation.js';
 import { useDocumentTitle } from '@/hooks';
 
@@ -33,8 +33,8 @@ export default function SignUpPage() {
     setLocating(true);
     const position = await getBrowserPosition({ precise: true });
     setLocating(false);
-    if (!position) {
-      setErrors((e) => ({ ...e, address: LOCATION_FAILED }));
+    if (!position || !isInSaudi(position)) {
+      setErrors((e) => ({ ...e, address: position ? LOCATION_OUTSIDE : LOCATION_FAILED }));
       return;
     }
     setLocated({ location: position });
@@ -51,7 +51,7 @@ export default function SignUpPage() {
       setLocating(true);
       const position = await getBrowserPosition({ precise: true });
       setLocating(false);
-      if (position) setLocated({ location: position });
+      if (isInSaudi(position)) setLocated({ location: position }); // outside Saudi Arabia: not attached, sign-up still works
     })();
   }, [located]);
 
@@ -72,7 +72,10 @@ export default function SignUpPage() {
       await requestOtp(phone, 'signup', { name, gender, address, addressText });
       navigate(ROUTES.verify);
     } catch (err) {
-      setErrors({ [err.field || 'form']: err.message });
+      // A server error must always show somewhere: the form displays only these fields, the rest go in the form message.
+      const field = String(err.field || '').replace(/^payload\./, '');
+      const key = ['name', 'phone', 'gender'].includes(field) ? field : field.startsWith('address') ? 'address' : 'form';
+      setErrors({ [key]: err.message });
     } finally {
       setSubmitting(false);
     }

@@ -70,4 +70,5 @@ export function parseAddressText(text, defaultCity = 'Al Khobar') {
 }
 
 /** Shown when "Use current location" could not read the device position (refused, unsupported, timed out). */
+export const LOCATION_OUTSIDE = 'Your location is outside Saudi Arabia, where we deliver, so it was not saved. You can still continue without it.';
 export const LOCATION_FAILED = "We couldn't get your location. Allow location access, or type your address.";

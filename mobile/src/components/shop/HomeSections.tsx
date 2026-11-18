@@ -150,15 +150,28 @@ export function FilterSheet({
   );
 }
 
-/** "Nearest branch to Al Rakah, Al Khobar · Kuraat · Al Khobar Corniche · 2.4 km" */
-export function NearestBranchStrip({ delivery }: { delivery: { branch: Branch; distanceKm?: number | null; area: string } | null }) {
+/**
+ * "Nearest branch to Al Rakah, Al Khobar · Kuraat · Al Khobar Corniche · 2.4 km" — only when the address has a location.
+ * Without one no branch is "nearest" (nothing can be measured), so the same card just opens the branch list.
+ */
+export function NearestBranchStrip({
+  delivery,
+  showAll = false,
+}: {
+  delivery: { branch: Branch; distanceKm?: number | null; area: string } | null;
+  showAll?: boolean;
+}) {
   const router = useRouter();
-  if (!delivery) return null;
+  if (!delivery && !showAll) return null;
   return (
     <Pressable
-      onPress={() => router.push(ROUTES.branch(delivery.branch.id))}
+      onPress={() => router.push(delivery ? ROUTES.branch(delivery.branch.id) : ROUTES.branches)}
       accessibilityRole="button"
-      accessibilityLabel={`Nearest branch to ${delivery.area}: ${delivery.branch.displayName}, ${formatDistance(delivery.distanceKm)}`}
+      accessibilityLabel={
+        delivery
+          ? `Nearest branch to ${delivery.area}: ${delivery.branch.displayName}${delivery.distanceKm != null ? `, ${formatDistance(delivery.distanceKm)}` : ''}`
+          : 'View all branches'
+      }
       style={({ pressed }) => [styles.strip, pressed && styles.stripPressed]}
     >
       <View style={styles.stripIcon}>
@@ -166,13 +179,17 @@ export function NearestBranchStrip({ delivery }: { delivery: { branch: Branch; d
       </View>
       <View style={styles.flex}>
         <Text variant="label" weight={400} color="muted" numberOfLines={1}>
-          Nearest branch to {delivery.area}
+          {delivery ? `Nearest branch to ${delivery.area}` : 'Find a branch'}
         </Text>
         <Text weight={700} numberOfLines={1} style={styles.stripName}>
-          {delivery.branch.displayName}
+          {delivery ? delivery.branch.displayName : 'View all branches'}
         </Text>
       </View>
-      <Tag tone="dark">{formatDistance(delivery.distanceKm)}</Tag>
+      {delivery ? (
+        delivery.distanceKm != null ? <Tag tone="dark">{formatDistance(delivery.distanceKm)}</Tag> : null
+      ) : (
+        <ChevronRight size={20} color={colors.maroon} strokeWidth={1.8} />
+      )}
     </Pressable>
   );
 }

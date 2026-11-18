@@ -61,8 +61,10 @@ export default function HomeScreen() {
     [catalog.products, query, activeCategory, sort],
   );
   const branches = useMemo(() => withDistances(allBranches, address?.location) as Branch[], [allBranches, address]);
+  // "Nearest" is only known when the address has a location (the customer may not have shared one): without it the
+  // branches are not ordered by distance, so no branch is called the nearest and no distance is shown.
   const delivery =
-    branches[0] && address ? { branch: branches[0], distanceKm: branches[0].distanceKm, area: areaLabel(address) } : null;
+    address?.location && branches[0]?.distanceKm != null ? { branch: branches[0], distanceKm: branches[0].distanceKm, area: areaLabel(address) } : null;
   const loading = catalog.status === 'loading';
   const failed = catalog.status === 'error';
 
@@ -94,7 +96,7 @@ export default function HomeScreen() {
           filtersActive={sort !== 'recommended'}
         />
         <View style={styles.top}>
-          <NearestBranchStrip delivery={delivery} />
+          <NearestBranchStrip delivery={delivery} showAll={branches.length > 0} />
           <PromoBanner
             onShop={() => {
               setFilters({ category: 'truffles', q: '' });

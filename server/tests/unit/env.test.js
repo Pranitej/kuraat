@@ -23,6 +23,35 @@ describe('loadConfig', () => {
     expect(c.authRateLimitPerMinute).toBe(20);
   });
 
+  describe('WhatsApp login codes', () => {
+    const whatsapp = { WHATSAPP_API_USER: 'api-user', WHATSAPP_API_PASSWORD: 'api-secret', WHATSAPP_SENDER: '+15550001111', WHATSAPP_TEMPLATE_NAME: 'login_code' };
+
+    test('test mode needs no WhatsApp settings, and nothing is required', () => {
+      const c = loadConfig(valid);
+      expect(c.otp.mode).toBe('test');
+      expect(c.whatsapp).toMatchObject({ baseUrl: 'https://app.rofconsole.com/messaging', user: null, password: null, sender: null, templateName: null, language: 'en', timeoutMs: 10000 });
+    });
+
+    test('whatsapp mode reads the API user, password, sender, template and language', () => {
+      const c = loadConfig({ ...valid, OTP_MODE: 'whatsapp', ...whatsapp, WHATSAPP_API_BASE_URL: 'https://messaging.example.test/messaging/', WHATSAPP_TEMPLATE_LANGUAGE: 'ar' });
+      expect(c.otp.mode).toBe('whatsapp');
+      expect(c.whatsapp).toEqual({
+        baseUrl: 'https://messaging.example.test/messaging',
+        user: 'api-user',
+        password: 'api-secret',
+        sender: '+15550001111',
+        templateName: 'login_code',
+        language: 'ar',
+        timeoutMs: 10000,
+      });
+    });
+
+    test('whatsapp mode names every missing setting instead of failing later when a code is sent', () => {
+      expect(() => loadConfig({ ...valid, OTP_MODE: 'whatsapp' })).toThrow(/WHATSAPP_API_USER, WHATSAPP_API_PASSWORD, WHATSAPP_SENDER, WHATSAPP_TEMPLATE_NAME/);
+      expect(() => loadConfig({ ...valid, OTP_MODE: 'whatsapp', ...whatsapp, WHATSAPP_SENDER: '' })).toThrow(/WHATSAPP_SENDER/);
+    });
+  });
+
   test('drops a trailing slash from ROF_BASE_URL', () => {
     expect(loadConfig({ ...valid, ROF_BASE_URL: 'https://rofuat.rsof.com.sa/' }).rof.baseUrl).toBe('https://rofuat.rsof.com.sa');
   });
@@ -61,7 +90,13 @@ describe('production guards (nothing fake goes live by accident)', () => {
   });
 
   test('simulated card payments are refused in production unless acknowledged', () => {
-    expect(() => loadConfig({ ...prod, OTP_MODE: 'whatsapp' })).toThrow(/PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION/);
+    const whatsapp = { OTP_MODE: 'whatsapp', WHATSAPP_API_USER: 'u', WHATSAPP_API_PASSWORD: 'p', WHATSAPP_SENDER: '+15550001111', WHATSAPP_TEMPLATE_NAME: 'login_code' };
+    expect(() => loadConfig({ ...prod, ...whatsapp })).toThrow(/PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION/);
+  });
+
+  test('real WhatsApp codes in production start once the payment acknowledgement is given', () => {
+    const whatsapp = { OTP_MODE: 'whatsapp', WHATSAPP_API_USER: 'u', WHATSAPP_API_PASSWORD: 'p', WHATSAPP_SENDER: '+15550001111', WHATSAPP_TEMPLATE_NAME: 'login_code' };
+    expect(() => loadConfig({ ...prod, ...whatsapp, PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION: 'true' })).not.toThrow();
   });
 
   test('both acknowledged (a demo / UAT launch) starts', () => {

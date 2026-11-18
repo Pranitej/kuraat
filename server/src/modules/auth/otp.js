@@ -3,13 +3,15 @@
  * 60 s, at most 5 requests per phone per 10 minutes. Codes are stored only as an HMAC.
  *
  * OTP_MODE=test (UAT default): nothing is sent; OTP_TEST_CODE always works and is logged.
- * OTP_MODE=whatsapp: needs a WhatsApp provider — not integrated yet (design spec §8), so requests
- * fail with a clear message instead of pretending to send.
+ * OTP_MODE=whatsapp: a random code is sent with RSOF's WhatsApp messaging API (src/messaging/whatsapp.js).
+ * The code is never logged in this mode. A failed send fails the request ("can't send WhatsApp codes right
+ * now") and nothing is stored, so there is no challenge for a code that never arrived.
  */
 import { randomInt } from 'node:crypto';
 import { OTP_RULES } from '../../config/business.js';
 import { badRequest, tooManyRequests, unavailable } from '../../http/errors.js';
 import { newId } from '../../lib/ids.js';
+import { toRofPhone } from '../../rof/adapter.js';
 import { sameHash, secretHash } from './tokens.js';
 
 const MINUTE = 60_000;
@@ -39,8 +41,22 @@ async function deliver(ctx, { phone, purpose }, code) {
     ctx.logger.info(`[otp] ${purpose} code for ${String(phone).startsWith('+') ? phone : `+966 ${phone}`}: ${code} (OTP_MODE=test — nothing sent)`);
     return;
   }
-  ctx.logger.error('[otp] OTP_MODE=whatsapp but no WhatsApp provider is integrated yet');
-  throw unavailable('otp_unavailable', "We can't send WhatsApp codes right now. Sign in with your password or try again later.");
+  const unavailableNow = () => unavailable('otp_unavailable', "We can't send WhatsApp codes right now. Sign in with your password or try again later.");
+  if (!ctx.whatsapp) {
+    ctx.logger.error('[otp] OTP_MODE=whatsapp but the WhatsApp client is not set up');
+    throw unavailableNow();
+  }
+  const digits = toRofPhone(phone); // country code + number, no "+"
+  let reply;
+  try {
+    reply = await ctx.whatsapp.sendAuthCode(digits, code);
+  } catch (error) {
+    // Never log the code; the number is shortened to its last 4 digits.
+    ctx.logger.error(`[otp] WhatsApp ${purpose} code to …${digits.slice(-4)} was not sent (${error.kind ?? 'error'}): ${error.message}`);
+    throw unavailableNow();
+  }
+  // The API queues the message; its transaction id lets RSOF trace one that never arrived.
+  ctx.logger.info(`[otp] WhatsApp ${purpose} code queued for …${digits.slice(-4)} (transaction ${reply?.transaction_id ?? 'unknown'})`);
 }
 
 export async function createChallenge(ctx, { phone, purpose, payload = null, userId = null }) {

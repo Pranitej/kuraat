@@ -6,7 +6,7 @@
  */
 import { MAX_DETOUR_KM } from '../../config/business.js';
 import { roundedDistance } from '../../lib/geo.js';
-import { toStockByBranch } from '../../rof/adapter.js';
+import { toStockMap } from '../../rof/adapter.js';
 
 /** @returns {{ branch, distanceKm }[]} nearest first */
 export function rankBranches(branches, location, { maxDetourKm = MAX_DETOUR_KM } = {}) {
@@ -32,10 +32,8 @@ export async function deliveryCandidates(ctx, location, items) {
   const nearestId = ranked[0]?.branch.id ?? null;
   if (!ctx.config.rof.inventoryCheck || !items.length || !ranked.length) return { candidates: ranked, nearestId, inStock: null };
   try {
-    const ids = [...new Set(items.map((i) => i.productId))];
-    const rows = await Promise.all(ids.map((id) => ctx.rof.getProductInventory(id)));
-    const stock = Object.fromEntries(ids.map((id, i) => [id, toStockByBranch(rows[i])]));
-    const stocked = withStock(ranked, stock, items);
+    const { items: balances } = await ctx.rof.listStockBalances();
+    const stocked = withStock(ranked, toStockMap(balances), items);
     // Nobody nearby has everything: keep the full list; ROF's assignment decides at order time.
     return stocked.length ? { candidates: stocked, nearestId, inStock: true } : { candidates: ranked, nearestId, inStock: false };
   } catch (error) {

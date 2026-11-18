@@ -33,8 +33,10 @@ export const productDetailSchema = z.looseObject({
   ),
 });
 
-/** ASSUMED — the guide names the endpoint (§6.2) but shows no reply. */
-export const inventorySchema = z.array(z.looseObject({ branchId: id, quantity: z.number() }));
+/** GET /api/inventory/balances — verified on UAT 18 Nov 2026 (the guide, §6.2, shows no reply). */
+export const stockBalancesSchema = z.array(
+  z.looseObject({ productId: id, branchId: id, onHand: z.number(), reserved: z.number(), available: z.number(), allowOversell: z.boolean() }),
+);
 
 export const branchSchema = z.looseObject({
   id,

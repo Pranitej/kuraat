@@ -8,7 +8,9 @@
 import { RofError } from './errors.js';
 import { createTokenManager } from './tokenManager.js';
 
-export function createRofClient({ baseUrl, email, password, timeoutMs = 10000, now = () => Date.now() }) {
+const MAX_PAGES = 20;
+
+export function createRofClient({ baseUrl, email, password, timeoutMs = 10000, pageSize = 100, now = () => Date.now() }) {
   const root = baseUrl.replace(/\/+$/, '');
   const tokens = createTokenManager({ baseUrl: root, email, password, timeoutMs, now });
 
@@ -63,6 +65,20 @@ export function createRofClient({ baseUrl, email, password, timeoutMs = 10000, n
   };
   const enc = encodeURIComponent;
 
+  /**
+   * Every row of a list. ROF answers 10 rows per page unless asked for more (verified on UAT,
+   * 18 Nov 2026), so a bare call silently drops everything after the tenth branch or stock row.
+   */
+  async function listAll(path, query = {}) {
+    const items = [];
+    for (let pageIndex = 1; pageIndex <= MAX_PAGES; pageIndex++) {
+      const page = await list('GET', path, { query: { ...query, PageIndex: pageIndex, PageSize: pageSize } });
+      items.push(...page.items);
+      if (!page.items.length || items.length >= page.totalCount) break;
+    }
+    return { items, totalCount: items.length };
+  }
+
   return {
     /** tenantId comes from login (guide §3.1); needed for the branches call. */
     getTenantId: async () => (await tokens.get()).tenantId,
@@ -74,12 +90,15 @@ export function createRofClient({ baseUrl, email, password, timeoutMs = 10000, n
       list('GET', '/api/products', { query: { PageIndex: pageIndex, PageSize: pageSize, CategoryId: categoryId, Search: search } }),
     // §5 Product detail
     getProduct: (id) => data('GET', `/api/products/${enc(id)}`),
-    // §6.2 optional per-branch stock (needs Inventory.Read)
-    getProductInventory: (id) => data('GET', `/api/inventory/product/${enc(id)}`),
-    // §10 Branches
+    // §6.2 per-branch stock (needs Inventory.Read): one row per product × branch that has a stock
+    // record — a pair with no row holds none. Pass productId to narrow it to one product.
+    listStockBalances: ({ productId } = {}) => listAll('/api/inventory/balances', { ProductId: productId }),
+    // §10 Branches — the lead's GET /api/branches. It ignores isHubBranch (verified on UAT) and also
+    // lists the master branch, so the hub filter is ours; closed and deleted branches never count.
     listBranches: async ({ hubOnly = true, search } = {}) => {
-      const tenantId = (await tokens.get()).tenantId;
-      return list('GET', `/api/branches/tenant/${enc(tenantId)}`, { query: { isHubBranch: hubOnly ? 'true' : undefined, Search: search } });
+      const { items } = await listAll('/api/branches', { Search: search });
+      const open = items.filter((b) => b.isActive !== false && b.isDeleted !== true && (!hubOnly || b.isHubBranch === true));
+      return { items: open, totalCount: open.length };
     },
     getBranch: (id) => data('GET', `/api/branches/${enc(id)}`),
     // §7 Order confirmed

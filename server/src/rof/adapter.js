@@ -107,8 +107,19 @@ export function toBranch(raw) {
   };
 }
 
-/** Optional per-branch stock (guide §6.2; reply shape assumed — see mock-rof/app.js). */
-export const toStockByBranch = (rows = []) => Object.fromEntries(rows.map((r) => [r.branchId, Number(r.quantity) || 0]));
+/**
+ * Stock balances from GET /api/inventory/balances (one row per product × branch, verified on UAT) →
+ * { productId: { branchId: sellable } }. Sellable is `available` (on hand minus reserved), or
+ * unlimited when the row allows overselling. A product/branch pair with no row holds none.
+ */
+export function toStockMap(rows = []) {
+  const map = {};
+  for (const row of rows) {
+    const sellable = row.allowOversell === true ? Number.POSITIVE_INFINITY : Math.max(0, Number(row.available) || 0);
+    (map[row.productId] ||= {})[row.branchId] = sellable;
+  }
+  return map;
+}
 
 /** Our 9-digit local mobile → ROF format (guide §7.1: digits with country code). */
 export const toRofPhone = (localPhone) => `966${String(localPhone).replace(/\D/g, '').replace(/^966/, '').replace(/^0/, '')}`;

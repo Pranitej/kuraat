@@ -14,10 +14,10 @@ import {
   branchesSchema,
   categoriesSchema,
   createdOrderSchema,
-  inventorySchema,
   orderDetailSchema,
   productDetailSchema,
   productListSchema,
+  stockBalancesSchema,
   timelineSchema,
 } from './schemas.js';
 import { stepOf } from './status.js';
@@ -82,18 +82,25 @@ export async function runRofCheck({ baseUrl, email, password, timeoutMs = 10000,
       );
       if (!toProduct(detail, { baseUrl })) line('WARN', 'product detail', 'adapter hid this product');
     }
-    try {
-      const inventory = await rof.getProductInventory(firstActive.id);
-      check('inventory (assumed shape)', inventorySchema, inventory);
-    } catch (error) {
-      line('SKIP', 'inventory', `${error.message} — keep ROF_INVENTORY_CHECK=false unless RSOF grants Inventory.Read`);
-    }
+  }
+
+  let balances = null;
+  try {
+    balances = (await rof.listStockBalances()).items;
+    check('stock balances', stockBalancesSchema, balances, `${balances.length} product × branch rows`);
+  } catch (error) {
+    line('SKIP', 'stock balances', `${error.message} — keep ROF_INVENTORY_CHECK=false unless RSOF grants Inventory.Read`);
   }
 
   const branches = await call('branches', () => rof.listBranches({ hubOnly: true }));
   let hubs = [];
   if (branches && check('branches', branchesSchema, branches.items, `${branches.items.length} returned`)) {
     hubs = branches.items.map(toBranch).filter((b) => b.isHub);
+    if (balances && hubs.length) {
+      const stocked = hubs.filter((hub) => balances.some((r) => r.branchId === hub.id && (r.allowOversell || r.available > 0)));
+      if (!stocked.length) line('WARN', 'stock balances', 'no hub branch has any sellable stock — RSOF has nothing to assign an order to');
+      else line('OK', 'stock balances', `hubs with stock: ${stocked.map((h) => h.name).join(', ')}`);
+    }
     if (!hubs.length) line('WARN', 'branches', "no branch with branchType 'hub' — orders cannot be assigned");
     const noCoords = hubs.filter((b) => !b.location.lat || !b.location.lng);
     if (noCoords.length) line('WARN', 'branches', `hubs without coordinates: ${noCoords.map((b) => b.name).join(', ')}`);

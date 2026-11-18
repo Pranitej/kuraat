@@ -10,7 +10,7 @@ import {
   toProduct,
   toRofOrderPayload,
   toRofPhone,
-  toStockByBranch,
+  toStockMap,
   toTimeline,
 } from '../../src/rof/adapter.js';
 
@@ -192,8 +192,15 @@ describe('other mappings', () => {
     expect(toRofPhone('501234821')).toBe('966501234821');
   });
 
-  test('stock by branch from the inventory reply', () => {
-    expect(toStockByBranch([{ branchId: 'b1', branchName: 'x', quantity: 0 }, { branchId: 'b2', quantity: 5 }])).toEqual({ b1: 0, b2: 5 });
+  test('stock map from the balances reply: sellable = available, oversell = unlimited, never negative', () => {
+    const rows = [
+      { productId: 'p1', branchId: 'b1', onHand: 2, reserved: 2, available: 0, allowOversell: false },
+      { productId: 'p1', branchId: 'b2', onHand: 9, reserved: 1, available: 8, allowOversell: false },
+      { productId: 'p2', branchId: 'b1', onHand: 0, reserved: 3, available: -3, allowOversell: false },
+      { productId: 'p2', branchId: 'b2', onHand: 0, reserved: 0, available: 0, allowOversell: true },
+    ];
+    expect(toStockMap(rows)).toEqual({ p1: { b1: 0, b2: 8 }, p2: { b1: 0, b2: Number.POSITIVE_INFINITY } });
+    expect(toStockMap()).toEqual({});
   });
 
   test('created order, order snapshot and timeline', () => {

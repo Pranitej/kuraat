@@ -3,8 +3,8 @@
  * Mobile App Backend"). It implements only the endpoints our backend uses and answers in the
  * guide's documented shapes, including its habit of replying HTTP 200 with success:false.
  *
- * Shapes NOT documented in the guide (assumptions, verify with `npm run rof:check` on UAT):
- * - GET /api/inventory/product/{id} → data: [{ branchId, branchName, quantity }]
+ * Shapes NOT documented in the guide: GET /api/inventory/balances and GET /api/branches were verified on
+ * the real UAT (18 Nov 2026) and are copied from it. Still an assumption (verify with `npm run rof:check`):
  * - POST /api/orders/{id}/resend-otp failure wording
  */
 import express from 'express';
@@ -110,18 +110,47 @@ export function createMockRof({ store, now = () => new Date(), tokenSecret = 'mo
     res.json(p ? ok(detailView(p)) : fail('Product not found'));
   });
 
-  app.get('/api/inventory/product/:id', (req, res) => {
-    const stock = db.stock[req.params.id];
-    if (!stock) return res.json(fail('Product not found'));
-    const rows = Object.entries(stock).map(([branchId, quantity]) => ({
-      branchId,
-      branchName: db.branches.find((b) => b.id === branchId)?.name ?? null,
-      quantity,
-    }));
-    return res.json(ok(rows));
+  // The real shape (verified on UAT): one row per product × branch that has a stock record, 10 per page.
+  app.get('/api/inventory/balances', (req, res) => {
+    const productId = req.query.ProductId;
+    const rows = db.products
+      .filter((p) => !productId || p.id === productId)
+      .flatMap((p) =>
+        Object.entries(db.stock[p.id] || {}).map(([branchId, quantity]) => {
+          const branch = db.branches.find((b) => b.id === branchId);
+          return {
+            id: `${p.id}:${branchId}`,
+            tenantId: db.tenantId,
+            branchId,
+            branchName: branch?.name ?? null,
+            branchType: branch?.branchType ?? null,
+            productId: p.id,
+            productName: p.name,
+            baseUnitName: p.baseUnitName,
+            packSizes: [],
+            onHand: quantity,
+            reserved: 0,
+            available: quantity,
+            incoming: 0,
+            allowOversell: p.allowOversell,
+            modifiedOn: now().toISOString(),
+          };
+        }),
+      );
+    res.json(page(rows, req.query, 10));
   });
 
   /* ---------- branches ---------- */
+
+  // The lead's GET /api/branches: like the real one it IGNORES isHubBranch, lists every branch
+  // (the master too, and closed ones — the client filters those) and answers 10 per page unless asked for more.
+  app.get('/api/branches', (req, res) => {
+    const q = String(req.query.Search || '').trim().toLowerCase();
+    const items = db.branches
+      .filter((b) => !q || `${b.name} ${b.city} ${b.phoneNumber} ${b.address}`.toLowerCase().includes(q))
+      .map((b) => ({ isDeleted: false, ...b }));
+    res.json(page(items, req.query, 10));
+  });
 
   app.get('/api/branches/tenant/:tenantId', (req, res) => {
     if (req.params.tenantId !== db.tenantId) return res.json(fail('Tenant not found'));

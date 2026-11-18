@@ -63,7 +63,7 @@ Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test
 | `ROF_BASE_URL` | `http://localhost:8080` | **The switch**: fake ROF locally, `https://rofuat.rsof.com.sa` for UAT |
 | `ROF_MEDIA_BASE_URL` | (= `ROF_BASE_URL`) | Base for product photo links the apps load. Set to the laptop's Wi-Fi address (e.g. `http://192.168.1.10:8080`) to test the mobile app on a phone; leave empty in UAT/production |
 | `ROF_EMAIL`, `ROF_PASSWORD` | fake ROF login | The ROF service user (not tied to a branch) |
-| `ROF_INVENTORY_CHECK` | `false` | `true` only if the service user has `Inventory.Read` |
+| `ROF_INVENTORY_CHECK` | `false` | `true` only if the service user has `Inventory.Read`; checkout then skips a nearer branch that is out of stock, with one `GET /api/inventory/balances` call |
 | `ROF_TIMEOUT_MS` | `10000` | Per ROF call |
 | `OTP_MODE`, `OTP_TEST_CODE` | `test`, `123456` | `test`: no WhatsApp message; the code is printed in the server log |
 | `PRICES_INCLUDE_VAT` | `true` | Whether ROF `sellingPrice` already includes 15 % VAT |
@@ -145,8 +145,15 @@ creation times out is **never re-sent**; its payment is marked `needs_review` an
 5. Place one real order from the app and ask branch staff to move it through the statuses.
 
 **Verified on the real UAT (18 Nov 2026, phase 4):** login and the token; categories, products (list and detail), photos
-(`/uploads/...` load), branches and a non-hub branch lookup; the inventory reply
-`data: { productId, productName, baseUnitName, branches: [{ branchId, branchName, onHand, reserved, available, incoming }] }`;
+(`/uploads/...` load), a non-hub branch lookup; and the two endpoints the lead sent us (we use both):
+`GET /api/branches` (the old `/api/branches/tenant/{id}` still works, but this one needs no tenant id) and
+`GET /api/inventory/balances` — one row per product × branch that has a stock record:
+`{ branchId, branchName, branchType, productId, productName, baseUnitName, packSizes, onHand, reserved, available, incoming, allowOversell }`.
+RSOF answers **10 rows per page** unless asked for more, so our client reads every page (`PageIndex`/`PageSize`).
+`GET /api/branches` **ignores `isHubBranch`** and also lists the master branch, so we filter hubs (and closed or
+deleted branches) ourselves. Stock: a product/branch pair with no row holds none; what can be sold is `available`
+(on hand minus reserved), or anything when the row has `allowOversell`; `?ProductId=` narrows the list;
+`?BranchId=` is ignored;
 the create call with our delivery **and pickup** payloads (`fulfillmentType` is validated strictly: `"Delivery"` and
 `"Pickup"` work, `"pickup"` and `"Bogus"` are refused with "Validation Failed"; a pickup order is stored as
 `"Pickup"`, a delivery order as `null`); `PUT /orders/{id}/location/shared` (Created → SharedLocationManually); cancel;

@@ -149,11 +149,39 @@ describe('fake ROF — branches and inventory', () => {
     expect(res.body.data).toMatchObject({ name: 'Kuraat · Al Khobar Corniche', city: 'Al Khobar', isHubBranch: true });
   });
 
-  test('inventory: Praline has 0 at Corniche and 50 at Dhahran', async () => {
+  test('GET /api/branches ignores isHubBranch and lists the warehouse too, like the real one', async () => {
     const token = await login();
-    const res = await request(app).get(`/api/inventory/product/${PRODUCT_IDS.praline}`).set('Authorization', `Bearer ${token}`);
-    const byBranch = Object.fromEntries(res.body.data.map((r) => [r.branchId, r.quantity]));
-    expect(byBranch[BRANCH_IDS.corniche]).toBe(0);
-    expect(byBranch[BRANCH_IDS.dhahran]).toBe(50);
+    const all = await request(app).get('/api/branches').set('Authorization', `Bearer ${token}`);
+    expect(all.body.data).toHaveLength(7);
+    const hubFlag = await request(app).get('/api/branches?isHubBranch=true').set('Authorization', `Bearer ${token}`);
+    expect(hubFlag.body.data).toHaveLength(7);
+    expect(all.body.data[0]).toHaveProperty('isDeleted');
+  });
+
+  test('GET /api/branches answers 10 per page unless asked for more', async () => {
+    const token = await login();
+    const first = await request(app).get('/api/branches?PageIndex=1&PageSize=3').set('Authorization', `Bearer ${token}`);
+    expect(first.body.data).toHaveLength(3);
+    expect(first.body).toMatchObject({ totalCount: 7, pageSize: 3 });
+    const bare = await request(app).get('/api/branches').set('Authorization', `Bearer ${token}`);
+    expect(bare.body.pageSize).toBe(10);
+  });
+
+  test('stock balances: one row per product × branch; Praline has 0 at Corniche and 50 at Dhahran', async () => {
+    const token = await login();
+    const res = await request(app)
+      .get(`/api/inventory/balances?ProductId=${PRODUCT_IDS.praline}&PageSize=100`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.body.data[0]).toMatchObject({ productId: PRODUCT_IDS.praline, reserved: 0, allowOversell: false });
+    const available = Object.fromEntries(res.body.data.map((r) => [r.branchId, r.available]));
+    expect(available[BRANCH_IDS.corniche]).toBe(0);
+    expect(available[BRANCH_IDS.dhahran]).toBe(50);
+  });
+
+  test('stock balances without a filter cover every product, 10 per page', async () => {
+    const token = await login();
+    const bare = await request(app).get('/api/inventory/balances').set('Authorization', `Bearer ${token}`);
+    expect(bare.body.data).toHaveLength(10);
+    expect(bare.body.totalCount).toBeGreaterThan(10);
   });
 });

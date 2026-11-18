@@ -88,10 +88,32 @@ describe('ROF client — replies and failures', () => {
     await expect(c.listCategories()).rejects.toMatchObject({ kind: 'unavailable' });
   });
 
-  test('listBranches sends the tenant id and isHubBranch=true', async () => {
+  test('listBranches reads GET /api/branches and keeps only the hubs itself (ROF ignores the filter)', async () => {
     const { items } = await client().listBranches();
     expect(items).toHaveLength(6);
     expect(items.every((b) => b.isHubBranch)).toBe(true);
+    expect((await client().listBranches({ hubOnly: false })).items).toHaveLength(7);
+  });
+
+  test('listBranches walks every page, so a long branch list is not cut at ROF\'s default of 10', async () => {
+    const { items } = await client({ pageSize: 2 }).listBranches({ hubOnly: false });
+    expect(items).toHaveLength(7);
+    expect(new Set(items.map((b) => b.id)).size).toBe(7);
+  });
+
+  test('listBranches drops closed and deleted branches', async () => {
+    rof.store.data.branches.find((b) => b.id === BRANCH_IDS.corniche).isActive = false;
+    const { items } = await client().listBranches();
+    expect(items.map((b) => b.id)).not.toContain(BRANCH_IDS.corniche);
+  });
+
+  test('listStockBalances returns every product × branch row across pages; productId narrows it', async () => {
+    const all = await client({ pageSize: 4 }).listStockBalances();
+    expect(all.items.length).toBeGreaterThan(10);
+    expect(all.items.every((r) => 'available' in r && 'branchId' in r)).toBe(true);
+    const praline = await client().listStockBalances({ productId: PRODUCT_IDS.praline });
+    expect(praline.items.every((r) => r.productId === PRODUCT_IDS.praline)).toBe(true);
+    expect(praline.items.find((r) => r.branchId === BRANCH_IDS.corniche).available).toBe(0);
   });
 
   test('listProducts returns items and totalCount; search is passed through', async () => {

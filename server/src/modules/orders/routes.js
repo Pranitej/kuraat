@@ -27,6 +27,8 @@ const paymentSchema = z.discriminatedUnion(
 const placeSchema = z
   .object({
     fulfilment: z.enum(['delivery', 'pickup']).default('delivery'),
+    // Which app placed the order; RSOF staff see it as the order's source. Older app builds send none = mobile.
+    channel: z.enum(['web', 'mobile']).default('mobile'),
     addressId: z.string().min(1).optional(),
     deliveryPhone: phoneSchema,
     promoCode: z.string().max(40).nullable().optional(),

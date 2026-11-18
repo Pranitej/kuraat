@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { CLIENT_CHANNEL } from '@/lib/env.js';
 import { local } from '@/lib/storage.js';
 import { stubFetch } from '@/test/stubFetch.js';
 import { setTokens } from './api.js';
@@ -96,13 +97,13 @@ describe('delivery or pickup (design 2026-11-18 §5.3)', () => {
   test('a pickup order is sent with its fulfilment and without an address', async () => {
     const calls = stubFetch(() => ({ status: 201, body: { id: 'o1' } }));
     await placeOrder({ fulfilment: 'pickup', addressId: 'addr1', deliveryPhone: '50 123 4821', payment: { method: 'branch' }, idempotencyKey: 'k-1' });
-    expect(calls[0].body).toEqual({ fulfilment: 'pickup', deliveryPhone: '501234821', payment: { method: 'branch' }, idempotencyKey: 'k-1' });
+    expect(calls[0].body).toEqual({ fulfilment: 'pickup', channel: CLIENT_CHANNEL, deliveryPhone: '501234821', payment: { method: 'branch' }, idempotencyKey: 'k-1' });
   });
 
   test('a delivery order still sends its address, and says delivery', async () => {
     const calls = stubFetch(() => ({ status: 201, body: { id: 'o1' } }));
     await placeOrder({ addressId: 'addr1', deliveryPhone: '501234821', payment: { method: 'cod' }, idempotencyKey: 'k-2' });
-    expect(calls[0].body).toEqual({ fulfilment: 'delivery', addressId: 'addr1', deliveryPhone: '501234821', payment: { method: 'cod' }, idempotencyKey: 'k-2' });
+    expect(calls[0].body).toEqual({ fulfilment: 'delivery', channel: CLIENT_CHANNEL, addressId: 'addr1', deliveryPhone: '501234821', payment: { method: 'cod' }, idempotencyKey: 'k-2' });
   });
 
   test('the pickup quote asks with the fulfilment (no address) and keeps totals; no branch is fine', async () => {

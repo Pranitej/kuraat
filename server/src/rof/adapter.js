@@ -158,10 +158,18 @@ function moneyRemark(payment, total) {
 }
 
 /**
- * Body for POST /api/orders/manual (guide §7.1; design 2026-11-18 §5.2). orderType 0 = a normal
- * customer order (ItemOrder — RSOF's default, sent explicitly).
+ * ROF's `source` is a free label staff see on the order (guide §7.1: default "Manual", "MobileApp" for
+ * the app). Verified on UAT 18 Nov 2026: any text is accepted and stored as sent, so the website gets
+ * its own label instead of looking like a phone order.
  */
-export function toRofOrderPayload({ user, address, deliveryPhone, items, payment = null, total = null, fulfilment = 'delivery', city = null }) {
+export const ROF_SOURCE = { mobile: 'MobileApp', web: 'Website' };
+
+/**
+ * Body for POST /api/orders/manual (guide §7.1; design 2026-11-18 §5.2). orderType 0 = a normal
+ * customer order (ItemOrder — RSOF's default, sent explicitly). `channel` says which of our apps
+ * placed it ('web' | 'mobile'); anything else is treated as the mobile app.
+ */
+export function toRofOrderPayload({ user, address, deliveryPhone, items, payment = null, total = null, fulfilment = 'delivery', city = null, channel = 'mobile' }) {
   const pickup = fulfilment === 'pickup';
   const remarks = [];
   if (!pickup && !isBlank(address.landmark)) remarks.push(`Landmark: ${address.landmark.trim()}`);
@@ -181,7 +189,7 @@ export function toRofOrderPayload({ user, address, deliveryPhone, items, payment
     country: 'Saudi Arabia',
     province: provinceFor(orderCity) ?? undefined,
     remarks: remarks.length ? remarks.join(' · ') : null,
-    source: 'MobileApp',
+    source: ROF_SOURCE[channel] ?? ROF_SOURCE.mobile,
     fulfillmentType: pickup ? 'Pickup' : 'Delivery',
     orderType: 0,
     items: items.map((i) => ({ productId: i.productId, quantity: i.qty })),

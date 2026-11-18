@@ -105,6 +105,23 @@ describe('placing an order', () => {
     });
   });
 
+  test('RSOF sees which app placed the order: the website is "Website", the app (or an older build) "MobileApp"', async () => {
+    await api('put', '/cart', pdfCart);
+    expect((await place({ channel: 'web' })).status).toBe(201);
+    await api('put', '/cart', pdfCart);
+    expect((await place({ channel: 'mobile' })).status).toBe(201);
+    await api('put', '/cart', pdfCart);
+    expect((await place()).status).toBe(201); // no channel sent
+    expect(rofOrders().map((o) => o.source)).toEqual(['Website', 'MobileApp', 'MobileApp']);
+  });
+
+  test('an unknown channel is refused, not passed on to RSOF', async () => {
+    await api('put', '/cart', pdfCart);
+    const res = await place({ channel: 'WhatsApp' });
+    expect(res.status).toBe(400);
+    expect(rofOrders()).toHaveLength(0);
+  });
+
   test('Praline: ROF assigns Dhahran (Corniche has no Praline)', async () => {
     await api('put', '/cart', { items: [{ productId: PRODUCT_IDS.praline, qty: 1 }] });
     const res = await place();

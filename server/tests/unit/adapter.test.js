@@ -241,6 +241,14 @@ describe('order payload for POST /api/orders/manual (guide §7.1, spec §6.7 ste
     { productId: 'p2', qty: 2 },
   ];
 
+  test('the source says which app placed the order; an unknown channel counts as the mobile app', () => {
+    const source = (channel) => toRofOrderPayload({ user, address, deliveryPhone: '501234821', items, channel }).source;
+    expect(source('web')).toBe('Website');
+    expect(source('mobile')).toBe('MobileApp');
+    expect(source(undefined)).toBe('MobileApp');
+    expect(source('something-else')).toBe('MobileApp');
+  });
+
   test('uses the delivery phone, MobileApp source and Delivery fulfilment', () => {
     expect(toRofOrderPayload({ user, address, deliveryPhone: '501234821', items })).toEqual({
       customerName: 'Sara Al-Mutairi',

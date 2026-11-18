@@ -14,3 +14,6 @@
 const configured = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:4000/api/v1';
 
 export const API_BASE_URL = String(configured).replace(/\/+$/, '');
+
+/** Which app this is; orders carry it so RSOF staff see "Website" or "MobileApp" as the order's source. */
+export const CLIENT_CHANNEL = 'mobile';

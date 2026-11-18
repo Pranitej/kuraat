@@ -78,7 +78,7 @@ async function upsertPayment(ctx, userId, key, fields) {
 const setPayment = (ctx, id, fields) => ctx.db('payments').where({ id }).update({ ...fields, updated_at: ctx.clock.now() });
 
 /**
- * @param {{ fulfilment?: 'delivery'|'pickup', addressId?, deliveryPhone, promoCode?, payment: { method: 'card'|'cod'|'branch', card?, saveCard? }, idempotencyKey }} input
+ * @param {{ fulfilment?: 'delivery'|'pickup', channel?: 'web'|'mobile', addressId?, deliveryPhone, promoCode?, payment: { method: 'card'|'cod'|'branch', card?, saveCard? }, idempotencyKey }} input
  * @returns {Promise<{ order: object, created: boolean }>}
  */
 export async function placeOrder(ctx, userId, input) {
@@ -157,6 +157,7 @@ export async function placeOrder(ctx, userId, input) {
           total: amount,
           fulfilment: pickup ? 'pickup' : 'delivery',
           city: pickupAddress?.city ?? null,
+          channel: input.channel,
         }),
       ),
     );

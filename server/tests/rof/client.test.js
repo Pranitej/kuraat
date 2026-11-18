@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { BRANCH_IDS, PRODUCT_IDS } from '../../mock-rof/seed.js';
+import { BRANCH_IDS, PRODUCT_IDS } from '../support/rof-double/seed.js';
 import { createRofClient } from '../../src/rof/client.js';
 import { RofError } from '../../src/rof/errors.js';
 import { createMockRofHarness } from '../helpers/mockRof.js';
@@ -139,7 +139,7 @@ describe('ROF client — replies and failures', () => {
     await expect(c.resendDeliveryOtp(created.id)).rejects.toMatchObject({ kind: 'rejected' });
   });
 
-  test('shareOrderLocation: the fake ROF auto-assigns the nearest hub with stock', async () => {
+  test('shareOrderLocation: the stand-in auto-assigns the nearest hub with stock', async () => {
     const c = client();
     const created = await c.createOrder({ customerName: 'Sara', phoneNumber: '966501234821', items: [{ productId: PRODUCT_IDS.classic, quantity: 1 }] });
     await c.shareOrderLocation(created.id, { lat: 26.2874, lng: 50.2085 });

@@ -20,7 +20,7 @@ afterEach(async () => {
 const settings = () => ({ baseUrl: server.baseUrl, ...rof.store.data.credentials, timeoutMs: 2000 });
 
 describe('rof:check (contract check against the guide)', () => {
-  test('read-only check passes against the fake ROF', async () => {
+  test('read-only check passes against the RSOF stand-in', async () => {
     const report = await runRofCheck({ ...settings(), write: false, log });
     expect(report.ok).toBe(true);
     expect(lines.filter((l) => l.startsWith('MISMATCH'))).toEqual([]);

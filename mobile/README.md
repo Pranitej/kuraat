@@ -27,7 +27,7 @@ Android phone (Play Store) or iPhone (App Store). Phone and laptop must be on th
    cp .env.example .env        # set EXPO_PUBLIC_API_BASE_URL=http://192.168.1.25:4000/api/v1
    npm start                   # opens in Expo Go; scan the QR code with Expo Go (Android) or the Camera (iPhone)
    ```
-4. Sign in with the demo customer (see the web README's demo guide or your local `TEST_CREDENTIALS.md`).
+4. Create a customer (any Saudi mobile starting with 5; the test code is 123456), or sign in with one you made. See the web README's "Trying it out".
 
 A phone cannot use `localhost` — that would be the phone itself. Check the address from the phone's browser:
 `http://<laptop IP>:4000/api/v1/health` must answer `{"status":"ok"}`. If it does not, the firewall rule or Wi‑Fi

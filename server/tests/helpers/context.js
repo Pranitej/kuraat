@@ -1,6 +1,6 @@
 /**
  * Test context: the real app wired to the test database (TEST_DATABASE_URL), a settable clock, a
- * captured logger and — with { withRof: true } — a fake ROF on a random port reached over real HTTP.
+ * captured logger and — with { withRof: true } — the RSOF stand-in on a random port reached over real HTTP.
  */
 import { loadConfig } from '../../src/config/env.js';
 import { createContext } from '../../src/context.js';
@@ -31,7 +31,7 @@ export async function truncateAll(db) {
   await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 }
 
-/** rofData: the fake ROF's starting state (default: the seed without the demo orders). */
+/** rofData: the stand-in's starting state (default: its seed with an empty order book). */
 export async function createTestContext({ configOverrides = {}, withRof = false, rofTimeoutMs = 2000, rofData } = {}) {
   const base = loadConfig(process.env);
   const clock = createFakeClock();

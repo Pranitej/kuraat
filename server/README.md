@@ -27,15 +27,14 @@ Requirements: Node.js 22.9+ (developed on 22.19), Docker Desktop (or any MySQL 8
 ```bash
 cd server
 npm install
-cp .env.example .env          # defaults work for local development
+cp .env.example .env          # then fill in ROF_EMAIL and ROF_PASSWORD (ask RSOF)
 docker compose up -d          # MySQL 8.4 on localhost:3307 (databases kuraat + kuraat_test)
 npm run db:migrate            # create tables
-npm run mock-rof              # fake ROF on http://localhost:8080   (terminal 1)
-npm run db:seed               # demo customer 50 123 4821 / Kuraat@2026 + PDF cart and past orders
-npm run dev                   # API on http://localhost:4000/api/v1 (terminal 2)
+npm run dev                   # API on http://localhost:4000/api/v1, talking to the RSOF in .env
 ```
 
-The web app (`../client`) runs on top of this API; see its README for the demo guide.
+There is no local stand-in for RSOF: the API always talks to the real RSOF set in `.env`. The web app
+(`../client`) runs on top of this API; see its README for how to try it.
 
 Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test`, then point `DATABASE_URL` and
 `TEST_DATABASE_URL` in `.env` at them.
@@ -46,11 +45,8 @@ Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test
 |---|---|
 | `npm run dev` / `npm start` | API server (dev reloads on change). Also starts the order-status poller. |
 | `npm run db:migrate` | Applies new migrations (`migrations/index.js` lists them in order). |
-| `npm run db:seed` | Adds the demo customer if missing and, when the configured ROF has them, the PDF's demo extras once: the delivered orders KR-20377 / KR-20291, the PDF cart and notifications. Start the fake ROF first; against RSOF UAT the past orders are skipped (it says why). |
-| `npm run mock-rof` | Fake ROF on `MOCK_ROF_PORT` (8080). State is saved in `mock-rof/data/state.json`; delete it to start over. |
-| `npm run mock-rof:advance -- 20418 [Status]` | Plays branch staff: moves order KR-20418 to the next status (or the one given, e.g. `Canceled`). |
-| `npm run rof:check [-- --write]` | Contract check against the configured ROF (see *Switching to UAT*). |
-| `npm test` | All tests (needs the Docker MySQL; uses `kuraat_test`). |
+| `npm run rof:check [-- --write]` | Contract check against the configured RSOF (see *Connecting to RSOF*). `--write` creates and cancels two real test orders there. |
+| `npm test` | All tests (needs the Docker MySQL; uses `kuraat_test`). They never reach RSOF: an in-process stand-in in `tests/support/rof-double/` answers, and the RSOF settings are pinned in `vitest.config.js`. |
 
 ### Settings (`.env`)
 
@@ -60,11 +56,11 @@ Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test
 | `DATABASE_URL`, `TEST_DATABASE_URL` | Docker MySQL | `mysql://user:pass@host:port/db` |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | — | 32+ random characters each; different per environment |
 | `CORS_ORIGINS` | `http://localhost:5173` | Comma-separated web origins |
-| `ROF_BASE_URL` | `http://localhost:8080` | **The switch**: fake ROF locally, `https://rofuat.rsof.com.sa` for UAT |
-| `ROF_MEDIA_BASE_URL` | (= `ROF_BASE_URL`) | Base for product photo links the apps load. Set to the laptop's Wi-Fi address (e.g. `http://192.168.1.10:8080`) to test the mobile app on a phone; leave empty in UAT/production |
-| `ROF_EMAIL`, `ROF_PASSWORD` | fake ROF login | The ROF service user (not tied to a branch) |
+| `ROF_BASE_URL` | — | The RSOF to talk to: `https://rofuat.rsof.com.sa` for UAT |
+| `ROF_MEDIA_BASE_URL` | (= `ROF_BASE_URL`) | Base for product photo links the apps load. Leave empty: RSOF's own address is right for phones and browsers |
+| `ROF_EMAIL`, `ROF_PASSWORD` | — | The RSOF login the server uses (ideally a service user not tied to a branch). Never commit it |
 | `ROF_INVENTORY_CHECK` | `false` | `true` only if the service user has `Inventory.Read`; checkout then skips a nearer branch that is out of stock, with one `GET /api/inventory/balances` call |
-| `ROF_TIMEOUT_MS` | `10000` | Per ROF call |
+| `ROF_TIMEOUT_MS` | `10000` | Per ROF call (20000 suits UAT) |
 | `OTP_MODE`, `OTP_TEST_CODE` | `test`, `123456` | `test`: no WhatsApp message; the code is printed in the server log |
 | `PRICES_INCLUDE_VAT` | `true` | Whether ROF `sellingPrice` already includes 15 % VAT |
 | `ORDER_POLL_INTERVAL_MS` | `60000` | How often unfinished orders are re-read from ROF |
@@ -72,7 +68,6 @@ Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test
 | `AUTH_RATE_LIMIT_PER_MINUTE` | `20` | Per IP, for `/auth/*` |
 | `TRUST_PROXY` | unset | Set to `1` when running behind one reverse proxy / load balancer (so limits use the customer IP) |
 | `OTP_ALLOW_TEST_IN_PRODUCTION` | `false` | With `NODE_ENV=production` the server refuses `OTP_MODE=test` unless this is `true` — set it for UAT only |
-| `MOCK_ROF_*` | | Fake ROF only: port, login, `MOCK_AUTO_ADVANCE_SECONDS` (moves orders on a timer for demos) |
 
 Business rules ROF does not hold (fees, promo codes, opening hours, delivery slots, max detour) are in
 [`src/config/business.js`](src/config/business.js).
@@ -130,13 +125,12 @@ ROF errors: `success:false` → `RofError('rejected')` with ROF's own message; t
 `'unavailable'` (the app shows "We can't reach the store right now"; lists keep showing the last copy). An order whose
 creation times out is **never re-sent**; its payment is marked `needs_review` and logged for manual reconciliation.
 
-## Switching to UAT
+## Connecting to RSOF
 
 1. RSOF sets up the kuraat tenant: hub branches (`branchType = 'hub'`, with latitude/longitude), products with images
    and custom fields, and a service user that is not tied to a branch.
-2. Either put these in `.env` (`ROF_BASE_URL=https://rofuat.rsof.com.sa`, `ROF_EMAIL=…`, `ROF_PASSWORD=…`, and
-   `ROF_INVENTORY_CHECK=true` if `Inventory.Read` is granted), **or** copy `.env.uat.example` to `.env.uat` (git-ignored),
-   fill in the login and use `npm run dev:uat` / `npm run rof:check:uat` — your `.env` and the fake RSOF stay untouched.
+2. Put these in `.env` (git-ignored): `ROF_BASE_URL=https://rofuat.rsof.com.sa`, `ROF_EMAIL=…`, `ROF_PASSWORD=…`, and
+   `ROF_INVENTORY_CHECK=true` if `Inventory.Read` is granted.
 3. `npm run rof:check` — every line should be `OK`. A `MISMATCH` names the field; fix it in `src/rof/adapter.js` or
    `src/rof/fields.js` (e.g. if RSOF named the weight field `weight` instead of `weight_g`).
 4. Optional, after agreeing with RSOF: `npm run rof:check -- --write` creates **two** test orders (one delivery, one
@@ -177,6 +171,5 @@ src/rof         ROF client, token, adapter, fields, status, schemas, contract ch
 src/jobs        orderPoller (status changes → notifications)
 src/lib         Saudi time (UTC+3), distance, cache, ids
 migrations/     database schema (Knex)
-mock-rof/       the fake ROF (dev and tests only)
-tests/          unit + API tests (Vitest + Supertest, real MySQL, in-process fake ROF)
+tests/          unit + API tests (Vitest + Supertest, real MySQL); tests/support/rof-double is an in-process RSOF stand-in used only by the tests
 ```

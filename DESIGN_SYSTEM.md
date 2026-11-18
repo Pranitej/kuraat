@@ -424,7 +424,7 @@ Home ─► Notifications ─► (Order detail | Product | Password | Home)
 | Auth title wrapping | Titles wrap onto two lines exactly as in the PDF ("Create your / account") by limiting the title width to 232 pt. |
 | "n items" on order cards | The PDF counts units in the cart ("Subtotal (3 items)") but distinct products on one order card ("2 items"). The build counts units everywhere, so the cart and the order always agree. |
 | Home card photos | The PDF crops the Truffle Box cards tightly into the tray; the source photos are only ~340 px, so cards show the full box image to stay sharp. |
-| Branch choice when stock is missing | Nearest branch that stocks every item, but only within 25 km of the nearest branch; otherwise the nearest branch. Demo stock gap: Praline is out at Corniche, so it ships from Dhahran (6.8 km) — matching order KR-20291 in the PDF. |
+| Branch choice when stock is missing | Nearest branch that stocks every item, but only within 25 km of the nearest branch; otherwise the nearest branch. In the PDF, Praline is out at Corniche, so it ships from Dhahran (6.8 km) — order KR-20291. |
 | Order status | Derived from the clock: Confirmed → Preparing (+4 min) → Out for delivery (slot − 30 min) → Delivered. The PDF shows the order a few minutes after checkout ("Preparing"). |
 | Account phone field | Editable in place; the tag reads "Verified" for the current number and "Needs code" once edited — saving sends a WhatsApp code first. |
 | Save buttons | Always enabled, as drawn; saving with no changes shows "Your details are up to date". |

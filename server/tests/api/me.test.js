@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { DEMO_PASSWORD } from '../../src/db/seedDemo.js';
+import { DEMO_PASSWORD } from '../helpers/demoCustomer.js';
 import { TEST_CODE, signInDemo, signUp } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
 

@@ -178,7 +178,7 @@ describe('refresh button (design 2026-11-18 §5.4)', () => {
 });
 
 describe('pickup orders through RSOF (design 2026-11-18 §5.3)', () => {
-  test('the fake ROF walks a pickup order to PickUpByCustomer, never to a courier', async () => {
+  test('the RSOF stand-in walks a pickup order to PickUpByCustomer, never to a courier', async () => {
     const order = await placePickupTestOrder(t, me);
     const names = [];
     for (let i = 0; i < 4; i += 1) names.push((await advance(t, order.number)).body.status);

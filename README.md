@@ -19,7 +19,7 @@ the design and implementation-plan documents (`docs/`) and the test-credentials 
 | App | Status | Start here |
 |---|---|---|
 | `client/` | All 26 screens, running on the server API (no data in the browser); real map still to come | [client/README.md](client/README.md) |
-| `server/` | Built and tested against a local fake ROF; ready for RSOF UAT once the kuraat tenant and login exist | [server/README.md](server/README.md) |
+| `server/` | Talks to the real RSOF order system (UAT: rofuat.rsof.com.sa); tested with an in-process stand-in that lives only in `server/tests/` | [server/README.md](server/README.md) |
 | `mobile/` | All 26 screens native (Expo SDK 58), on the server API, sharing the web app's client logic; EAS project @pranitejrsof/kuraat; store builds wait for the Apple/Google store accounts | [mobile/README.md](mobile/README.md) |
 
 ## Quick start
@@ -31,7 +31,7 @@ npm run dev            # from the repo root
 ```
 
 Starts everything in order and waits for each step: MySQL in Docker (starting Docker Desktop if needed) →
-migrations → fake RSOF → demo data → API → web app → Expo. Anything already running is left alone, so it is
+migrations → API → web app → Expo (the API uses the RSOF set in `server/.env`; there is no local stand-in). Anything already running is left alone, so it is
 safe to run again. On Windows each server gets its own tab in one "kuraat" Windows Terminal window (close a tab
 to stop that server); elsewhere, or with `--inline`, they run in the same terminal and Ctrl+C stops them.
 Options: `npm run dev -- --no-expo`, `--no-web`, `--inline`, `--help`; `npm run dev:dev-client` starts Expo for
@@ -45,11 +45,9 @@ The root `package.json` only holds these scripts — no dependencies, no workspa
 
 ```bash
 # Backend (see server/README.md for details)
-cd server && npm install && cp .env.example .env
+cd server && npm install && cp .env.example .env     # then fill in ROF_EMAIL and ROF_PASSWORD (ask RSOF)
 docker compose up -d && npm run db:migrate
-npm run mock-rof      # terminal 1 — fake RSOF order system
-npm run db:seed       # demo customer + PDF past orders and cart (needs the fake RSOF running)
-npm run dev           # terminal 2 — API on http://localhost:4000/api/v1
+npm run dev           # API on http://localhost:4000/api/v1 — talks to the RSOF in .env
 
 # Web client (talks only to the API above)
 cd client && npm install && npm run dev      # http://localhost:5173

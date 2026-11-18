@@ -1,7 +1,7 @@
 /** Test helper: put items in the cart and place an order through the API. */
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
-import { PRODUCT_IDS } from '../../mock-rof/seed.js';
+import { PRODUCT_IDS } from '../support/rof-double/seed.js';
 
 export const VISA = { method: 'card', card: { number: '4242 4242 4242 4242', expiry: '12/29', cvv: '123' } };
 
@@ -15,7 +15,7 @@ export async function placeTestOrder(t, me, { items = [{ productId: PRODUCT_IDS.
   return res.body;
 }
 
-/** Plays branch staff in the fake ROF. */
+/** Plays branch staff in the RSOF stand-in. */
 export const advance = (t, number, status) =>
   request(t.mockRof.app)
     .post(`/__dev/orders/${String(number).replace('KR-', '')}/advance`)

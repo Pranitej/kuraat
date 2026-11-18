@@ -1,11 +1,10 @@
-/** Helpers for talking to an in-process fake ROF in tests. */
+/** Helpers for talking to the in-process RSOF stand-in (tests/support/rof-double) in tests. */
 import request from 'supertest';
-import { createMockRof } from '../../mock-rof/app.js';
-import { createSeed } from '../../mock-rof/seed.js';
-import { createStore } from '../../mock-rof/store.js';
+import { createMockRof } from '../support/rof-double/app.js';
+import { createSeed } from '../support/rof-double/seed.js';
+import { createStore } from '../support/rof-double/store.js';
 
-// Tests start with an empty order book unless they pass seed data with the demo orders.
-export function createMockRofHarness({ now = () => new Date('2026-11-15T09:21:00Z'), data = createSeed({ withDemoOrders: false }) } = {}) {
+export function createMockRofHarness({ now = () => new Date('2026-11-15T09:21:00Z'), data = createSeed() } = {}) {
   const store = createStore({ data });
   const app = createMockRof({ store, now });
   let token = null;
@@ -25,7 +24,7 @@ export function createMockRofHarness({ now = () => new Date('2026-11-15T09:21:00
       if (body !== undefined) req = req.send(body);
       return req;
     },
-    /** Starts the fake ROF on a random port; returns { baseUrl, close }. */
+    /** Starts the stand-in on a random port; returns { baseUrl, close }. */
     listen() {
       return new Promise((resolve) => {
         const server = app.listen(0, () => {

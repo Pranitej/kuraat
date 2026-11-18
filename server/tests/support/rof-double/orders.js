@@ -1,9 +1,9 @@
 /**
- * Fake ROF — order endpoints (guide §7–§9, status names §11) and dev-only controls used by tests
- * and by `npm run mock-rof:advance`.
+ * RSOF stand-in — order endpoints (guide §7–§9, status names §11) and dev-only controls used by tests
+ * (the tests drive them).
  */
 import { randomUUID } from 'node:crypto';
-import { distanceKm } from '../src/lib/geo.js';
+import { distanceKm } from '../../../src/lib/geo.js';
 
 /** Status number ↔ name (guide §11). */
 export const STATUS_NAMES = [

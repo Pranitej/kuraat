@@ -1,6 +1,6 @@
 /** Test helpers for accounts: sign up / sign in through the real API. */
 import request from 'supertest';
-import { DEMO_PASSWORD, DEMO_PHONE, seedDemo } from '../../src/db/seedDemo.js';
+import { DEMO_PASSWORD, DEMO_PHONE, seedDemo } from './demoCustomer.js';
 
 export const TEST_CODE = '123456';
 

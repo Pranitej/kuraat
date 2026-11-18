@@ -1,7 +1,9 @@
 /**
- * Fake ROF — a local stand-in for the RSOF order system (guide: "Order Integration API Guide –
- * Mobile App Backend"). It implements only the endpoints our backend uses and answers in the
- * guide's documented shapes, including its habit of replying HTTP 200 with success:false.
+ * RSOF stand-in for the automated tests ONLY. It runs inside the test process (tests/helpers/mockRof.js) and is
+ * never started as a server: the app and the dev stack talk to the real RSOF. Automated tests must not call a
+ * shared RSOF, because they would create real orders there. It implements only the endpoints our backend uses and
+ * answers in the shapes of the integration guide and the real UAT, including RSOF's habit of replying HTTP 200
+ * with success:false.
  *
  * Shapes NOT documented in the guide: GET /api/inventory/balances and GET /api/branches were verified on
  * the real UAT (18 Nov 2026) and are copied from it. Still an assumption (verify with `npm run rof:check`):
@@ -9,11 +11,8 @@
  */
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { registerOrderRoutes } from './orders.js';
 
-const here = dirname(fileURLToPath(import.meta.url));
 const LOGINS_PER_MINUTE = 5;
 
 const ok = (data, message = 'Success') => ({ success: true, message, data });
@@ -32,7 +31,6 @@ export function createMockRof({ store, now = () => new Date(), tokenSecret = 'mo
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json());
-  app.use('/uploads', express.static(join(here, 'uploads')));
 
   // Dev-only fault injection (POST /__dev/faults): simulate ROF being down or slow.
   // createOrderReject: a message → order create answers success:false with it.

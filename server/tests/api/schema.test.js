@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { DEMO_PASSWORD, DEMO_PHONE, seedDemo } from '../../src/db/seedDemo.js';
+import { DEMO_PASSWORD, DEMO_PHONE, seedDemo } from '../helpers/demoCustomer.js';
 import { createTestContext } from '../helpers/context.js';
 
 let t;

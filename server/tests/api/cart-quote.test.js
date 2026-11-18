@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { BRANCH_IDS, PRODUCT_IDS } from '../../mock-rof/seed.js';
+import { BRANCH_IDS, PRODUCT_IDS } from '../support/rof-double/seed.js';
 import { signInDemo } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
 

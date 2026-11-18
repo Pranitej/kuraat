@@ -1,6 +1,6 @@
 /**
  * Dependency container passed to routes and services. Tests build it with the test database, the
- * fake ROF, a settable clock and a captured logger; production builds it in src/index.js.
+ * RSOF stand-in (tests/support/rof-double), a settable clock and a captured logger; production builds it in src/index.js.
  * ROF-backed services exist only when a ROF client is given.
  */
 import { createBranchService } from './modules/branches/service.js';

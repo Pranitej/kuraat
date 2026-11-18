@@ -9,7 +9,7 @@ RSOF order system (a local fake of it during development). Nothing but the login
 kept in the browser.
 
 ```
-web app (this)  ──►  kuraat server API  ──►  RSOF order system (fake locally, RSOF UAT later)
+web app (this)  ──►  kuraat server API  ──►  RSOF order system (rofuat.rsof.com.sa for now)
 ```
 
 ## Run locally
@@ -17,16 +17,14 @@ web app (this)  ──►  kuraat server API  ──►  RSOF order system (fake
 Requirements: Node.js 22 LTS (developed on 22.19) and npm, plus the server running (see `../server/README.md`).
 
 ```bash
-# 1. the server side (once: npm install, cp .env.example .env, docker compose up -d, npm run db:migrate)
+# 1. the server side (once: npm install, cp .env.example .env and fill in the RSOF login, docker compose up -d, npm run db:migrate)
 cd server
-npm run mock-rof        # terminal 1 — fake RSOF on :8080
-npm run db:seed         # demo customer, PDF cart and past orders (needs the fake RSOF running)
-npm run dev             # terminal 2 — API on :4000
+npm run dev             # terminal 1 — API on :4000, talking to the RSOF in .env
 
 # 2. the web app
 cd client
 npm install
-npm run dev             # terminal 3 — http://localhost:5173
+npm run dev             # terminal 2 — http://localhost:5173
 npm test                # unit tests (Vitest)
 npm run build           # production build → client/dist
 ```
@@ -37,23 +35,21 @@ server must allow the web app's origin in its `CORS_ORIGINS`.
 `dist/` is a static single-page app. Deploy it to any static host and configure the host to serve `index.html`
 for unknown paths (SPA fallback), because the app uses client-side routes such as `/products/<id>`.
 
-## Demo guide
+## Trying it out
+
+Everything the shop shows comes from the real RSOF, so it is only as full as RSOF's products and stock.
 
 | What | How |
 |---|---|
-| Sign in as the demo customer | Mobile **50 123 4821**, password **Kuraat@2026** |
-| Sign in with WhatsApp code | The test code is always **123456** (nothing is sent in test mode); any other code is "not correct" |
-| Create a new customer | Welcome → Create an account, with any Saudi mobile starting with 5 (e.g. 55 123 4567) |
-| Card payment | **4242 4242 4242 4242**, future expiry, any CVV · declined: **4000 0000 0000 0002** · or cash on delivery |
-| Branch chosen by stock | Order **Truffle Box · Praline**: it is out of stock at Corniche, so the order ships from Dhahran. The cart and delivery screens say so in advance only when the server's `ROF_INVENTORY_CHECK` is on |
-| Move an order along | `cd server && npm run mock-rof:advance -- 20418` (next status) or `… 20418 OutForDelivery`; the tracking screen follows within 30 s |
+| Create a customer | Welcome → Create an account, with any Saudi mobile starting with 5 (e.g. 55 123 4567). The WhatsApp code is always **123456** while the server runs in test mode (nothing is sent) |
+| Sign in with a code | The test code is **123456**; any other code is "not correct" |
+| Card payment | Payments are simulated until a gateway is chosen: **4242 4242 4242 4242**, future expiry, any CVV · declined: **4000 0000 0000 0002** · or cash on delivery / pay at the branch |
+| Branch chosen by stock | RSOF picks the branch after the customer's pin is sent. With `ROF_INVENTORY_CHECK=true` the cart and delivery screens skip a nearer branch that is out of stock |
+| Follow an order | RSOF staff move it through the statuses in the RSOF dashboard; the orders page refresh button (or the tracking screen within 30 s) picks it up |
 | Cancel an order | Possible until the branch starts preparing it (tracking screen → Cancel order) |
-| Delete the account | Account → Delete account → confirm → WhatsApp code 123456. Not possible while an order is on its way |
-| Start over | Stop the fake RSOF, delete `server/mock-rof/data/state.json`, start it again, then remove the demo customer from the `kuraat` database (or recreate the database) and run `npm run db:seed` |
+| Delete the account | Account → Delete account → confirm → code 123456. Not possible while an order is on its way |
 
-The demo customer starts with the PDF's cart (Truffle Box · Classic ×1, Butter Croissant Box ×2), three saved
-addresses and the two delivered orders **#KR-20377** and **#KR-20291**. The next order is
-**#KR-20418**, the order shown in the PDF.
+Orders placed on RSOF's test system (UAT) are real orders there: cancel the ones you do not need.
 
 Times are always shown in Saudi time (UTC+3), whatever the device's time zone.
 

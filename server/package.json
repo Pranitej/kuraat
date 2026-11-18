@@ -9,13 +9,8 @@
   },
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env src/index.js",
-    "dev:uat": "node --watch --env-file-if-exists=.env --env-file=.env.uat src/index.js",
-    "rof:check:uat": "node --env-file-if-exists=.env --env-file=.env.uat scripts/rof-check.js",
     "start": "node --env-file-if-exists=.env src/index.js",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.js",
-    "db:seed": "node --env-file-if-exists=.env scripts/seed.js",
-    "mock-rof": "node --env-file-if-exists=.env mock-rof/index.js",
-    "mock-rof:advance": "node --env-file-if-exists=.env mock-rof/advance.js",
     "rof:check": "node --env-file-if-exists=.env scripts/rof-check.js",
     "test": "vitest run"
   },

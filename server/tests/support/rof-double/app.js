@@ -81,7 +81,7 @@ export function createMockRof({ store, now = () => new Date(), tokenSecret = 'mo
     const reused = Boolean(state.token) && state.expiresAt > now().getTime();
     if (!reused) {
       state.token = randomUUID().replace(/-/g, '');
-      state.expiresAt = now().getTime() + 30 * 60_000;
+      state.expiresAt = now().getTime() + 60 * 60_000; // RSOF: a payment link is valid for 1 hour
     }
     store.save();
     return answer('LinkReady', reused ? 'Payment link reused.' : 'Payment link created.', {

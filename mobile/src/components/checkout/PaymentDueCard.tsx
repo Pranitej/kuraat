@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Lock, TriangleAlert } from '@/components/icons';
 import { Button, Card, Text } from '@/components/ui';
-import { CARD_PAYMENT, formatSAR } from '@/domain';
+import { CARD_PAYMENT, formatSAR, usablePaymentLink } from '@/domain';
 import { t } from '@/i18n';
 import { openPaymentPage } from '@/lib/paymentPage';
 import { payOrder } from '@/services/orderService.js';
@@ -17,7 +17,7 @@ import type { Order } from '@/types/api';
  * The page comes with a new order; otherwise ONE tap gets it from the kuraat server and opens it.
  */
 export function PaymentDueCard({ order, onOrderPage = false, style }: { order: Order; onOrderPage?: boolean; style?: StyleProp<ViewStyle> }) {
-  const [link, setLink] = useState<string | null>(order.payment?.link ?? null);
+  const [link, setLink] = useState<string | null>(() => usablePaymentLink(order.payment) as string | null); // an expired page is not used: Pay fetches a fresh one
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const total = formatSAR(order.total);

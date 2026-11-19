@@ -2,7 +2,7 @@
 // The 12/24-hour style follows the device: these use a 24-hour device unless a test says otherwise.
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { setClockReader } from './format.js';
-import { CARD_PAYMENT, ORDER_FILTERS, PICKUP, cancelRefundText, filterOrders, isPickup, isOnlinePayment, orderHistoryView, orderItemCount, orderStatusView, orderTimelineView, paidLater, paymentLabel } from './orders.js';
+import { CARD_PAYMENT, ORDER_FILTERS, PICKUP, cancelRefundText, filterOrders, isPickup, isOnlinePayment, orderHistoryView, usablePaymentLink, orderItemCount, orderStatusView, orderTimelineView, paidLater, paymentLabel } from './orders.js';
 
 beforeEach(() => setClockReader(() => true));
 afterEach(() => setClockReader(null));
@@ -190,6 +190,17 @@ describe('online payment on the secure payment page', () => {
     expect(paymentLabel(online().payment)).toBe('Pay online');
     expect(paymentLabel({ method: 'card', status: 'cancelled' })).toBe('Pay online');
     expect(paymentLabel({ method: 'card', brand: 'Visa', last4: '4242' })).toBe('Visa •••• 4242'); // older simulated payments keep theirs
+  });
+
+  test('a payment page we hold is used only while it has time left (RSOF links last 1 hour)', () => {
+    const now = Date.parse('2026-11-19T10:00:00Z');
+    const page = (expiresAt) => ({ method: 'card', link: 'https://rofuat.rsof.com.sa/en/pay/T1', linkExpiresAt: expiresAt });
+    expect(usablePaymentLink(page('2026-11-19T11:00:00Z'), now)).toBe('https://rofuat.rsof.com.sa/en/pay/T1'); // 1 hour left
+    expect(usablePaymentLink(page('2026-11-19T10:00:30Z'), now)).toBeNull(); // 30 s left: about to expire
+    expect(usablePaymentLink(page('2026-11-19T09:00:00Z'), now)).toBeNull(); // expired
+    expect(usablePaymentLink(page(null), now)).toBe('https://rofuat.rsof.com.sa/en/pay/T1'); // RSOF gave no expiry: use it
+    expect(usablePaymentLink({ method: 'card', link: null }, now)).toBeNull();
+    expect(usablePaymentLink(null, now)).toBeNull();
   });
 
   test('screen text', () => {

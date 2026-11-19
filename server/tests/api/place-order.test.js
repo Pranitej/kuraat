@@ -47,7 +47,7 @@ describe('placing an order', () => {
       subtotal: 313,
       total: 313,
       // Waiting for the customer to pay on RSOF's page; the page comes with the new order.
-      payment: { method: 'card', status: 'online', brand: null, last4: null, paidAt: null, link: expect.stringMatching(/\/en\/pay\/\w+$/), linkExpiresAt: '2026-11-15T09:51:00.000Z' },
+      payment: { method: 'card', status: 'online', brand: null, last4: null, paidAt: null, link: expect.stringMatching(/\/en\/pay\/\w+$/), linkExpiresAt: '2026-11-15T10:21:00.000Z' },
       branch: { id: BRANCH_IDS.corniche, name: 'Kuraat · Al Khobar Corniche' },
       distanceKm: 5.8,
       deliveryPhone: '501234821',

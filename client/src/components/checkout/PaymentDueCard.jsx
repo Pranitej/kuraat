@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Lock, TriangleAlert } from 'lucide-react';
 import { Button, Card } from '@/components/ui';
-import { CARD_PAYMENT, formatSAR } from '@/domain';
+import { CARD_PAYMENT, formatSAR, usablePaymentLink } from '@/domain';
 import { payOrder } from '@/services/orderService.js';
 import { cn } from '@/lib/cn.js';
 
@@ -18,7 +18,7 @@ const WINDOW_FEATURES = 'popup=yes,width=480,height=760,menubar=no,toolbar=no,lo
  * is opened by the tap itself (so no browser blocks it) and pointed at the page when it arrives.
  */
 export default function PaymentDueCard({ order, onOrderPage = false, className }) {
-  const [link, setLink] = useState(order.payment?.link ?? null);
+  const [link, setLink] = useState(() => usablePaymentLink(order.payment)); // an expired page is not used: Pay fetches a fresh one
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const total = formatSAR(order.total);

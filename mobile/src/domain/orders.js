@@ -126,6 +126,16 @@ export const paidLater = (payment) => payment?.method === 'cod' || payment?.meth
  */
 export const isOnlinePayment = (order) => order?.payment?.method === 'card' && !order.payment.last4 && !order.status?.cancelled;
 
+/**
+ * The payment page we already hold, if it still has time left (RSOF's links last 1 hour; RSOF sends the expiry). A page
+ * that has expired or is about to is not used: the Pay button then asks the kuraat server for a fresh one.
+ */
+export function usablePaymentLink(payment, now = Date.now()) {
+  if (!payment?.link) return null;
+  const expires = payment.linkExpiresAt ? Date.parse(payment.linkExpiresAt) : NaN;
+  return Number.isNaN(expires) || expires - now > 60_000 ? payment.link : null;
+}
+
 /** Online payment on RSOF's secure payment page (19 Nov 2026), shared by the web and the app. */
 export const CARD_PAYMENT = localized({
   title: 'Pay online',

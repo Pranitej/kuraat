@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { evaluatePassword } from '@/domain';
 import type { User } from '@/types/api';
+import { t } from '@/i18n';
 
 type Errors = Partial<Record<'currentPassword' | 'newPassword' | 'confirm' | 'form', string>>;
 
@@ -29,20 +30,20 @@ export default function PasswordScreen() {
 
   const submit = async () => {
     const errs: Errors = {
-      currentPassword: hasPassword && !current ? 'Enter your current password' : '',
+      currentPassword: hasPassword && !current ? t('Enter your current password') : '',
       newPassword: !next
-        ? 'Create a new password'
+        ? t('Create a new password')
         : evaluation.acceptable
           ? ''
-          : 'Use at least 8 characters with upper and lower case letters and a number',
-      confirm: !confirm ? 'Confirm your new password' : confirm !== next ? 'Passwords do not match' : '',
+          : t('Use at least 8 characters with upper and lower case letters and a number'),
+      confirm: !confirm ? t('Confirm your new password') : confirm !== next ? t('Passwords do not match') : '',
     };
     setErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
     setSaving(true);
     try {
       await changePassword({ currentPassword: current, newPassword: next });
-      toast.show(hasPassword ? 'Your password has been updated' : 'Your password has been set');
+      toast.show(hasPassword ? t('Your password has been updated') : t('Your password has been set'));
       setCurrent('');
       setNext('');
       setConfirm('');
@@ -70,27 +71,24 @@ export default function PasswordScreen() {
 
   return (
     <Screen
-      header={<ScreenHeader title="Password" backFallback={ROUTES.profile} />}
+      header={<ScreenHeader title={t('Password')} backFallback={ROUTES.profile} />}
       keyboard
       bottomBar={
         <BottomBar>
           <Button block loading={saving} onPress={submit}>
-            {hasPassword ? 'Update password' : 'Set password'}
+            {hasPassword ? t('Update password') : t('Set password')}
           </Button>
         </BottomBar>
       }
     >
       <InfoBanner icon={Info}>
-        <Text color="copy" style={styles.banner}>
-          Signed up with a WhatsApp code? <Text weight={700}>Set a password</Text> to sign in without one. No current password is needed the
-          first time.
-        </Text>
+        <Text color="copy" style={styles.banner}>{t('Signed up with a WhatsApp code?')}{' '}<Text weight={700}>{t('Set a password')}</Text>{' '}{t('to sign in without one. No current password is needed the first time.')}</Text>
       </InfoBanner>
 
       <View style={styles.fields}>
         {hasPassword ? (
           <PasswordField
-            label="Current password"
+            label={t('Current password')}
             value={current}
             onChangeText={(t) => {
               setCurrent(t);
@@ -98,13 +96,13 @@ export default function PasswordScreen() {
             }}
             autoComplete="current-password"
             textContentType="password"
-            placeholder="Your current password"
+            placeholder={t('Your current password')}
             error={errors.currentPassword}
           />
         ) : null}
         <View>
           <PasswordField
-            label="New password"
+            label={t('New password')}
             value={next}
             onChangeText={(t) => {
               setNext(t);
@@ -112,13 +110,13 @@ export default function PasswordScreen() {
             }}
             autoComplete="new-password"
             textContentType="newPassword"
-            placeholder="Create a new password"
+            placeholder={t('Create a new password')}
             error={errors.newPassword}
           />
           {next ? <StrengthMeter evaluation={evaluation} /> : null}
         </View>
         <PasswordField
-          label="Confirm new password"
+          label={t('Confirm new password')}
           value={confirm}
           onChangeText={(t) => {
             setConfirm(t);
@@ -126,7 +124,7 @@ export default function PasswordScreen() {
           }}
           autoComplete="new-password"
           textContentType="newPassword"
-          placeholder="Repeat your new password"
+          placeholder={t('Repeat your new password')}
           error={errors.confirm}
           returnKeyType="done"
           onSubmitEditing={submit}
@@ -142,7 +140,7 @@ export default function PasswordScreen() {
       {hasPassword ? (
         <View style={styles.forgot}>
           <TextLink weight={600} onPress={forgot} disabled={sending} style={styles.forgotText}>
-            {sending ? 'Sending code…' : 'Forgot your current password? Get a WhatsApp code'}
+            {sending ? t('Sending code…') : t('Forgot your current password? Get a WhatsApp code')}
           </TextLink>
         </View>
       ) : null}

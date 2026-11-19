@@ -6,9 +6,11 @@ import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native'
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { welcomeHero } from '@/assets/images';
+import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { Button, Dialog, Logo, Text, TextLink } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { colors, layout, radii } from '@/theme/theme';
+import { t } from '@/i18n';
 
 /** Same copy as the web's Welcome page. */
 const LEGAL = {
@@ -42,6 +44,9 @@ export default function WelcomeScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
+      <View style={[styles.lang, { top: insets.top + 12 }]}>
+        <LanguageToggle />
+      </View>
       <ScrollView bounces={false} contentContainerStyle={styles.scroll}>
         <Animated.View entering={FadeIn.duration(400)} style={{ height: heroHeight }}>
           <Image
@@ -49,35 +54,19 @@ export default function WelcomeScreen() {
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             contentPosition={{ left: '50%', top: '40%' }}
-            accessibilityLabel="kuraat signature maroon truffle box"
+            accessibilityLabel={t('kuraat signature maroon truffle box')}
           />
         </Animated.View>
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 40 }]}>
           <Animated.View entering={FadeInUp.duration(420)} style={styles.content}>
             <Logo width={132} />
-            <Text variant="title" align="center" accessibilityRole="header" style={styles.title}>
-              Welcome to kuraat
-            </Text>
-            <Text color="muted" align="center" style={styles.subtitle}>
-              Fresh truffles, cakes and pastries, delivered from the branch nearest you.
-            </Text>
+            <Text variant="title" align="center" accessibilityRole="header" style={styles.title}>{t('Welcome to kuraat')}</Text>
+            <Text color="muted" align="center" style={styles.subtitle}>{t('Fresh truffles, cakes and pastries, delivered from the branch nearest you.')}</Text>
             <View style={styles.actions}>
-              <Button block onPress={() => router.push(ROUTES.signUp)}>
-                Create an account
-              </Button>
-              <Button block variant="secondary" onPress={() => router.push(ROUTES.signIn)}>
-                Sign in
-              </Button>
+              <Button block onPress={() => router.push(ROUTES.signUp)}>{t('Create an account')}</Button>
+              <Button block variant="secondary" onPress={() => router.push(ROUTES.signIn)}>{t('Sign in')}</Button>
             </View>
-            <Text variant="label" weight={400} color="muted" align="center" style={styles.legal}>
-              By continuing you agree to our{' '}
-              <TextLink size={13} onPress={() => setLegal('terms')}>
-                Terms
-              </TextLink>{' '}
-              and{' '}
-              <TextLink size={13} onPress={() => setLegal('privacy')}>
-                Privacy Policy
-              </TextLink>
+            <Text variant="label" weight={400} color="muted" align="center" style={styles.legal}>{t('By continuing you agree to our')}<TextLink size={13} onPress={() => setLegal('terms')}>{t('Terms')}</TextLink>{t('and')}<TextLink size={13} onPress={() => setLegal('privacy')}>{t('Privacy Policy')}</TextLink>
             </Text>
           </Animated.View>
         </View>
@@ -96,9 +85,7 @@ export default function WelcomeScreen() {
                 </Text>
               ))}
             </View>
-            <Button block onPress={() => setLegal(null)} style={styles.gotIt}>
-              Got it
-            </Button>
+            <Button block onPress={() => setLegal(null)} style={styles.gotIt}>{t('Got it')}</Button>
           </View>
         ) : null}
       </Dialog>
@@ -107,6 +94,7 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  lang: { position: 'absolute', end: 16, zIndex: 20 },
   root: { flex: 1, backgroundColor: colors.cream },
   scroll: { flexGrow: 1 },
   sheet: {

@@ -60,6 +60,7 @@ tokens) and `lib/env.js` (where the API is).
 | 24 | Add / edit address | ✅ | ✅ | |
 | 25 | Our branches (search, cities, map, call, directions) | ✅ | ✅ | |
 | 26 | Notifications | — | — | Removed from both apps (18 Nov 2026), together with Favourites and promo codes; the server endpoints are unchanged |
+| 27 | English / Arabic language toggle | ✅ | ✅ | Header button (web: app bar, phone home header, auth, Welcome; mobile: home header, auth, Welcome). Arabic = right-to-left; on the phone the app reloads once, because the layout direction is a native setting. Dictionary `i18n/ar.js` is a shared file; product, branch and server-error text stays English |
 | — | Session refresh, sign out on expiry | ✅ | ✅ | Web: tokens in local storage · Mobile: device keychain |
 | — | Current location once per session (Home) → `PUT /me/location` | ✅ | ✅ | Shared `captureLocationOnce`. Web: browser geolocation · Mobile: `expo-location`, while-in-use only (needs a new dev build). Refused → nothing, not asked again that session (18 Nov 2026) |
 | — | Offline banner | — | ✅ | Web shows the "can't reach kuraat" message per request |

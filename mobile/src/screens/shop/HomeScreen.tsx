@@ -25,6 +25,7 @@ import { areaLabel, categoryFilter, filterProducts, withDistances } from '@/doma
 import { productGrid } from '@/lib/grid';
 import { colors, layout } from '@/theme/theme';
 import type { Branch, Product } from '@/types/api';
+import { t } from '@/i18n';
 
 const GUTTER = 20;
 
@@ -118,13 +119,9 @@ export default function HomeScreen() {
                   setFiltersState(DEFAULT_FILTERS);
                   scrollToSweets();
                 }}
-              >
-                See all
-              </TextLink>
+              >{t('See all')}</TextLink>
             }
-          >
-            Our sweets
-          </SectionTitle>
+          >{t('Our sweets')}</SectionTitle>
           {showCategories ? (
             <ChipRow style={styles.chips}>
               {chips.map((c) => (
@@ -137,16 +134,12 @@ export default function HomeScreen() {
 
           {query ? (
             <Text variant="small" color="muted" style={styles.results} accessibilityLiveRegion="polite">
-              {products.length} {products.length === 1 ? 'result' : 'results'} for “
-              <Text variant="small" weight={600}>
-                {query}
-              </Text>
-              ”
+              {products.length === 1 ? t('1 result for “{query}”', { query }) : t('{count} results for “{query}”', { count: products.length, query })}
             </Text>
           ) : null}
 
           {loading ? (
-            <View style={[styles.grid, { gap }]} accessibilityLabel="Loading sweets">
+            <View style={[styles.grid, { gap }]} accessibilityLabel={t('Loading sweets')}>
               {[0, 1, 2, 3].map((i) => (
                 <ProductCardSkeleton key={i} width={cardWidth} />
               ))}
@@ -155,13 +148,13 @@ export default function HomeScreen() {
             <EmptyState
               compact
               icon={CloudOff}
-              title="We can't reach the store right now"
+              title={t('We can\'t reach the store right now')}
               message={
                 (catalog.error as { code?: string; message?: string } | null)?.code === 'network'
                   ? (catalog.error as Error).message
-                  : 'Please try again in a moment.'
+                  : t('Please try again in a moment.')
               }
-              actionLabel="Try again"
+              actionLabel={t('Try again')}
               onAction={catalog.refresh}
             />
           ) : products.length ? (
@@ -174,9 +167,9 @@ export default function HomeScreen() {
             <EmptyState
               compact
               icon={SearchX}
-              title="No sweets found"
-              message={query ? `Nothing matches “${query}”. Try another name or category.` : 'Nothing in this category right now.'}
-              actionLabel="Show all sweets"
+              title={t('No sweets found')}
+              message={query ? t('Nothing matches “{query}”. Try another name or category.', { query }) : t('Nothing in this category right now.')}
+              actionLabel={t('Show all sweets')}
               onAction={() => setFiltersState(DEFAULT_FILTERS)}
             />
           )}
@@ -185,13 +178,10 @@ export default function HomeScreen() {
         <View style={styles.branchesSection}>
           <SectionTitle
             action={
-              <TextLink onPress={() => router.push(ROUTES.branches)}>
-                View all <ChevronRight size={16} color={colors.maroon} strokeWidth={2} />
+              <TextLink onPress={() => router.push(ROUTES.branches)}>{t('View all')}{' '}<ChevronRight size={16} color={colors.maroon} strokeWidth={2} />
               </TextLink>
             }
-          >
-            Our branches
-          </SectionTitle>
+          >{t('Our branches')}</SectionTitle>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}

@@ -14,6 +14,7 @@ import { ADDRESS_LABELS, LOCATION_FAILED, LOCATION_OUTSIDE, deliveryCities, isIn
 import { getDevicePosition } from '@/lib/location';
 import { colors, radii, shadows } from '@/theme/theme';
 import type { AddressType, LatLng } from '@/types/api';
+import { t } from '@/i18n';
 
 type Form = {
   type: AddressType;
@@ -113,15 +114,15 @@ function AddressForm({ addressId }: { addressId?: string }) {
     }
     setForm((f) => ({ ...f, location: position }));
     setPinned(true);
-    toast.show('Location saved for this address. Add the building and street.', { tone: 'info' });
+    toast.show(t('Location saved for this address. Add the building and street.'), { tone: 'info' });
   };
 
   const save = async () => {
     const errs: Errors = {
-      label: form.type === 'other' ? validateRequired(form.label, 'Give this address a name') : '',
-      line: validateRequired(form.line, 'Enter the building and street'),
-      district: validateRequired(form.district, 'Enter the district'),
-      city: validateRequired(city, 'Choose a city'),
+      label: form.type === 'other' ? validateRequired(form.label, t('Give this address a name')) : '',
+      line: validateRequired(form.line, t('Enter the building and street')),
+      district: validateRequired(form.district, t('Enter the district')),
+      city: validateRequired(city, t('Choose a city')),
     };
     setErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
@@ -130,7 +131,7 @@ function AddressForm({ addressId }: { addressId?: string }) {
       const payload = { ...form, city, location: form.location || undefined } as AddressInput;
       const saved = isNew ? await create(payload) : await update(existing!.id, payload);
       if (fromDelivery) checkout.patch({ addressId: saved.id });
-      toast.show(isNew ? 'Address added' : 'Address saved');
+      toast.show(isNew ? t('Address added') : t('Address saved'));
       leave();
     } catch (err) {
       setErrors({ form: (err as Error).message });
@@ -156,17 +157,15 @@ function AddressForm({ addressId }: { addressId?: string }) {
 
   return (
     <Screen
-      header={<ScreenHeader title={isNew ? 'Add address' : 'Edit address'} backFallback={returnTo} />}
+      header={<ScreenHeader title={isNew ? t('Add address') : t('Edit address')} backFallback={returnTo} />}
       keyboard
       bottomBar={
         <BottomBar>
-          <Button block loading={saving} onPress={save}>
-            Save address
-          </Button>
+          <Button block loading={saving} onPress={save}>{t('Save address')}</Button>
         </BottomBar>
       }
     >
-      <MapIllustration height={166} pins={[{ id: 'here', x: 49, y: 50, label: 'Address' }]} selectedId="here">
+      <MapIllustration height={166} pins={[{ id: 'here', x: 49, y: 50, label: t('Address') }]} selectedId="here">
         <Pressable
           onPress={locate}
           disabled={locating}
@@ -176,14 +175,14 @@ function AddressForm({ addressId }: { addressId?: string }) {
         >
           {locating ? <Spinner size={18} /> : <LocateFixed size={18} color={colors.maroon} strokeWidth={1.8} />}
           <Text weight={600} style={styles.locateText} numberOfLines={1}>
-            {locating ? 'Locating…' : pinned ? 'Location saved' : 'Use current location'}
+            {locating ? t('Locating…') : pinned ? t('Location saved') : t('Use current location')}
           </Text>
         </Pressable>
       </MapIllustration>
 
       <View style={styles.form}>
-        <FieldWrapper label="Label" error={errors.label}>
-          <View style={styles.labels} accessibilityRole="radiogroup" accessibilityLabel="Address label">
+        <FieldWrapper label={t('Label')} error={errors.label}>
+          <View style={styles.labels} accessibilityRole="radiogroup" accessibilityLabel={t('Address label')}>
             {(ADDRESS_LABELS as { id: AddressType; label: string }[]).map((l) => (
               <Chip key={l.id} active={form.type === l.id} onPress={() => set('type')(l.id)}>
                 {l.label}
@@ -192,8 +191,8 @@ function AddressForm({ addressId }: { addressId?: string }) {
           </View>
           {form.type === 'other' ? (
             <Field
-              accessibilityLabel="Address name"
-              placeholder="e.g. Parents’ home"
+              accessibilityLabel={t('Address name')}
+              placeholder={t('e.g. Parents’ home')}
               value={form.label}
               onChangeText={set('label')}
               style={styles.otherName}
@@ -202,11 +201,11 @@ function AddressForm({ addressId }: { addressId?: string }) {
         </FieldWrapper>
 
         <Field
-          label="Address"
+          label={t('Address')}
           icon={MapPin}
           value={form.line}
           onChangeText={set('line')}
-          placeholder="Building, street"
+          placeholder={t('Building, street')}
           autoComplete="address-line1"
           textContentType="streetAddressLine1"
           error={errors.line}
@@ -214,27 +213,25 @@ function AddressForm({ addressId }: { addressId?: string }) {
 
         <View style={styles.row}>
           <Field
-            label="District"
+            label={t('District')}
             value={form.district}
             onChangeText={set('district')}
-            placeholder="District"
+            placeholder={t('District')}
             error={errors.district}
             style={styles.flex}
           />
-          <SelectField label="City" options={cities} value={city} onChange={set('city')} error={errors.city} style={styles.flex} />
+          <SelectField label={t('City')} options={cities} value={city} onChange={set('city')} error={errors.city} style={styles.flex} />
         </View>
 
-        <Field label="Landmark (optional)" value={form.landmark} onChangeText={set('landmark')} placeholder="Near Al Rakah Park" />
+        <Field label={t('Landmark (optional)')} value={form.landmark} onChangeText={set('landmark')} placeholder={t('Near Al Rakah Park')} />
 
         <View style={styles.toggleRow}>
-          <Text weight={700} style={[styles.flex, styles.toggleLabel]}>
-            Make this my default address
-          </Text>
+          <Text weight={700} style={[styles.flex, styles.toggleLabel]}>{t('Make this my default address')}</Text>
           <Toggle
             value={form.isDefault}
             onChange={set('isDefault')}
             disabled={Boolean(existing?.isDefault && addresses.length <= 1)}
-            label="Make this my default address"
+            label={t('Make this my default address')}
           />
         </View>
 
@@ -248,15 +245,11 @@ function AddressForm({ addressId }: { addressId?: string }) {
             style={[styles.delete, onlyAddress && styles.dim]}
           >
             <Trash2 size={18} color={colors.maroon} strokeWidth={1.8} />
-            <Text weight={600} color="maroon" style={styles.deleteText}>
-              Delete this address
-            </Text>
+            <Text weight={600} color="maroon" style={styles.deleteText}>{t('Delete this address')}</Text>
           </Pressable>
         ) : null}
         {onlyAddress ? (
-          <Text variant="caption" color="muted" align="center" style={styles.onlyNote}>
-            Add another address before deleting your only one.
-          </Text>
+          <Text variant="caption" color="muted" align="center" style={styles.onlyNote}>{t('Add another address before deleting your only one.')}</Text>
         ) : null}
         {errors.form ? (
           <Text variant="label" color="hotpink" accessibilityRole="alert">
@@ -272,14 +265,14 @@ function AddressForm({ addressId }: { addressId?: string }) {
           onConfirm={doDelete}
           loading={deleting}
           icon={Trash2}
-          title={`Delete ${existing.label} address?`}
+          title={t('Delete {label} address?', { label: existing.label })}
           message={
             existing.isDefault
-              ? 'This is your default address. Another saved address will become your default.'
-              : 'You can add it again at any time.'
+              ? t('This is your default address. Another saved address will become your default.')
+              : t('You can add it again at any time.')
           }
-          confirmLabel="Delete address"
-          cancelLabel="Keep address"
+          confirmLabel={t('Delete address')}
+          cancelLabel={t('Keep address')}
         />
       ) : null}
     </Screen>

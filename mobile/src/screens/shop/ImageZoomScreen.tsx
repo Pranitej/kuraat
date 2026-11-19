@@ -15,6 +15,7 @@ import { useToast } from '@/context/ToastContext';
 import { useGoBack } from '@/hooks';
 import { zoomSliderGesture } from './zoomSlider';
 import { colors, radii } from '@/theme/theme';
+import { t } from '@/i18n';
 
 const MIN = 1;
 const MAX = 3;
@@ -57,9 +58,9 @@ function ZoomRail({ scale, onStep, onFit }: { scale: SharedValue<number>; onStep
   const percent = useScalePercent(scale);
   return (
     <View style={styles.rail}>
-      <IconButton icon={ZoomIn} label="Zoom in" variant="plainLight" onPress={() => onStep(STEP)} disabled={percent >= MAX * 100} />
-      <IconButton icon={ZoomOut} label="Zoom out" variant="plainLight" onPress={() => onStep(-STEP)} disabled={percent <= MIN * 100} />
-      <IconButton icon={Minimize2} label="Fit to screen" variant="plainLight" onPress={onFit} />
+      <IconButton icon={ZoomIn} label={t('Zoom in')} variant="plainLight" onPress={() => onStep(STEP)} disabled={percent >= MAX * 100} />
+      <IconButton icon={ZoomOut} label={t('Zoom out')} variant="plainLight" onPress={() => onStep(-STEP)} disabled={percent <= MIN * 100} />
+      <IconButton icon={Minimize2} label={t('Fit to screen')} variant="plainLight" onPress={onFit} />
     </View>
   );
 }
@@ -82,7 +83,7 @@ function ZoomSlider({ scale, apply, onStep }: { scale: SharedValue<number>; appl
         style={styles.slider}
         accessible
         accessibilityRole="adjustable"
-        accessibilityLabel="Zoom level"
+        accessibilityLabel={t('Zoom level')}
         accessibilityValue={{ min: MIN * 100, max: MAX * 100, now: percent, text: `${percent}%` }}
         accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
         onAccessibilityAction={(e) => onStep(e.nativeEvent.actionName === 'increment' ? STEP : -STEP)}
@@ -157,7 +158,8 @@ export default function ImageZoomScreen() {
     },
     [reset],
   );
-  const step = useCallback((dir: 1 | -1) => setIndex((i) => (i + dir + images.length) % images.length), [images.length]);
+  const imageCount = images.length;
+  const step = useCallback((dir: 1 | -1) => setIndex((i) => (i + dir + imageCount) % imageCount), [imageCount]);
 
   if (!product && catalog.status === 'loading') return <View style={styles.root} />;
   if (!product) return <Redirect href={ROUTES.home} />;
@@ -213,19 +215,19 @@ export default function ImageZoomScreen() {
     try {
       await Share.share({ title: `${product.name} · kuraat`, message: `${product.name} · kuraat\n${images[index]}`, url: images[index] });
     } catch {
-      toast.show('Could not share this photo', { tone: 'error' });
+      toast.show(t('Could not share this photo'), { tone: 'error' });
     }
   };
 
   return (
-    <View style={styles.root} accessibilityViewIsModal accessibilityLabel={`${product.name} photo viewer`}>
+    <View style={styles.root} accessibilityViewIsModal accessibilityLabel={t('{name} photo viewer', { name: product.name })}>
       <StatusBar style="light" />
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
-        <IconButton icon={X} label="Close" variant="viewer" onPress={goBack} />
+        <IconButton icon={X} label={t('Close')} variant="viewer" onPress={goBack} />
         <Text weight={700} color="white" style={styles.counter} accessibilityLiveRegion="polite">
           {index + 1} / {images.length}
         </Text>
-        <IconButton icon={Share2} label="Share" variant="viewer" onPress={share} />
+        <IconButton icon={Share2} label={t('Share')} variant="viewer" onPress={share} />
       </View>
 
       <GestureDetector gesture={gestures}>
@@ -243,7 +245,7 @@ export default function ImageZoomScreen() {
               style={StyleSheet.absoluteFill}
               contentFit="contain"
               transition={160}
-              accessibilityLabel={`${product.name} — photo ${index + 1}`}
+              accessibilityLabel={t('{name} — photo {n}', { name: product.name, n: index + 1 })}
             />
           </Animated.View>
 
@@ -254,11 +256,11 @@ export default function ImageZoomScreen() {
 
       <View style={[styles.bottom, { paddingBottom: Math.max(20, insets.bottom + 8) }]}>
         <View style={styles.sliderRow}>
-          <Pressable onPress={() => zoomBy(-STEP)} accessibilityRole="button" accessibilityLabel="Zoom out" hitSlop={10}>
+          <Pressable onPress={() => zoomBy(-STEP)} accessibilityRole="button" accessibilityLabel={t('Zoom out')} hitSlop={10}>
             <ZoomOut size={20} color={colors.white80} strokeWidth={1.8} />
           </Pressable>
           <ZoomSlider scale={scale} apply={applyScale} onStep={zoomBy} />
-          <Pressable onPress={() => zoomBy(STEP)} accessibilityRole="button" accessibilityLabel="Zoom in" hitSlop={10}>
+          <Pressable onPress={() => zoomBy(STEP)} accessibilityRole="button" accessibilityLabel={t('Zoom in')} hitSlop={10}>
             <ZoomIn size={20} color={colors.white80} strokeWidth={1.8} />
           </Pressable>
         </View>
@@ -268,7 +270,7 @@ export default function ImageZoomScreen() {
               key={src}
               onPress={() => select(i)}
               accessibilityRole="button"
-              accessibilityLabel={`Photo ${i + 1}`}
+              accessibilityLabel={t('Photo {n}', { n: i + 1 })}
               accessibilityState={{ selected: i === index }}
               style={[styles.thumb, i === index ? styles.thumbActive : styles.thumbIdle]}
             >
@@ -276,9 +278,7 @@ export default function ImageZoomScreen() {
             </Pressable>
           ))}
         </View>
-        <Text variant="label" weight={400} color="white70" align="center" style={styles.hint}>
-          Pinch or double-tap to zoom · drag to pan
-        </Text>
+        <Text variant="label" weight={400} color="white70" align="center" style={styles.hint}>{t('Pinch or double-tap to zoom · drag to pan')}</Text>
       </View>
     </View>
   );

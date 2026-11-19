@@ -43,7 +43,9 @@ export function setLanguage(code) {
 
 export function subscribeLanguage(fn) {
   listeners.add(fn);
-  return () => listeners.delete(fn);
+  return () => {
+    listeners.delete(fn);
+  };
 }
 
 // Wraps phone numbers and amounts in a left-to-right isolate so Arabic text does not reorder their digits.

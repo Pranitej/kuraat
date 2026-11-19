@@ -8,6 +8,7 @@ import { X } from '@/components/icons';
 import { colors, motion, radii, shadows } from '@/theme/theme';
 import { IconButton } from './IconButton';
 import { Text } from './Text';
+import { t } from '@/i18n';
 
 type Props = {
   open: boolean;
@@ -80,7 +81,7 @@ export function BottomSheet({ open, onClose, title, children, footer }: Props) {
                 <Text variant="heading" accessibilityRole="header">
                   {title}
                 </Text>
-                <IconButton icon={X} label="Close" size="md" onPress={close} />
+                <IconButton icon={X} label={t('Close')} size="md" onPress={close} />
               </View>
             </View>
           </GestureDetector>

@@ -7,6 +7,7 @@ import { branchTypeLabel, directionsUrl, formatDistance, formatHours, telUrl } f
 import { useOpenUrl } from '@/lib/linking';
 import { colors, radii, shadows } from '@/theme/theme';
 import type { Branch } from '@/types/api';
+import { t } from '@/i18n';
 
 /** "Open · 10 AM – 12 AM · 2.4 km" (open/closed from the server, in Saudi time). */
 export function OpenLine({ branch, distanceKm, showDistance }: { branch: Branch; distanceKm?: number | null; showDistance?: boolean }) {
@@ -14,7 +15,7 @@ export function OpenLine({ branch, distanceKm, showDistance }: { branch: Branch;
     <View style={styles.openLine}>
       <Clock size={16} color={colors.ink} strokeWidth={1.8} />
       <Text variant="small" weight={600}>
-        {branch.openNow ? 'Open' : 'Closed'} · {formatHours(branch.hours)}
+        {branch.openNow ? t('Open') : t('Closed')} · {formatHours(branch.hours)}
       </Text>
       {showDistance && distanceKm != null ? (
         <Text variant="small" color="muted">
@@ -32,11 +33,11 @@ export function BranchTeaserCard({ branch, distanceKm }: { branch: Branch; dista
     <Pressable
       onPress={() => router.push(ROUTES.branch(branch.id))}
       accessibilityRole="button"
-      accessibilityLabel={`${branch.name} branch${distanceKm != null ? `, ${formatDistance(distanceKm)}` : ''}`}
+      accessibilityLabel={t('{name} branch{v2}', { name: branch.name, v2: distanceKm != null ? `, ${formatDistance(distanceKm)}` : '' })}
       style={({ pressed }) => [styles.teaser, pressed && shadows.float]}
     >
       <View style={styles.teaserTop}>
-        <Tag icon={Store}>Branch</Tag>
+        <Tag icon={Store}>{t('Branch')}</Tag>
         {distanceKm != null ? (
           <Text variant="small" weight={700}>
             {formatDistance(distanceKm)}
@@ -82,7 +83,7 @@ export function BranchListCard({
         <Text weight={700} style={[styles.listName, styles.flex]}>
           {branch.name}
         </Text>
-        {nearest ? <Tag tone="dark">Nearest to you</Tag> : null}
+        {nearest ? <Tag tone="dark">{t('Nearest to you')}</Tag> : null}
       </View>
       {/* RSOF's branch type (hub / master / …), small and muted so customers can tell the branches apart. */}
       {branchTypeLabel(branch.type) ? (
@@ -103,14 +104,10 @@ export function BranchListCard({
           leftIcon={Phone}
           block
           onPress={() => openUrl(telUrl(branch.phone))}
-          accessibilityLabel={`Call ${branch.name}, ${branch.phone}`}
+          accessibilityLabel={t('Call {name}, {phone}', { name: branch.name, phone: branch.phone })}
           style={styles.flex}
-        >
-          Call
-        </Button>
-        <Button size="md" leftIcon={Navigation} block onPress={() => openUrl(directionsUrl(branch.location))} style={styles.flex}>
-          Directions
-        </Button>
+        >{t('Call')}</Button>
+        <Button size="md" leftIcon={Navigation} block onPress={() => openUrl(directionsUrl(branch.location))} style={styles.flex}>{t('Directions')}</Button>
       </View>
     </View>
   );

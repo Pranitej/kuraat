@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ROUTES } from '@/lib/routes';
 import { colors, gradients } from '@/theme/theme';
 import { LinearGradient } from 'expo-linear-gradient';
+import { t } from '@/i18n';
 
 /** Shown once per launch; later visits (e.g. after signing out) go straight on. */
 let booted = false;
@@ -49,19 +50,15 @@ export default function SplashScreen() {
   const g = gradients.maroon;
 
   return (
-    <Pressable onPress={skip} accessibilityRole="button" accessibilityLabel="Continue to kuraat" style={styles.root}>
+    <Pressable onPress={skip} accessibilityRole="button" accessibilityLabel={t('Continue to kuraat')} style={styles.root}>
       <StatusBar style="light" />
       <LinearGradient colors={g.colors} locations={g.locations} start={g.start} end={g.end} style={StyleSheet.absoluteFill} />
       <CirclePattern variant="splash" fade="up" />
       <Animated.View entering={FadeInUp.duration(600)} style={styles.center}>
         <Logo tone="white" width={216} />
         <View style={styles.rule} />
-        <Text variant="body-lg" color="white80" align="center" style={styles.tagline}>
-          Your partner for every gathering
-        </Text>
-        <Text arabic weight={700} color="white" align="center" style={styles.arabic}>
-          كُرات شريك الجمعات
-        </Text>
+        <Text variant="body-lg" color="white80" align="center" style={styles.tagline}>{t('Your partner for every gathering')}</Text>
+        <Text arabic weight={700} color="white" align="center" style={styles.arabic}>كُرات شريك الجمعات</Text>
       </Animated.View>
       <View style={[styles.dots, { bottom: Math.max(56, insets.bottom + 24) }]} accessibilityElementsHidden>
         {[0, 1, 2].map((i) => (

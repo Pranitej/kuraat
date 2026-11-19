@@ -9,13 +9,14 @@ import type { CartLine } from '@/context/CartContext';
 import { formatSAR, lineWarning } from '@/domain';
 import { colors, radii } from '@/theme/theme';
 import type { Totals } from '@/types/api';
+import { t, localized } from '@/i18n';
 
-const STEPS = ['Cart', 'Delivery', 'Payment'];
+const STEPS: string[] = localized(['Cart', 'Delivery', 'Payment']);
 
 /** 1 Cart —— 2 Delivery —— 3 Payment */
 export function CheckoutSteps({ current }: { current: number }) {
   return (
-    <View style={styles.steps} accessibilityLabel={`Checkout step ${current + 1} of 3: ${STEPS[current]}`}>
+    <View style={styles.steps} accessibilityLabel={t('Checkout step {v1} of 3: {v2}', { v1: current + 1, v2: STEPS[current] })}>
       {STEPS.map((label, i) => {
         const done = i < current;
         const active = i === current;
@@ -57,7 +58,7 @@ export const CartItemCard = memo(function CartItemCard({
 }) {
   const router = useRouter();
   const { product, qty, lineTotal } = line;
-  const name = product?.name ?? 'This product';
+  const name = product?.name ?? t('This product');
   const warning = lineWarning(line) as string | null;
   const image = product?.image ?? product?.images?.[0] ?? null;
   const open = product ? () => router.push(ROUTES.product(product.id)) : undefined;
@@ -83,9 +84,7 @@ export const CartItemCard = memo(function CartItemCard({
           {branchName && line.available ? (
             <View style={styles.from}>
               <Store size={15} color={colors.maroon} strokeWidth={1.9} />
-              <Text variant="label" color="maroon" numberOfLines={1} style={styles.flex}>
-                From {branchName}
-              </Text>
+              <Text variant="label" color="maroon" numberOfLines={1} style={styles.flex}>{t('From {branchName}', { branchName })}</Text>
             </View>
           ) : null}
           {warning ? (
@@ -95,7 +94,7 @@ export const CartItemCard = memo(function CartItemCard({
           ) : null}
           <View style={styles.lineBottom}>
             {line.available ? (
-              <Stepper value={qty} onChange={onQty} onRemoveAtMin={onRemove} max={line.maxQuantity || 20} label={`Quantity of ${name}`} />
+              <Stepper value={qty} onChange={onQty} onRemoveAtMin={onRemove} max={line.maxQuantity || 20} label={t('Quantity of {name}', { name })} />
             ) : (
               <View />
             )}
@@ -106,7 +105,7 @@ export const CartItemCard = memo(function CartItemCard({
         </View>
       </View>
       <View style={styles.remove}>
-        <IconButton icon={Trash2} label={`Remove ${name}`} variant="plain" size="sm" iconSize={19} onPress={onRemove} />
+        <IconButton icon={Trash2} label={t('Remove {name}', { name })} variant="plain" size="sm" iconSize={19} onPress={onRemove} />
       </View>
     </Card>
   );
@@ -134,13 +133,11 @@ export function OrderSummary({
         </Text>
       ) : null}
       <View style={styles.summaryRows}>
-        <SummaryRow label={`Subtotal (${totals.count} ${totals.count === 1 ? 'item' : 'items'})`} value={formatSAR(totals.subtotal)} />
+        <SummaryRow label={totals.count === 1 ? t('Subtotal (1 item)') : t('Subtotal ({count} items)', { count: totals.count })} value={formatSAR(totals.subtotal)} />
       </View>
       <View style={styles.divider} />
       <View style={styles.totalRow}>
-        <Text weight={700} style={styles.totalLabel}>
-          Total
-        </Text>
+        <Text weight={700} style={styles.totalLabel}>{t('Total')}</Text>
         <Text weight={700} color="maroon" style={styles.total}>
           {formatSAR(totals.total)}
         </Text>

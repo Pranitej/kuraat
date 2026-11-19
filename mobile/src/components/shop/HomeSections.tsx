@@ -6,12 +6,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { promoBannerPhoto } from '@/assets/images';
 import { useScreenScrollY } from '@/components/layout';
 import { ChevronRight, ListFilter, Mail, MapPin, Phone, Search, ShoppingBag, Store, X } from '@/components/icons';
+import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { Avatar, BottomSheet, Button, Chip, IconButton, Logo, MaroonPanel, Tag, Text } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { HEAD_OFFICE, SORT_OPTIONS, formatDistance, mapsUrl, telUrl } from '@/domain';
 import { useOpenUrl } from '@/lib/linking';
 import { FONT_FAMILY, MAX_FONT_SCALE, colors, layout, radii, shadows } from '@/theme/theme';
 import type { Branch, User } from '@/types/api';
+import { t } from '@/i18n';
 
 /** Counter on the cart button (white on maroon with a cream ring). */
 export function CountBadge({ count }: { count: number }) {
@@ -36,9 +38,9 @@ export function HomeHeader({ user }: { user: User | null }) {
   return (
     <Animated.View style={[styles.header, { paddingTop: insets.top + layout.headerTop }, line]}>
       <View style={styles.headerRow}>
-        <View style={styles.headerSpacer} />
+        <LanguageToggle height={44} />
         <Logo width={116} />
-        <Pressable onPress={() => router.push(ROUTES.profile)} accessibilityRole="button" accessibilityLabel="Profile" hitSlop={4}>
+        <Pressable onPress={() => router.push(ROUTES.profile)} accessibilityRole="button" accessibilityLabel={t('Profile')} hitSlop={4}>
           <Avatar name={user?.name} src={user?.avatar} size={44} />
         </Pressable>
       </View>
@@ -64,19 +66,19 @@ export function SearchBar({
       <TextInput
         value={value}
         onChangeText={onChange}
-        placeholder="Search truffles, cakes, pastries"
+        placeholder={t('Search truffles, cakes, pastries')}
         placeholderTextColor={colors.placeholder}
-        accessibilityLabel="Search products"
+        accessibilityLabel={t('Search products')}
         returnKeyType="search"
         autoCorrect={false}
         maxFontSizeMultiplier={MAX_FONT_SCALE}
         selectionColor={colors.maroon}
         style={styles.searchInput}
       />
-      {value ? <IconButton icon={X} label="Clear search" variant="plain" size="sm" iconSize={18} onPress={() => onChange('')} /> : null}
+      {value ? <IconButton icon={X} label={t('Clear search')} variant="plain" size="sm" iconSize={18} onPress={() => onChange('')} /> : null}
       <IconButton
         icon={ListFilter}
-        label="Sort and filter"
+        label={t('Sort and filter')}
         variant="maroon"
         size="md"
         iconSize={19}
@@ -109,21 +111,15 @@ export function FilterSheet({
     <BottomSheet
       open={open}
       onClose={onClose}
-      title="Sort & filter"
+      title={t('Sort & filter')}
       footer={
         <View style={styles.sheetActions}>
-          <Button variant="secondary" style={styles.flex} block onPress={() => onApply({ category: 'all', sort: 'recommended' })}>
-            Reset
-          </Button>
-          <Button style={styles.flex} block onPress={onClose}>
-            Show results
-          </Button>
+          <Button variant="secondary" style={styles.flex} block onPress={() => onApply({ category: 'all', sort: 'recommended' })}>{t('Reset')}</Button>
+          <Button style={styles.flex} block onPress={onClose}>{t('Show results')}</Button>
         </View>
       }
     >
-      <Text variant="label" color="maroon" style={styles.sheetLabel}>
-        Sort by
-      </Text>
+      <Text variant="label" color="maroon" style={styles.sheetLabel}>{t('Sort by')}</Text>
       <View style={styles.wrap}>
         {SORT_OPTIONS.map((o: ChipOption) => (
           <Chip key={o.id} active={sort === o.id} onPress={() => onApply({ category, sort: o.id })}>
@@ -134,9 +130,7 @@ export function FilterSheet({
       {/* No categories (a product without one) → sort only (design 2026-11-18 §5.5). */}
       {categories.length > 0 ? (
         <>
-          <Text variant="label" color="maroon" style={[styles.sheetLabel, styles.sheetGap]}>
-            Category
-          </Text>
+          <Text variant="label" color="maroon" style={[styles.sheetLabel, styles.sheetGap]}>{t('Category')}</Text>
           <View style={[styles.wrap, styles.sheetEnd]}>
             {categories.map((c) => (
               <Chip key={c.id} active={category === c.id} onPress={() => onApply({ category: c.id, sort })}>
@@ -169,8 +163,8 @@ export function NearestBranchStrip({
       accessibilityRole="button"
       accessibilityLabel={
         delivery
-          ? `Nearest branch to ${delivery.area}: ${delivery.branch.displayName}${delivery.distanceKm != null ? `, ${formatDistance(delivery.distanceKm)}` : ''}`
-          : 'View all branches'
+          ? t('Nearest branch to {area}: {displayName}{v3}', { area: delivery.area, displayName: delivery.branch.displayName, v3: delivery.distanceKm != null ? `, ${formatDistance(delivery.distanceKm)}` : '' })
+          : t('View all branches')
       }
       style={({ pressed }) => [styles.strip, pressed && styles.stripPressed]}
     >
@@ -179,10 +173,10 @@ export function NearestBranchStrip({
       </View>
       <View style={styles.flex}>
         <Text variant="label" weight={400} color="muted" numberOfLines={1}>
-          {delivery ? `Nearest branch to ${delivery.area}` : 'Find a branch'}
+          {delivery ? t('Nearest branch to {area}', { area: delivery.area }) : t('Find a branch')}
         </Text>
         <Text weight={700} numberOfLines={1} style={styles.stripName}>
-          {delivery ? delivery.branch.displayName : 'View all branches'}
+          {delivery ? delivery.branch.displayName : t('View all branches')}
         </Text>
       </View>
       {delivery ? (
@@ -199,15 +193,9 @@ export function PromoBanner({ onShop }: { onShop: () => void }) {
   return (
     <MaroonPanel style={styles.banner}>
       <View style={styles.flex}>
-        <Text variant="overline" color="white80">
-          NEW COLLECTION
-        </Text>
-        <Text weight={700} color="white" style={styles.bannerTitle}>
-          Made fresh for every gathering
-        </Text>
-        <Button variant="white" size="sm" rightIcon={ChevronRight} onPress={onShop} style={styles.shopNow}>
-          Shop now
-        </Button>
+        <Text variant="overline" color="white80">{t('NEW COLLECTION')}</Text>
+        <Text weight={700} color="white" style={styles.bannerTitle}>{t('Made fresh for every gathering')}</Text>
+        <Button variant="white" size="sm" rightIcon={ChevronRight} onPress={onShop} style={styles.shopNow}>{t('Shop now')}</Button>
       </View>
       <View style={styles.bannerPhoto}>
         <Image source={promoBannerPhoto} style={StyleSheet.absoluteFill} contentFit="cover" accessible={false} />
@@ -221,16 +209,14 @@ export function ContactSection() {
   const openUrl = useOpenUrl();
   const insets = useSafeAreaInsets();
   const rows = [
-    { icon: MapPin, label: 'Head office', value: HEAD_OFFICE.address, url: mapsUrl(HEAD_OFFICE.location, 'kuraat head office') },
-    { icon: Phone, label: `Support · ${HEAD_OFFICE.supportHours}`, value: HEAD_OFFICE.supportPhone, url: telUrl(HEAD_OFFICE.supportPhone) },
-    { icon: Mail, label: 'Email', value: HEAD_OFFICE.email, url: `mailto:${HEAD_OFFICE.email}` },
+    { icon: MapPin, label: t('Head office'), value: HEAD_OFFICE.address, url: mapsUrl(HEAD_OFFICE.location, 'kuraat head office') },
+    { icon: Phone, label: t('Support · {hours}', { hours: HEAD_OFFICE.supportHours }), value: HEAD_OFFICE.supportPhone, url: telUrl(HEAD_OFFICE.supportPhone) },
+    { icon: Mail, label: t('Email'), value: HEAD_OFFICE.email, url: `mailto:${HEAD_OFFICE.email}` },
   ];
   return (
     <MaroonPanel fade="edges" style={styles.contact}>
       <View style={[styles.contactInner, { paddingBottom: 112 + insets.bottom }]}>
-        <Text variant="heading" color="white" accessibilityRole="header">
-          Contact us
-        </Text>
+        <Text variant="heading" color="white" accessibilityRole="header">{t('Contact us')}</Text>
         <View style={styles.contactRows}>
           {rows.map((r) => (
             <Pressable
@@ -267,7 +253,7 @@ export function CartFab({ count }: { count: number }) {
     <Pressable
       onPress={() => router.push(ROUTES.cart)}
       accessibilityRole="button"
-      accessibilityLabel={`Cart, ${count} items`}
+      accessibilityLabel={t('Cart, {count} items', { count })}
       style={({ pressed }) => [styles.fab, { bottom: Math.max(24, insets.bottom + 8) }, pressed && styles.fabPressed]}
     >
       <ShoppingBag size={26} color={colors.white} strokeWidth={1.8} />

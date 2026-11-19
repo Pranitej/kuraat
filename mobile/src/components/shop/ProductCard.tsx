@@ -11,6 +11,7 @@ import { formatSAR } from '@/domain';
 import { tap } from '@/lib/haptics';
 import { colors, radii, shadows } from '@/theme/theme';
 import type { Product } from '@/types/api';
+import { t } from '@/i18n';
 
 /** Product card (PDF screens 07/08): photo, name, meta, price, "+" quick add. */
 export const ProductCard = memo(function ProductCard({ product, width }: { product: Product; width: number }) {
@@ -22,7 +23,7 @@ export const ProductCard = memo(function ProductCard({ product, width }: { produ
   const quickAdd = () => {
     add(product.id, 1);
     tap();
-    toast.show(`${product.name} added to your cart`, { action: { label: 'View cart', onPress: () => router.push(ROUTES.cart) } });
+    toast.show(`${product.name} added to your cart`, { action: { label: t('View cart'), onPress: () => router.push(ROUTES.cart) } });
   };
 
   return (
@@ -59,7 +60,7 @@ export const ProductCard = memo(function ProductCard({ product, width }: { produ
           <Pressable
             onPress={quickAdd}
             accessibilityRole="button"
-            accessibilityLabel={`Add ${product.name} to cart`}
+            accessibilityLabel={t('Add {name} to cart', { name: product.name })}
             hitSlop={6}
             style={({ pressed }) => [styles.add, pressed && styles.addPressed]}
           >

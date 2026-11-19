@@ -6,6 +6,7 @@ import { BottomSheet } from './BottomSheet';
 import { RadioDot } from './Controls';
 import { FieldWrapper, inputShellStyle } from './Field';
 import { Text } from './Text';
+import { t } from '@/i18n';
 
 type Option = string | { value: string; label: string };
 const valueOf = (o: Option) => (typeof o === 'string' ? o : o.value);
@@ -27,7 +28,7 @@ type Props = {
 };
 
 /** Select (District, City): looks like a field with ⌄; opens a bottom sheet of options. */
-export function SelectField({ label, value, options, onChange, icon: Icon, error, placeholder = 'Choose', style, variant = 'field', sheetTitle }: Props) {
+export function SelectField({ label, value, options, onChange, icon: Icon, error, placeholder = t('Choose'), style, variant = 'field', sheetTitle }: Props) {
   const [open, setOpen] = useState(false);
   const current = options.find((o) => valueOf(o) === value);
   const sheet = (
@@ -69,7 +70,7 @@ export function SelectField({ label, value, options, onChange, icon: Icon, error
           onPress={() => setOpen(true)}
           accessibilityRole="button"
           accessibilityLabel={`${label}: ${text}`}
-          accessibilityHint="Opens the list of options"
+          accessibilityHint={t('Opens the list of options')}
           style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
         >
           <Text variant="small" weight={600} color="maroon" numberOfLines={1}>
@@ -88,7 +89,7 @@ export function SelectField({ label, value, options, onChange, icon: Icon, error
         onPress={() => setOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={`${label}: ${current ? labelOf(current) : placeholder}`}
-        accessibilityHint="Opens the list of options"
+        accessibilityHint={t('Opens the list of options')}
         style={inputShellStyle({ error: Boolean(error) })}
       >
         {Icon ? <Icon size={20} color={colors.maroon} strokeWidth={1.8} /> : null}

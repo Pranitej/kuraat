@@ -11,6 +11,7 @@ import { ROUTES } from '@/lib/routes';
 import { CARD_PAYMENT, PENDING_BRANCH, PICKUP, awaitingPayment, formatOrderDate, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
+import { t } from '@/i18n';
 
 export type StatusView = { id: string; label: string; group: string; step: number; cancelled: boolean; ongoing: boolean; tone: TagTone };
 export type TimelineRow = { id: string; title: string; state: 'done' | 'current' | 'todo' | 'cancelled'; time: string };
@@ -29,7 +30,7 @@ export function StatusTag({ status }: { status: StatusView }) {
  * Refresh button for order status (design 2026-11-18 §5.4, same as the web): spins while the server
  * re-reads RSOF; a failure keeps what is on screen and says why in a toast.
  */
-export function RefreshButton({ onRefresh, label = 'Refresh status' }: { onRefresh: () => Promise<unknown>; label?: string }) {
+export function RefreshButton({ onRefresh, label = t('Refresh status') }: { onRefresh: () => Promise<unknown>; label?: string }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const turn = useSharedValue(0);
@@ -65,9 +66,9 @@ export function RefreshButton({ onRefresh, label = 'Refresh status' }: { onRefre
 
 /** "Will be delivered from" / "Delivered from" / "Ordered from" (cancelled); pickup: "Pick up from" / "Picked up from". */
 export function branchLabel(status: StatusView, order?: Pick<Order, 'fulfilment'>): string {
-  if (status.cancelled) return 'Ordered from';
+  if (status.cancelled) return t('Ordered from');
   if (isPickup(order)) return status.ongoing ? PICKUP.pickupFrom : PICKUP.pickedUpFrom;
-  return status.ongoing ? 'Will be delivered from' : 'Delivered from';
+  return status.ongoing ? t('Will be delivered from') : t('Delivered from');
 }
 
 /**
@@ -105,7 +106,7 @@ export const OrderCard = memo(function OrderCard({ order, now }: { order: Order;
       <Pressable
         onPress={() => router.push(ROUTES.order(order.id))}
         accessibilityRole="button"
-        accessibilityLabel={`Order ${order.number}, ${status.label}, ${formatSAR(order.total)}`}
+        accessibilityLabel={t('Order {number}, {status}, {total}', { number: order.number, status: status.label, total: formatSAR(order.total) })}
       >
         <View style={styles.cardTop}>
           <View>
@@ -122,7 +123,7 @@ export const OrderCard = memo(function OrderCard({ order, now }: { order: Order;
           <Thumbnails items={order.items} />
           <View style={styles.right}>
             <Text variant="small" color="muted">
-              {count} {count === 1 ? 'item' : 'items'}
+              {count} {count === 1 ? t('item') : t('items')}
             </Text>
             <Text weight={700} style={styles.total}>
               {formatSAR(order.total)}

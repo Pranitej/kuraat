@@ -7,6 +7,7 @@ import { ROUTES } from '@/lib/routes';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { evaluatePassword, firstName } from '@/domain';
+import { t } from '@/i18n';
 
 type Errors = Partial<Record<'password' | 'confirm' | 'form', string>>;
 
@@ -28,18 +29,18 @@ export default function SetPasswordScreen() {
   const submit = async () => {
     const next: Errors = {
       password: !password
-        ? 'Create a password'
+        ? t('Create a password')
         : evaluation.acceptable
           ? ''
-          : 'Use at least 8 characters with upper and lower case letters and a number',
-      confirm: !confirm ? 'Confirm your password' : confirm !== password ? 'Passwords do not match' : '',
+          : t('Use at least 8 characters with upper and lower case letters and a number'),
+      confirm: !confirm ? t('Confirm your password') : confirm !== password ? t('Passwords do not match') : '',
     };
     setErrors(next);
     if (next.password || next.confirm) return;
     setSaving(true);
     try {
       const signedIn = mode === 'signup' ? await completeSignupWithPassword(password) : await resetPasswordWithOtp(password);
-      toast.show(mode === 'signup' ? `Welcome to kuraat, ${firstName(signedIn.name)}` : 'Your password has been reset');
+      toast.show(mode === 'signup' ? t('Welcome to kuraat, {name}', { name: firstName(signedIn.name) }) : t('Your password has been reset'));
       router.replace(ROUTES.home);
     } catch (err) {
       setErrors({ form: (err as Error).message });
@@ -48,27 +49,27 @@ export default function SetPasswordScreen() {
   };
 
   return (
-    <AuthLayout title="Set your password" backFallback={ROUTES.verify}>
+    <AuthLayout title={t('Set your password')} backFallback={ROUTES.verify}>
       <View>
         <PasswordField
-          label="New password"
+          label={t('New password')}
           value={password}
           onChangeText={setPassword}
           autoComplete="new-password"
           textContentType="newPassword"
-          placeholder="Create a password"
+          placeholder={t('Create a password')}
           autoFocus
           error={errors.password}
         />
         {password ? <StrengthMeter evaluation={evaluation} /> : null}
       </View>
       <PasswordField
-        label="Confirm password"
+        label={t('Confirm password')}
         value={confirm}
         onChangeText={setConfirm}
         autoComplete="new-password"
         textContentType="newPassword"
-        placeholder="Repeat your password"
+        placeholder={t('Repeat your password')}
         error={errors.confirm}
         returnKeyType="done"
         onSubmitEditing={submit}
@@ -81,11 +82,9 @@ export default function SetPasswordScreen() {
         </Text>
       ) : null}
       <Button block loading={saving} onPress={submit} style={styles.submit}>
-        {mode === 'signup' ? 'Create account' : 'Save password'}
+        {mode === 'signup' ? t('Create account') : t('Save password')}
       </Button>
-      <Text color="muted" align="center" style={styles.note}>
-        Your password lets you sign in without a WhatsApp code.
-      </Text>
+      <Text color="muted" align="center" style={styles.note}>{t('Your password lets you sign in without a WhatsApp code.')}</Text>
     </AuthLayout>
   );
 }

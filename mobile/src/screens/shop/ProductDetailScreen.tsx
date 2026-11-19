@@ -20,18 +20,19 @@ import { useDeliveryQuote } from '@/hooks/quote';
 import { tap } from '@/lib/haptics';
 import { colors, layout, radii, shadows } from '@/theme/theme';
 import type { Product } from '@/types/api';
+import { t } from '@/i18n';
 
 /** Thumbnails over the hero (active one with a white border). */
 function Thumbs({ images, active, onSelect }: { images: string[]; active: number; onSelect: (i: number) => void }) {
   return (
-    <View style={styles.thumbs} accessibilityRole="tablist" accessibilityLabel="Product photos">
+    <View style={styles.thumbs} accessibilityRole="tablist" accessibilityLabel={t('Product photos')}>
       {images.map((src, i) => (
         <Pressable
           key={src}
           onPress={() => onSelect(i)}
           accessibilityRole="tab"
           accessibilityState={{ selected: i === active }}
-          accessibilityLabel={`Photo ${i + 1}`}
+          accessibilityLabel={t('Photo {n}', { n: i + 1 })}
           style={[styles.thumb, i === active ? [styles.thumbActive, shadows.float] : styles.thumbIdle]}
         >
           <Image source={{ uri: src }} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -64,7 +65,7 @@ function CompactHeader({ product, onBack }: { product: Product; onBack: () => vo
       style={[styles.compact, { paddingTop: insets.top + layout.headerTop }, style]}
     >
       <View style={styles.compactRow}>
-        <IconButton icon={ChevronLeft} label="Back" iconSize={22} strokeWidth={2} onPress={onBack} />
+        <IconButton icon={ChevronLeft} label={t('Back')} iconSize={22} strokeWidth={2} onPress={onBack} />
         <Text variant="heading" numberOfLines={1} style={styles.compactTitle}>
           {product.name}
         </Text>
@@ -89,12 +90,8 @@ function PurchaseControls({
   return (
     <View style={styles.purchase}>
       <Stepper value={qty} onChange={setQty} size="lg" />
-      <Button variant="secondary" leftIcon={width >= 380 ? ShoppingBag : undefined} block onPress={onAdd} style={styles.addToCart}>
-        Add to cart
-      </Button>
-      <Button block onPress={onBuy} style={styles.buyNow}>
-        Buy now
-      </Button>
+      <Button variant="secondary" leftIcon={width >= 380 ? ShoppingBag : undefined} block onPress={onAdd} style={styles.addToCart}>{t('Add to cart')}</Button>
+      <Button block onPress={onBuy} style={styles.buyNow}>{t('Buy now')}</Button>
     </View>
   );
 }
@@ -146,9 +143,9 @@ export default function ProductDetailScreen() {
       <Screen contentStyle={styles.missing}>
         <EmptyState
           icon={PackageSearch}
-          title="This sweet is not available"
-          message="It may have been removed from our menu."
-          actionLabel="Browse sweets"
+          title={t('This sweet is not available')}
+          message={t('It may have been removed from our menu.')}
+          actionLabel={t('Browse sweets')}
           onAction={() => router.replace(ROUTES.home)}
         />
       </Screen>
@@ -175,7 +172,7 @@ export default function ProductDetailScreen() {
   const addToCart = () => {
     add(product.id, qty);
     tap();
-    toast.show(`${qty} × ${product.name} added to your cart`, { action: { label: 'View cart', onPress: () => router.push(ROUTES.cart) } });
+    toast.show(t('{qty} × {name} added to your cart', { qty, name: product.name }), { action: { label: t('View cart'), onPress: () => router.push(ROUTES.cart) } });
   };
   const buyNow = () => {
     add(product.id, qty);
@@ -210,7 +207,7 @@ export default function ProductDetailScreen() {
             <Pressable
               onPress={() => openZoom(index)}
               accessibilityRole="imagebutton"
-              accessibilityLabel={`${product.name} — photo ${index + 1} of ${images.length}. Opens the photo viewer`}
+              accessibilityLabel={t('{name} — photo {v2} of {length}. Opens the photo viewer', { name: product.name, v2: index + 1, length: images.length })}
             >
               <Image
                 testID={`hero-photo-${index}`}
@@ -223,21 +220,20 @@ export default function ProductDetailScreen() {
           )}
         />
         <View style={[styles.heroTop, { top: insets.top + layout.headerTop }]} pointerEvents="box-none">
-          <IconButton icon={ChevronLeft} label="Back" variant="overlay" iconSize={22} strokeWidth={2} onPress={goBack} />
-          <IconButton icon={Maximize} label="View full screen" variant="overlay" onPress={() => openZoom()} />
+          <IconButton icon={ChevronLeft} label={t('Back')} variant="overlay" iconSize={22} strokeWidth={2} onPress={goBack} />
+          <IconButton icon={Maximize} label={t('View full screen')} variant="overlay" onPress={() => openZoom()} />
         </View>
         <View style={styles.heroBottom} pointerEvents="box-none">
           {images.length > 1 ? <Thumbs images={images} active={active} onSelect={select} /> : <View />}
           <Pressable
             onPress={() => openZoom()}
             accessibilityRole="button"
-            accessibilityLabel={`Photo ${active + 1} of ${images.length}. Tap to zoom`}
+            accessibilityLabel={t('Photo {v1} of {length}. Tap to zoom', { v1: active + 1, length: images.length })}
             style={styles.zoomPill}
           >
             <ZoomIn size={16} color={colors.maroon} strokeWidth={2} />
             <Text variant="label" weight={600} numberOfLines={1}>
-              {active + 1} / {images.length} · Tap to zoom
-            </Text>
+              {t('{n} / {total} · Tap to zoom', { n: active + 1, total: images.length })}</Text>
           </Pressable>
         </View>
       </View>
@@ -283,9 +279,7 @@ export default function ProductDetailScreen() {
         ) : null}
 
         <View style={styles.section}>
-          <Text variant="h3" accessibilityRole="header">
-            Description
-          </Text>
+          <Text variant="h3" accessibilityRole="header">{t('Description')}</Text>
           <View style={styles.description}>
             {expanded ? (
               product.description.map((p) => (
@@ -301,9 +295,7 @@ export default function ProductDetailScreen() {
           </View>
           {!expanded ? (
             <View style={styles.readMore}>
-              <TextLink role="button" onPress={() => setExpanded(true)}>
-                Read more
-              </TextLink>
+              <TextLink role="button" onPress={() => setExpanded(true)}>{t('Read more')}</TextLink>
             </View>
           ) : null}
         </View>
@@ -312,9 +304,7 @@ export default function ProductDetailScreen() {
           <>
             {product.details.length > 0 ? (
               <View style={styles.section}>
-                <Text variant="h3" accessibilityRole="header">
-                  Product details
-                </Text>
+                <Text variant="h3" accessibilityRole="header">{t('Product details')}</Text>
                 <Card style={styles.details}>
                   {product.details.map(({ key, label, value }) => (
                     <View key={key} style={styles.detailRow}>
@@ -330,9 +320,7 @@ export default function ProductDetailScreen() {
 
             {product.ingredients || product.allergens.length > 0 ? (
               <View style={styles.section}>
-                <Text variant="h3" accessibilityRole="header">
-                  Ingredients &amp; allergens
-                </Text>
+                <Text variant="h3" accessibilityRole="header">{t('Ingredients & allergens')}</Text>
                 {product.ingredients ? (
                   <Text variant="body-lg" color="copy" style={styles.ingredients}>
                     {product.ingredients}

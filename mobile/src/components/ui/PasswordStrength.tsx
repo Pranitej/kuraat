@@ -2,6 +2,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, radii } from '@/theme/theme';
 import { CheckCircle } from './Controls';
 import { Text } from './Text';
+import { t } from '@/i18n';
 
 /** What domain/password.js `evaluatePassword` returns. */
 export type PasswordEvaluation = {
@@ -19,7 +20,7 @@ export function StrengthMeter({ evaluation, style }: { evaluation: PasswordEvalu
     <View
       style={[styles.meter, style]}
       accessibilityLiveRegion="polite"
-      accessibilityLabel={label ? `Password strength: ${label}` : undefined}
+      accessibilityLabel={label ? t('Password strength: {label}', { label }) : undefined}
     >
       <View style={styles.segments}>
         {[0, 1, 2, 3].map((i) => (

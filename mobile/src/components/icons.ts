@@ -2,15 +2,29 @@
  * The Lucide icons the app uses — imported one by one so the bundle carries these, not all ~1,600.
  * Add an icon here (same name as in lucide-react-native) before using it anywhere else.
  */
-export type { LucideIcon, LucideProps } from 'lucide-react-native';
+import { createElement } from 'react';
+import { I18nManager } from 'react-native';
+import type { LucideIcon, LucideProps } from 'lucide-react-native';
+import ChevronLeftBase from 'lucide-react-native/icons/chevron-left';
+import ChevronRightBase from 'lucide-react-native/icons/chevron-right';
+
+export type { LucideIcon, LucideProps };
+
+/** Back / forward arrows point the other way in right-to-left (Arabic). */
+function mirrored(Icon: LucideIcon): LucideIcon {
+  const Mirrored = (props: LucideProps) => createElement(Icon, { ...props, style: [props.style, I18nManager.isRTL ? { transform: [{ scaleX: -1 }] } : null] } as LucideProps);
+  return Mirrored as unknown as LucideIcon;
+}
+
 export { default as Banknote } from 'lucide-react-native/icons/banknote';
 export { default as Bell } from 'lucide-react-native/icons/bell';
 export { default as BellOff } from 'lucide-react-native/icons/bell-off';
 export { default as Check } from 'lucide-react-native/icons/check';
 export { default as ChevronDown } from 'lucide-react-native/icons/chevron-down';
 export { default as ChevronUp } from 'lucide-react-native/icons/chevron-up';
-export { default as ChevronLeft } from 'lucide-react-native/icons/chevron-left';
-export { default as ChevronRight } from 'lucide-react-native/icons/chevron-right';
+export const ChevronLeft = mirrored(ChevronLeftBase);
+export const ChevronRight = mirrored(ChevronRightBase);
+export { default as Languages } from 'lucide-react-native/icons/languages';
 export { default as CircleCheck } from 'lucide-react-native/icons/circle-check';
 export { default as Clock } from 'lucide-react-native/icons/clock';
 export { default as CloudOff } from 'lucide-react-native/icons/cloud-off';

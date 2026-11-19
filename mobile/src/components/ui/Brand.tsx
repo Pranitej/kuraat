@@ -7,6 +7,7 @@ import { LOGO_ASPECT, logos } from '@/assets/images';
 import { initials } from '@/domain';
 import { colors, gradients, pattern as patternTokens } from '@/theme/theme';
 import { Text } from './Text';
+import { t } from '@/i18n';
 
 /** Wordmark — solid white on maroon or solid maroon on cream (brand rule; never recoloured). */
 export function Logo({ tone = 'maroon', width = 132 }: { tone?: 'maroon' | 'white'; width?: number }) {
@@ -15,7 +16,7 @@ export function Logo({ tone = 'maroon', width = 132 }: { tone?: 'maroon' | 'whit
       source={tone === 'white' ? logos.white : logos.maroon}
       style={{ width, height: width / LOGO_ASPECT }}
       contentFit="contain"
-      accessibilityLabel="kuraat"
+      accessibilityLabel={t('kuraat')}
       accessibilityRole="image"
     />
   );

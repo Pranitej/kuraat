@@ -4,6 +4,7 @@ import { TriangleAlert } from '@/components/icons';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { captureError } from '@/lib/monitoring';
 import { colors } from '@/theme/theme';
+import { t } from '@/i18n';
 
 /** Shown by a route's error boundary instead of a blank screen; reports the error once. */
 export function ErrorFallback({ error, retry }: { error: Error; retry: () => void }) {
@@ -14,9 +15,9 @@ export function ErrorFallback({ error, retry }: { error: Error; retry: () => voi
     <View style={styles.root}>
       <EmptyState
         icon={TriangleAlert}
-        title="Something went wrong"
-        message="Please try again. If it keeps happening, close the app and open it again."
-        actionLabel="Try again"
+        title={t('Something went wrong')}
+        message={t('Please try again. If it keeps happening, close the app and open it again.')}
+        actionLabel={t('Try again')}
         onAction={retry}
       />
     </View>

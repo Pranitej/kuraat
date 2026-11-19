@@ -15,6 +15,7 @@ import { useOrderPayment } from '@/hooks/orderPayment';
 import { useOpenUrl } from '@/lib/linking';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
+import { t } from '@/i18n';
 
 /** "Your delivery code is sent on WhatsApp" + Resend (only while RSOF says out for delivery). */
 function DeliveryCodeNote({ order, onResend }: { order: Order; onResend: () => Promise<{ resendAt: string }> }) {
@@ -28,7 +29,7 @@ function DeliveryCodeNote({ order, onResend }: { order: Order; onResend: () => P
     try {
       const result = await onResend();
       setResendAt(Date.parse(result.resendAt));
-      toast.show('We sent the delivery code again on WhatsApp');
+      toast.show(t('We sent the delivery code again on WhatsApp'));
     } catch (err) {
       toast.show((err as Error).message, { tone: 'error' });
     } finally {
@@ -37,14 +38,12 @@ function DeliveryCodeNote({ order, onResend }: { order: Order; onResend: () => P
   };
 
   const disabled = !order.canResendCode || sending || left > 0;
-  const label = left > 0 ? `Resend in 0:${String(left).padStart(2, '0')}` : sending ? 'Sending…' : 'Resend code';
+  const label = left > 0 ? t('Resend in 0:{seconds}', { seconds: String(left).padStart(2, '0') }) : sending ? t('Sending…') : t('Resend code');
   return (
     <View style={styles.code}>
       <WhatsAppIcon size={20} color={colors.maroon} />
       <View style={styles.flex}>
-        <Text color="copy" style={styles.codeText}>
-          Your delivery code is sent on WhatsApp. Share it with the courier when your order arrives.
-        </Text>
+        <Text color="copy" style={styles.codeText}>{t('Your delivery code is sent on WhatsApp. Share it with the courier when your order arrives.')}</Text>
         <Pressable
           onPress={resend}
           disabled={disabled}
@@ -80,13 +79,13 @@ export default function OrderDetailScreen() {
 
   if (!order) {
     return (
-      <Screen header={<ScreenHeader title="Order" backFallback={ROUTES.orders} />}>
+      <Screen header={<ScreenHeader title={t('Order')} backFallback={ROUTES.orders} />}>
         {!loading ? (
           <EmptyState
             icon={PackageSearch}
-            title="Order not found"
-            message="We could not find this order on your account."
-            actionLabel="View my orders"
+            title={t('Order not found')}
+            message={t('We could not find this order on your account.')}
+            actionLabel={t('View my orders')}
             onAction={() => router.replace(ROUTES.orders)}
           />
         ) : null}
@@ -104,7 +103,7 @@ export default function OrderDetailScreen() {
     setCancelling(true);
     try {
       await cancel();
-      toast.show('Order cancelled', { tone: 'info' });
+      toast.show(t('Order cancelled'), { tone: 'info' });
     } catch (err) {
       toast.show((err as Error).message, { tone: 'error' });
     } finally {
@@ -116,7 +115,7 @@ export default function OrderDetailScreen() {
   return (
     <Screen
       header={
-        <ScreenHeader title={`Order #${order.number}`} backFallback={ROUTES.orders} right={<RefreshButton onRefresh={() => refresh({ force: true })} />} />
+        <ScreenHeader title={t('Order #{number}', { number: order.number })} backFallback={ROUTES.orders} right={<RefreshButton onRefresh={() => refresh({ force: true })} />} />
       }
       refreshControl={
         <RefreshControl
@@ -146,11 +145,11 @@ export default function OrderDetailScreen() {
               {/* Same look as the web: a divider, then a centred "View full history" with the arrow beside it. */}
               <View style={styles.historyToggle}>
                 <Button variant="ghost" size="xs" block rightIcon={showHistory ? ChevronUp : ChevronDown} onPress={() => setShowHistory((v) => !v)}>
-                  {showHistory ? 'Hide full history' : 'View full history'}
+                  {showHistory ? t('Hide full history') : t('View full history')}
                 </Button>
               </View>
               {showHistory ? (
-                <View style={styles.historyRows} accessibilityLabel="Order history">
+                <View style={styles.historyRows} accessibilityLabel={t('Order history')}>
                   {history.map((h) => (
                     <View key={h.id}>
                       <View style={styles.historyRow}>
@@ -214,14 +213,10 @@ export default function OrderDetailScreen() {
             {branch.phone || branch.location ? (
               <View style={styles.branchActions}>
                 {branch.phone ? (
-                  <Button variant="glass" size="sm" leftIcon={Phone} onPress={() => openUrl(telUrl(branch.phone as string))}>
-                    Call branch
-                  </Button>
+                  <Button variant="glass" size="sm" leftIcon={Phone} onPress={() => openUrl(telUrl(branch.phone as string))}>{t('Call branch')}</Button>
                 ) : null}
                 {branch.location ? (
-                  <Button variant="glass" size="sm" leftIcon={Navigation} onPress={() => openUrl(directionsUrl(branch.location))}>
-                    Directions
-                  </Button>
+                  <Button variant="glass" size="sm" leftIcon={Navigation} onPress={() => openUrl(directionsUrl(branch.location))}>{t('Directions')}</Button>
                 ) : null}
               </View>
             ) : null}
@@ -255,7 +250,7 @@ export default function OrderDetailScreen() {
                 key={item.productId}
                 onPress={() => router.push(ROUTES.product(item.productId))}
                 accessibilityRole="button"
-                accessibilityLabel={`${item.name}, quantity ${item.qty}, ${item.price == null ? '' : formatSAR(item.price * item.qty)}`}
+                accessibilityLabel={t('{name}, quantity {qty}, {v3}', { name: item.name, qty: item.qty, v3: item.price == null ? '' : formatSAR(item.price * item.qty) })}
                 style={styles.item}
               >
                 <View style={styles.thumb}>
@@ -265,9 +260,7 @@ export default function OrderDetailScreen() {
                   <Text weight={600} numberOfLines={1} style={styles.itemName}>
                     {item.name}
                   </Text>
-                  <Text variant="label" weight={400} color="muted">
-                    Qty {item.qty}
-                  </Text>
+                  <Text variant="label" weight={400} color="muted">{t('Qty {qty}', { qty: item.qty })}</Text>
                 </View>
                 <Text weight={700} style={styles.itemPrice}>
                   {item.price == null ? '' : formatSAR(item.price * item.qty)}
@@ -277,16 +270,16 @@ export default function OrderDetailScreen() {
           </View>
           <View style={styles.divider} />
           <View style={styles.summary}>
-            <SummaryRow label="Total" value={order.total == null ? '—' : formatSAR(order.total)} />
+            <SummaryRow label={t('Total')} value={order.total == null ? '—' : formatSAR(order.total)} />
           </View>
         </Card>
 
         <Card style={[styles.pad, styles.info]}>
           {(
             [
-              pickup ? [PICKUP.collectFrom, branch?.name ?? PENDING_BRANCH.title] : ['Deliver to', formatAddress(order.address)],
-              ['Phone', formatPhone(order.deliveryPhone)],
-              ...(order.payment ? [['Payment', paymentLabel(order.payment)]] : []),
+              pickup ? [PICKUP.collectFrom, branch?.name ?? PENDING_BRANCH.title] : [t('Deliver to'), formatAddress(order.address)],
+              [t('Phone'), formatPhone(order.deliveryPhone)],
+              ...(order.payment ? [[t('Payment'), paymentLabel(order.payment)]] : []),
             ] as [string, string][]
           ).map(([label, value]) => (
             <View key={label} style={styles.infoRow}>
@@ -299,9 +292,7 @@ export default function OrderDetailScreen() {
         </Card>
 
         {order.canCancel ? (
-          <Button variant="secondary" block onPress={() => setConfirmCancel(true)}>
-            Cancel order
-          </Button>
+          <Button variant="secondary" block onPress={() => setConfirmCancel(true)}>{t('Cancel order')}</Button>
         ) : null}
       </View>
 
@@ -311,10 +302,10 @@ export default function OrderDetailScreen() {
         onConfirm={doCancel}
         loading={cancelling}
         icon={PackageX}
-        title="Cancel this order?"
-        message={`You can cancel until the branch starts preparing it. ${cancelRefundText(order)}`}
-        confirmLabel="Cancel order"
-        cancelLabel="Keep order"
+        title={t('Cancel this order?')}
+        message={`${t('You can cancel until the branch starts preparing it.')} ${cancelRefundText(order)}`}
+        confirmLabel={t('Cancel order')}
+        cancelLabel={t('Keep order')}
       />
     </Screen>
   );

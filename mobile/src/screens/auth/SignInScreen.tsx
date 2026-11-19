@@ -7,12 +7,13 @@ import { ROUTES } from '@/lib/routes';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { firstName, validateMobile } from '@/domain';
+import { t, localized } from '@/i18n';
 
 type Tab = 'password' | 'whatsapp';
-const TABS: { value: Tab; label: string }[] = [
+const TABS: { value: Tab; label: string }[] = localized([
   { value: 'password', label: 'Password' },
   { value: 'whatsapp', label: 'WhatsApp code' },
-];
+]);
 type Errors = Partial<Record<'phone' | 'password' | 'form', string>>;
 
 /** 06 · Sign in */
@@ -36,7 +37,7 @@ export default function SignInScreen() {
   const sendCode = async (purpose: 'signin' | 'reset') => {
     const phoneError = validateMobile(phone);
     if (phoneError) {
-      setErrors({ phone: purpose === 'reset' && !phone ? 'Enter your mobile number to reset your password' : phoneError });
+      setErrors({ phone: purpose === 'reset' && !phone ? t('Enter your mobile number to reset your password') : phoneError });
       return;
     }
     setBusy(purpose === 'reset' ? 'reset' : 'otp');
@@ -55,13 +56,13 @@ export default function SignInScreen() {
       sendCode('signin');
       return;
     }
-    const next: Errors = { phone: validateMobile(phone), password: password ? '' : 'Enter your password' };
+    const next: Errors = { phone: validateMobile(phone), password: password ? '' : t('Enter your password') };
     setErrors(next);
     if (next.phone || next.password) return;
     setBusy('password');
     try {
       const user = await signInWithPassword(phone, password);
-      toast.show(`Welcome back, ${firstName(user.name)}`);
+      toast.show(t('Welcome back, {name}', { name: firstName(user.name) }));
       router.replace(ROUTES.home);
     } catch (err) {
       fail(err);
@@ -69,9 +70,9 @@ export default function SignInScreen() {
   };
 
   return (
-    <AuthLayout title={'Hello,\nwelcome back'} backFallback={ROUTES.welcome}>
+    <AuthLayout title={t('Hello,\nwelcome back')} backFallback={ROUTES.welcome}>
       <Segmented
-        label="Sign-in method"
+        label={t('Sign-in method')}
         options={TABS}
         value={tab}
         onChange={(v) => {
@@ -84,12 +85,12 @@ export default function SignInScreen() {
         {tab === 'password' ? (
           <>
             <PasswordField
-              label="Password"
+              label={t('Password')}
               value={password}
               onChangeText={setPassword}
               autoComplete="current-password"
               textContentType="password"
-              placeholder="Your password"
+              placeholder={t('Your password')}
               error={errors.password}
               returnKeyType="go"
               onSubmitEditing={submit}
@@ -97,14 +98,12 @@ export default function SignInScreen() {
             />
             <View style={styles.forgot}>
               <TextLink weight={600} onPress={() => sendCode('reset')} disabled={Boolean(busy)}>
-                {busy === 'reset' ? 'Sending code…' : 'Forgot password?'}
+                {busy === 'reset' ? t('Sending code…') : t('Forgot password?')}
               </TextLink>
             </View>
           </>
         ) : (
-          <Text variant="label" weight={400} color="muted" style={styles.hint}>
-            We will send a 6-digit code to this number on WhatsApp.
-          </Text>
+          <Text variant="label" weight={400} color="muted" style={styles.hint}>{t('We will send a 6-digit code to this number on WhatsApp.')}</Text>
         )}
         {errors.form ? (
           <Text variant="label" color="hotpink" style={styles.hint}>
@@ -119,13 +118,13 @@ export default function SignInScreen() {
           leftIcon={tab === 'whatsapp' ? WhatsAppIcon : undefined}
           style={styles.submit}
         >
-          {tab === 'password' ? 'Sign in' : 'Send code on WhatsApp'}
+          {tab === 'password' ? t('Sign in') : t('Send code on WhatsApp')}
         </Button>
       </View>
 
       {tab === 'password' ? (
         <>
-          <TextDivider style={styles.or}>or</TextDivider>
+          <TextDivider style={styles.or}>{t('or')}</TextDivider>
           <Button
             variant="secondary"
             block
@@ -134,12 +133,10 @@ export default function SignInScreen() {
             disabled={Boolean(busy) && busy !== 'otp'}
             onPress={() => sendCode('signin')}
             style={styles.otp}
-          >
-            Get a code on WhatsApp
-          </Button>
+          >{t('Get a code on WhatsApp')}</Button>
         </>
       ) : null}
-      <LeadLink lead="New to kuraat?" link="Sign up" onPress={() => router.replace(ROUTES.signUp)} style={styles.signup} />
+      <LeadLink lead={t('New to kuraat?')} link={t('Sign up')} onPress={() => router.replace(ROUTES.signUp)} style={styles.signup} />
     </AuthLayout>
   );
 }

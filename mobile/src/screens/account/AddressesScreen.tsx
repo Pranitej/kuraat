@@ -11,6 +11,7 @@ import { useToast } from '@/context/ToastContext';
 import { formatAddress } from '@/domain';
 import { radii } from '@/theme/theme';
 import type { Address } from '@/types/api';
+import { t } from '@/i18n';
 
 /** 23 · Saved addresses */
 export default function AddressesScreen() {
@@ -39,12 +40,10 @@ export default function AddressesScreen() {
 
   return (
     <Screen
-      header={<ScreenHeader title="Saved addresses" backFallback={ROUTES.profile} />}
+      header={<ScreenHeader title={t('Saved addresses')} backFallback={ROUTES.profile} />}
       bottomBar={
         <BottomBar>
-          <Button block leftIcon={Plus} onPress={() => router.push(ROUTES.addressNew)}>
-            Add new address
-          </Button>
+          <Button block leftIcon={Plus} onPress={() => router.push(ROUTES.addressNew)}>{t('Add new address')}</Button>
         </BottomBar>
       }
     >
@@ -57,8 +56,8 @@ export default function AddressesScreen() {
       ) : !addresses.length ? (
         <EmptyState
           icon={MapPin}
-          title="No saved addresses"
-          message="Add an address and we will deliver from the kuraat branch nearest to it."
+          title={t('No saved addresses')}
+          message={t('Add an address and we will deliver from the kuraat branch nearest to it.')}
         />
       ) : (
         <View style={styles.list}>
@@ -69,7 +68,7 @@ export default function AddressesScreen() {
                 <Text weight={700} numberOfLines={1} accessibilityRole="header" style={styles.label}>
                   {a.label}
                 </Text>
-                {a.isDefault ? <Tag tone="dark">Default</Tag> : null}
+                {a.isDefault ? <Tag tone="dark">{t('Default')}</Tag> : null}
               </View>
               <Text color="copy" style={styles.line}>
                 {formatAddress(a)}
@@ -83,23 +82,19 @@ export default function AddressesScreen() {
                   size="md"
                   leftIcon={Pencil}
                   block
-                  accessibilityLabel={`Edit ${a.label} address`}
+                  accessibilityLabel={t('Edit {label} address', { label: a.label })}
                   onPress={() => router.push(ROUTES.addressEdit(a.id))}
                   style={styles.flex}
-                >
-                  Edit
-                </Button>
+                >{t('Edit')}</Button>
                 <Button
                   variant="secondary"
                   size="md"
                   leftIcon={Trash2}
                   block
-                  accessibilityLabel={`Delete ${a.label} address`}
+                  accessibilityLabel={t('Delete {label} address', { label: a.label })}
                   onPress={() => setPendingDelete(a)}
                   style={styles.flex}
-                >
-                  Delete
-                </Button>
+                >{t('Delete')}</Button>
               </View>
             </Card>
           ))}
@@ -112,16 +107,16 @@ export default function AddressesScreen() {
         onConfirm={confirmDelete}
         loading={deleting}
         icon={Trash2}
-        title={`Delete ${pendingDelete?.label || 'this'} address?`}
+        title={pendingDelete?.label ? t('Delete {label} address?', { label: pendingDelete.label }) : t('Delete this address?')}
         message={
           nextDefault
-            ? `This is your default address. ${nextDefault.label} will become your default.`
+            ? t('This is your default address. {label} will become your default.', { label: nextDefault.label })
             : pendingDelete
               ? formatAddress(pendingDelete)
               : ''
         }
-        confirmLabel="Delete address"
-        cancelLabel="Keep address"
+        confirmLabel={t('Delete address')}
+        cancelLabel={t('Keep address')}
       />
     </Screen>
   );

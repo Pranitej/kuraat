@@ -12,6 +12,7 @@ import { useBranches } from '@/context/BranchContext';
 import { cityFilters, mapPins, withDistances } from '@/domain';
 import { FONT_FAMILY, MAX_FONT_SCALE, colors, radii } from '@/theme/theme';
 import type { Branch } from '@/types/api';
+import { t } from '@/i18n';
 
 /** 25 · Our branches */
 export default function BranchesScreen() {
@@ -68,29 +69,29 @@ export default function BranchesScreen() {
   const pins = (mapPins(all) as MapPin[]).filter((pin) => visible.has(pin.id));
 
   return (
-    <Screen header={<ScreenHeader title="Our branches" backFallback={ROUTES.home} />} scrollRef={scroll}>
+    <Screen header={<ScreenHeader title={t('Our branches')} backFallback={ROUTES.home} />} scrollRef={scroll}>
       <View style={styles.search}>
         <Search size={20} color={colors.maroon} strokeWidth={1.8} />
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search by city or area"
+          placeholder={t('Search by city or area')}
           placeholderTextColor={colors.placeholder}
-          accessibilityLabel="Search branches by city or area"
+          accessibilityLabel={t('Search branches by city or area')}
           returnKeyType="search"
           autoCorrect={false}
           maxFontSizeMultiplier={MAX_FONT_SCALE}
           selectionColor={colors.maroon}
           style={styles.searchInput}
         />
-        {query ? <IconButton icon={X} label="Clear search" variant="plain" size="sm" iconSize={18} onPress={() => setQuery('')} /> : null}
+        {query ? <IconButton icon={X} label={t('Clear search')} variant="plain" size="sm" iconSize={18} onPress={() => setQuery('')} /> : null}
       </View>
 
       {filters.length > 0 && (
         <ChipRow style={styles.chips}>
           {filters.map((c) => (
             <Chip key={c} active={city === c} onPress={() => setCity(c)}>
-              {c}
+              {c === 'All' ? t('All') : c}
             </Chip>
           ))}
         </ChipRow>
@@ -128,9 +129,9 @@ export default function BranchesScreen() {
           <EmptyState
             compact
             icon={MapPinOff}
-            title="No branches found"
-            message={`We do not have a branch matching “${query || city}” yet.`}
-            actionLabel="Show all branches"
+            title={t('No branches found')}
+            message={t('We do not have a branch matching “{place}” yet.', { place: query || city })}
+            actionLabel={t('Show all branches')}
             onAction={() => {
               setQuery('');
               setCity('All');

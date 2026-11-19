@@ -13,6 +13,7 @@ import { CARD_PAYMENT, PICKUP, PENDING_BRANCH, awaitingPayment, formatDateTime, 
 import { useBackToHome } from '@/hooks';
 import { useOrderPayment } from '@/hooks/orderPayment';
 import { colors, layout } from '@/theme/theme';
+import { t } from '@/i18n';
 
 /**
  * 15 · Payment successful — then confirms the order with the branch before continuing.
@@ -65,9 +66,7 @@ export default function PaymentSuccessScreen() {
           <Text variant="title" align="center" accessibilityRole="header">
             {CARD_PAYMENT.waitingTitle}
           </Text>
-          <Text color="muted" align="center" style={styles.subtitle}>
-            Order #{order.number}
-          </Text>
+          <Text color="muted" align="center" style={styles.subtitle}>{t('Order #{number}', { number: order.number })}</Text>
           <PaymentDueCard order={order} payment={payment} style={styles.card} />
           <View style={styles.bottom}>
             <Button block variant="secondary" onPress={toOrders}>
@@ -81,17 +80,17 @@ export default function PaymentSuccessScreen() {
 
   const rows: [string, string][] = later
     ? [
-        ['Order number', `#${order.number}`],
-        ['Date', formatDateTime(order.createdAt)],
-        ['Method', paymentLabel(order.payment)],
-        ['Amount due', formatSAR(order.total)],
+        [t('Order number'), `#${order.number}`],
+        [t('Date'), formatDateTime(order.createdAt)],
+        [t('Method'), paymentLabel(order.payment)],
+        [t('Amount due'), formatSAR(order.total)],
       ]
     : [
         // Paid on RSOF's page: RSOF keeps the card and the transaction; older payments still have their id.
-        order.payment.transactionId ? ['Transaction ID', order.payment.transactionId] : ['Order number', `#${order.number}`],
-        ['Date', formatDateTime(order.payment.paidAt || order.createdAt)],
-        ['Method', paymentLabel(order.payment)],
-        ['Amount', formatSAR(order.total)],
+        order.payment.transactionId ? [t('Transaction ID'), order.payment.transactionId] : [t('Order number'), `#${order.number}`],
+        [t('Date'), formatDateTime(order.payment.paidAt || order.createdAt)],
+        [t('Method'), paymentLabel(order.payment)],
+        [t('Amount'), formatSAR(order.total)],
       ];
 
   return (
@@ -110,15 +109,15 @@ export default function PaymentSuccessScreen() {
           </Animated.View>
         </View>
         <Text variant="title" align="center" accessibilityRole="header" style={styles.title}>
-          {later ? 'Order placed' : 'Payment successful'}
+          {later ? t('Order placed') : t('Payment successful')}
         </Text>
         <Text color="muted" align="center" style={styles.subtitle}>
           {order.payment.method === 'branch'
             ? PICKUP.paidLater(formatSAR(order.total))
             : later
-              ? `Pay ${formatSAR(order.total)} in cash when your order arrives`
+              ? t('Pay {total} in cash when your order arrives', { total: formatSAR(order.total) })
               : order.payment.last4
-                ? `${formatSAR(order.total)} paid with ${paymentLabel(order.payment)}`
+                ? t('{total} paid with {method}', { total: formatSAR(order.total), method: paymentLabel(order.payment) })
                 : CARD_PAYMENT.paidBody(formatSAR(order.total))}
         </Text>
 
@@ -136,15 +135,15 @@ export default function PaymentSuccessScreen() {
         <View style={styles.receipt}>
           <WhatsAppIcon size={20} color={colors.muted} />
           {/* RSOF messages the customer about the order on WhatsApp; it sends no payment receipt (19 Nov 2026). */}
-          <Text color="copy">Your order details have been sent to your WhatsApp</Text>
+          <Text color="copy">{t('Your order details have been sent to your WhatsApp')}</Text>
         </View>
 
         <View style={styles.bottom}>
           <Text color="muted" align="center" accessibilityLiveRegion="polite">
-            {confirmed ? (order.branch ? `Confirmed by ${order.branch.name}` : PENDING_BRANCH.sent) : 'Confirming your order with the branch…'}
+            {confirmed ? (order.branch ? t('Confirmed by {name}', { name: order.branch.name }) : PENDING_BRANCH.sent) : t('Confirming your order with the branch…')}
           </Text>
           <View style={styles.progress}>
-            <ProgressBar value={progress} label="Confirming with the branch" />
+            <ProgressBar value={progress} label={t('Confirming with the branch')} />
           </View>
           {/* Card orders end on the Orders page: the order is there with its latest status, ready to track. */}
           <Button
@@ -153,7 +152,7 @@ export default function PaymentSuccessScreen() {
             onPress={later ? () => router.replace(ROUTES.orderConfirmed(order.id)) : toOrders}
             style={styles.continue}
           >
-            {later ? 'Continue' : CARD_PAYMENT.viewOrders}
+            {later ? t('Continue') : CARD_PAYMENT.viewOrders}
           </Button>
         </View>
       </ScrollView>

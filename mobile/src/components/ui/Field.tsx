@@ -14,6 +14,7 @@ import { COUNTRIES, countryOf, formatNationalInput, phonePlaceholder, splitPhone
 import { FONT_FAMILY, MAX_FONT_SCALE, colors, radii, shadows, sizes } from '@/theme/theme';
 import { BottomSheet } from './BottomSheet';
 import { Text } from './Text';
+import { t } from '@/i18n';
 
 type Country = { iso: string; name: string; dial: string };
 
@@ -147,7 +148,7 @@ export function PasswordField({ showIcon = true, ...props }: FieldProps & { show
         <Pressable
           onPress={() => setVisible((v) => !v)}
           accessibilityRole="button"
-          accessibilityLabel={visible ? 'Hide password' : 'Show password'}
+          accessibilityLabel={visible ? t('Hide password') : t('Show password')}
           accessibilityState={{ selected: visible }}
           hitSlop={8}
           style={styles.eye}
@@ -178,14 +179,14 @@ function CountrySheet({ open, onClose, selected, onPick }: { open: boolean; onCl
   const q = query.trim().toLowerCase().replace(/^\+/, '');
   const list = q ? (COUNTRIES as Country[]).filter((c) => c.name.toLowerCase().includes(q) || c.dial.startsWith(q) || c.iso.toLowerCase() === q) : (COUNTRIES as Country[]);
   return (
-    <BottomSheet open={open} onClose={onClose} title="Country code">
+    <BottomSheet open={open} onClose={onClose} title={t('Country code')}>
       <View style={styles.search}>
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search country or code"
+          placeholder={t('Search country or code')}
           placeholderTextColor={colors.placeholder}
-          accessibilityLabel="Search country or code"
+          accessibilityLabel={t('Search country or code')}
           autoCorrect={false}
           maxFontSizeMultiplier={MAX_FONT_SCALE}
           selectionColor={colors.maroon}
@@ -203,7 +204,7 @@ function CountrySheet({ open, onClose, selected, onPick }: { open: boolean; onCl
             }}
             accessibilityRole="button"
             accessibilityState={{ selected: c.iso === selected }}
-            accessibilityLabel={`${c.name}, plus ${c.dial}`}
+            accessibilityLabel={t('{name}, plus {dial}', { name: c.name, dial: c.dial })}
             style={styles.countryRow}
           >
             <Text weight={c.iso === selected ? 700 : 500} style={styles.countryName} numberOfLines={1}>
@@ -215,7 +216,7 @@ function CountrySheet({ open, onClose, selected, onPick }: { open: boolean; onCl
           </Pressable>
         ))
       ) : (
-        <Text color="muted">No country matches “{query}”.</Text>
+        <Text color="muted">{t('No country matches “{query}”.', { query })}</Text>
       )}
     </BottomSheet>
   );
@@ -225,7 +226,7 @@ function CountrySheet({ open, onClose, selected, onPick }: { open: boolean; onCl
  * Country code picker (every country, Saudi Arabia selected by default) + the number (PDF screens 03, 06, 13).
  * `value` / `onChange` use the API form, so forms and requests need no changes (same as the web).
  */
-export function PhoneField({ label = 'Mobile number', value, onChange, error, helper, style, disabled, placeholder, trailing, ref, ...rest }: PhoneProps) {
+export function PhoneField({ label = t('Mobile number'), value, onChange, error, helper, style, disabled, placeholder, trailing, ref, ...rest }: PhoneProps) {
   const [focused, setFocused] = useState(false);
   const [picking, setPicking] = useState(false);
   const [iso, setIso] = useState(() => splitPhone(value).iso as string);
@@ -265,7 +266,7 @@ export function PhoneField({ label = 'Mobile number', value, onChange, error, he
           onPress={() => setPicking(true)}
           disabled={disabled}
           accessibilityRole="button"
-          accessibilityLabel={`Country code: ${country.name}, plus ${country.dial}. Change`}
+          accessibilityLabel={t('Country code: {name}, plus {dial}. Change', { name: country.name, dial: country.dial })}
           style={[inputShellStyle({ disabled }), styles.country]}
         >
           <Text variant="input">+{country.dial}</Text>

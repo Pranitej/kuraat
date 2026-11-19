@@ -20,15 +20,16 @@ import { getPaymentOptions } from '@/services/checkoutService.js';
 import { offeredMethod, toPaymentBody } from '@/services/orderService.js';
 import { colors, radii } from '@/theme/theme';
 import type { PaymentMethod } from '@/types/api';
+import { t, localized } from '@/i18n';
 
 // Saudi Arabia: card (incl. Mada) and cash on delivery; branch pickup pays now (card) or at the branch.
 // UPI (shown in the PDF) was removed — it is India-only. A card is paid on RSOF's secure payment page after the
 // order is placed (19 Nov 2026): no card details are typed in the app.
 type MethodRow = { id: PaymentMethod; title: string; subtitle: string; icon: LucideIcon };
-const DELIVERY_METHODS: MethodRow[] = [
+const DELIVERY_METHODS: MethodRow[] = localized([
   { id: 'card', title: CARD_PAYMENT.title, subtitle: CARD_PAYMENT.subtitle, icon: CreditCard },
   { id: 'cod', title: 'Cash on delivery', subtitle: 'Pay when your order arrives', icon: Banknote },
-];
+]);
 const PICKUP_METHODS: MethodRow[] = [
   { id: 'card', title: PICKUP.payNow, subtitle: PICKUP.payNowSub, icon: CreditCard },
   { id: 'branch', title: PICKUP.payAtBranch, subtitle: PICKUP.payAtBranchSub, icon: Store },
@@ -125,29 +126,26 @@ export default function PaymentScreen() {
       paying.current = false;
       setProcessing(false);
       setErrors({ form: e.message });
-      toast.show('Your order could not be placed', { tone: 'error' });
+      toast.show(t('Your order could not be placed'), { tone: 'error' });
     }
   };
 
   const later = method === 'cod' || method === 'branch';
   // Card: the order is placed first, then paid on the secure payment page (the next screen opens it).
-  const payLabel = !totals ? 'Pay' : later ? `Place order · ${formatSAR(totals.total)}` : `Continue to payment · ${formatSAR(totals.total)}`;
+  const payLabel = !totals ? t('Pay') : later ? t('Place order · {amount}', { amount: formatSAR(totals.total) }) : t('Continue to payment · {amount}', { amount: formatSAR(totals.total) });
 
   return (
     <Screen
-      header={<ScreenHeader title="Payment" backFallback={ROUTES.delivery} />}
+      header={<ScreenHeader title={t('Payment')} backFallback={ROUTES.delivery} />}
       keyboard
       bottomBar={
         <BottomBar>
           {!totals && !quoteError ? (
-            <Text color="muted" style={styles.gettingTotal} accessibilityLiveRegion="polite">
-              Getting your total…
-            </Text>
+            <Text color="muted" style={styles.gettingTotal} accessibilityLiveRegion="polite">{t('Getting your total…')}</Text>
           ) : null}
           {totals ? (
             <View style={styles.totalRow}>
-              <Text color="muted">
-                Total · {totals.count} {totals.count === 1 ? 'item' : 'items'}
+              <Text color="muted">{t('Total · {count}', { count: totals.count })}{' '}{totals.count === 1 ? t('item') : t('items')}
               </Text>
               <Text weight={700} style={styles.total}>
                 {formatSAR(totals.total)}
@@ -161,9 +159,7 @@ export default function PaymentScreen() {
       }
     >
       <CheckoutSteps current={2} />
-      <Text variant="h3" accessibilityRole="header" style={styles.title}>
-        Payment method
-      </Text>
+      <Text variant="h3" accessibilityRole="header" style={styles.title}>{t('Payment method')}</Text>
       {errors.form ? (
         <View style={styles.formError} accessibilityRole="alert">
           <TriangleAlert size={20} color={colors.hotpink} strokeWidth={1.8} />
@@ -178,13 +174,11 @@ export default function PaymentScreen() {
             <TriangleAlert size={20} color={colors.hotpink} strokeWidth={1.8} />
             <Text style={styles.formErrorText}>{quoteError.message}</Text>
           </View>
-          <Button variant="secondary" size="sm" onPress={retryQuote}>
-            Try again
-          </Button>
+          <Button variant="secondary" size="sm" onPress={retryQuote}>{t('Try again')}</Button>
         </View>
       ) : null}
 
-      <View accessibilityRole="radiogroup" accessibilityLabel="Payment method" style={styles.methods}>
+      <View accessibilityRole="radiogroup" accessibilityLabel={t('Payment method')} style={styles.methods}>
         {METHODS.map((m) => {
           const checked = method === m.id;
           const off = m.id === 'card' && cardAvailable === false;
@@ -223,9 +217,7 @@ export default function PaymentScreen() {
 
               {checked && m.id === 'cod' && totals ? (
                 <Animated.View entering={FadeIn.duration(180)} style={styles.methodBody}>
-                  <Text variant="small" color="muted">
-                    Please keep {formatSAR(totals.total)} ready. The courier carries change and a card machine.
-                  </Text>
+                  <Text variant="small" color="muted">{t('Please keep {total} ready. The courier carries change and a card machine.', { total: formatSAR(totals.total) })}</Text>
                 </Animated.View>
               ) : null}
 

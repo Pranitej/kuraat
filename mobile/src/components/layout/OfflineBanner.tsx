@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WifiOff } from '@/components/icons';
 import { Text } from '@/components/ui/Text';
 import { colors } from '@/theme/theme';
+import { t } from '@/i18n';
 
 /** Slim hot-pink bar under the status bar while the phone has no connection. */
 export function OfflineBanner() {
@@ -22,9 +23,7 @@ export function OfflineBanner() {
     >
       <View style={styles.row}>
         <WifiOff size={16} color={colors.white} strokeWidth={2} />
-        <Text variant="label" color="white">
-          {"You're offline. Some things may not load."}
-        </Text>
+        <Text variant="label" color="white">{t('You\'re offline. Some things may not load.')}</Text>
       </View>
     </Animated.View>
   );

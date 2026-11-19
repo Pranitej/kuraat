@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { colors, motion, radii, sizes } from '@/theme/theme';
 import { Text } from './Text';
+import { t } from '@/i18n';
 
 type Option<T extends string> = { value: T; label: string };
 
@@ -145,7 +146,7 @@ export function Stepper({
         onPress={dec}
         disabled={decDisabled}
         accessibilityRole="button"
-        accessibilityLabel="Decrease quantity"
+        accessibilityLabel={t('Decrease quantity')}
         accessibilityState={{ disabled: decDisabled }}
         hitSlop={4}
         style={({ pressed }) => [styles.stepBtn, { width: d, height: d }, decDisabled && styles.dim, pressed && styles.stepPressed]}
@@ -159,7 +160,7 @@ export function Stepper({
         onPress={() => !incDisabled && onChange(Math.min(max, value + 1))}
         disabled={incDisabled}
         accessibilityRole="button"
-        accessibilityLabel="Increase quantity"
+        accessibilityLabel={t('Increase quantity')}
         accessibilityState={{ disabled: incDisabled }}
         hitSlop={4}
         style={({ pressed }) => [styles.stepBtn, { width: d, height: d }, incDisabled && styles.dim, pressed && styles.stepPressed]}

@@ -13,6 +13,7 @@ import { PENDING_BRANCH, PICKUP, formatAddress, formatDistance, formatOrderDate,
 import { useBackToHome } from '@/hooks';
 import { session } from '@/lib/storage.js';
 import { colors, layout, radii } from '@/theme/theme';
+import { t } from '@/i18n';
 
 /** 16 · Order confirmed + "delivered from" branch popup (once per order). */
 export default function OrderConfirmedScreen() {
@@ -45,12 +46,8 @@ export default function OrderConfirmedScreen() {
           <Animated.View entering={ZoomIn.duration(300)} style={styles.check}>
             <Check size={34} color={colors.maroon} strokeWidth={2.6} />
           </Animated.View>
-          <Text variant="title" color="white" align="center" accessibilityRole="header" style={styles.title}>
-            Order confirmed!
-          </Text>
-          <Text color="white80" align="center" style={styles.meta}>
-            Order #{order.number} · {formatOrderDate(order.createdAt)}
-          </Text>
+          <Text variant="title" color="white" align="center" accessibilityRole="header" style={styles.title}>{t('Order confirmed!')}</Text>
+          <Text color="white80" align="center" style={styles.meta}>{t('Order #{number} · {date}', { number: order.number, date: formatOrderDate(order.createdAt) })}</Text>
         </MaroonPanel>
 
         <View style={styles.sheet}>
@@ -59,17 +56,15 @@ export default function OrderConfirmedScreen() {
               <IconTile icon={pickup ? Store : Clock} tone="white" />
               <View style={styles.flex}>
                 <Text variant="label" weight={400} color="muted">
-                  {pickup ? PICKUP.confirmedCardLabel : 'Estimated delivery'}
+                  {pickup ? PICKUP.confirmedCardLabel : t('Estimated delivery')}
                 </Text>
                 <Text variant="h3">
-                  {pickup ? `Show #${order.number} at the pickup counter` : formatWindow(order.window.start, order.window.end)}
+                  {pickup ? t('Show #{number} at the pickup counter', { number: order.number }) : formatWindow(order.window.start, order.window.end)}
                 </Text>
               </View>
             </View>
 
-            <Text variant="h3" accessibilityRole="header" style={styles.section}>
-              Your items
-            </Text>
+            <Text variant="h3" accessibilityRole="header" style={styles.section}>{t('Your items')}</Text>
             <View style={styles.items}>
               {order.items.map((item) => (
                 <View key={item.productId} style={styles.item}>
@@ -80,9 +75,7 @@ export default function OrderConfirmedScreen() {
                     <Text weight={700} numberOfLines={1} style={styles.itemName}>
                       {item.name}
                     </Text>
-                    <Text variant="label" weight={400} color="muted">
-                      Qty {item.qty}
-                    </Text>
+                    <Text variant="label" weight={400} color="muted">{t('Qty {qty}', { qty: item.qty })}</Text>
                   </View>
                   <Text weight={600} style={styles.price}>
                     {formatSAR(item.price * item.qty)}
@@ -95,7 +88,7 @@ export default function OrderConfirmedScreen() {
               <IconTile icon={MapPin} size={40} iconSize={19} />
               <View style={styles.flex}>
                 <Text variant="label" weight={400} color="muted">
-                  {pickup ? PICKUP.collectFrom : 'Delivering to'}
+                  {pickup ? PICKUP.collectFrom : t('Delivering to')}
                 </Text>
                 <Text weight={600} style={styles.toText}>
                   {pickup ? (branch ? branch.name : PENDING_BRANCH.title) : formatAddress(order.address)}
@@ -112,12 +105,8 @@ export default function OrderConfirmedScreen() {
                   toHome();
                   router.push(ROUTES.order(order.id));
                 }}
-              >
-                Track order
-              </Button>
-              <Button block style={styles.flex} onPress={toHome}>
-                Back to home
-              </Button>
+              >{t('Track order')}</Button>
+              <Button block style={styles.flex} onPress={toHome}>{t('Back to home')}</Button>
             </View>
           </View>
         </View>
@@ -127,7 +116,7 @@ export default function OrderConfirmedScreen() {
         <View style={styles.popup}>
           <IconTile icon={Store} size={72} iconSize={30} />
           <Text color="muted" align="center" style={styles.popupLead}>
-            {pickup ? PICKUP.confirmedLead : 'Your order will be delivered from'}
+            {pickup ? PICKUP.confirmedLead : t('Your order will be delivered from')}
           </Text>
           <Text weight={700} align="center" accessibilityRole="header" style={styles.popupName}>
             {branch ? branch.name : PENDING_BRANCH.popupTitle}
@@ -151,15 +140,13 @@ export default function OrderConfirmedScreen() {
                 : !branch
                   ? PENDING_BRANCH.popupNote
                   : order.distanceKm != null
-                    ? `Chosen for your delivery address, ${formatDistance(order.distanceKm)} away. Stock confirmed at this branch.`
-                    : 'Chosen for your delivery address. Stock confirmed at this branch.'}
+                    ? t('Chosen for your delivery address, {distance} away. Stock confirmed at this branch.', { distance: formatDistance(order.distanceKm) })
+                    : t('Chosen for your delivery address. Stock confirmed at this branch.')}
             </Text>
           </View>
-          <Button block onPress={closePopup} style={styles.gotIt}>
-            Got it
-          </Button>
+          <Button block onPress={closePopup} style={styles.gotIt}>{t('Got it')}</Button>
           <DialogLink
-            label={branch ? 'View branch details' : 'Track order'}
+            label={branch ? t('View branch details') : t('Track order')}
             onPress={() => {
               closePopup();
               router.push(branch ? ROUTES.branch(branch.id) : ROUTES.order(order.id));

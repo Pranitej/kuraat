@@ -11,6 +11,7 @@ import { deliverToLabel, deliveryAddress, formatAddress } from '@/domain';
 import { ROUTES } from '@/lib/routes';
 import { colors, radii } from '@/theme/theme';
 import type { Address } from '@/types/api';
+import { t } from '@/i18n';
 
 /**
  * The address we deliver to, shared by Home and checkout (checkout draft → default → first).
@@ -53,7 +54,7 @@ export function AddressOption({ address, checked, onSelect }: { address: Address
           <Text weight={700} style={styles.label} numberOfLines={1}>
             {address.label}
           </Text>
-          {address.isDefault ? <Tag tone="dark">Default</Tag> : null}
+          {address.isDefault ? <Tag tone="dark">{t('Default')}</Tag> : null}
         </View>
         <Text color="copy" style={styles.optionLine}>
           {formatAddress(address)}
@@ -72,13 +73,11 @@ export function AddAddressTile({ onPress, style }: { onPress: () => void; style?
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="Add new address"
+      accessibilityLabel={t('Add new address')}
       style={({ pressed }) => [styles.add, pressed && styles.addPressed, style]}
     >
       <Plus size={20} color={colors.maroon} strokeWidth={2} />
-      <Text weight={700} color="maroon" style={styles.addText}>
-        Add new address
-      </Text>
+      <Text weight={700} color="maroon" style={styles.addText}>{t('Add new address')}</Text>
     </Pressable>
   );
 }
@@ -103,21 +102,19 @@ export function DeliverToBar({
 }) {
   const addAddress = useAddAddress(ROUTES.home as string);
   const empty = loaded && !address;
-  const text = empty ? 'Add a delivery address' : deliverToLabel(address);
+  const text = empty ? t('Add a delivery address') : deliverToLabel(address);
   return (
     <Pressable
       onPress={empty ? addAddress : onOpen}
       disabled={!loaded}
       accessibilityRole="button"
-      accessibilityLabel={loaded ? `Deliver to ${text}` : 'Deliver to, loading your address'}
-      accessibilityHint={empty ? undefined : 'Choose another saved address'}
+      accessibilityLabel={loaded ? t('Deliver to {text}', { text }) : t('Deliver to, loading your address')}
+      accessibilityHint={empty ? undefined : t('Choose another saved address')}
       style={({ pressed }) => [styles.bar, pressed && styles.barPressed, style]}
     >
       <IconTile icon={MapPin} size={40} iconSize={19} />
       <View style={styles.flex}>
-        <Text variant="label" weight={400} color="muted">
-          Deliver to
-        </Text>
+        <Text variant="label" weight={400} color="muted">{t('Deliver to')}</Text>
         {!loaded ? (
           <Skeleton style={styles.barSkeleton} />
         ) : (
@@ -158,11 +155,9 @@ export function DeliverToSheet({
     go();
   };
   return (
-    <BottomSheet open={open} onClose={onClose} title="Deliver to">
-      <Text variant="small" color="muted">
-        The branch nearest to this address prepares your order.
-      </Text>
-      <View accessibilityRole="radiogroup" accessibilityLabel="Delivery address" style={styles.options}>
+    <BottomSheet open={open} onClose={onClose} title={t('Deliver to')}>
+      <Text variant="small" color="muted">{t('The branch nearest to this address prepares your order.')}</Text>
+      <View accessibilityRole="radiogroup" accessibilityLabel={t('Delivery address')} style={styles.options}>
         {addresses.map((a) => (
           <AddressOption
             key={a.id}
@@ -177,7 +172,7 @@ export function DeliverToSheet({
       </View>
       <AddAddressTile onPress={() => leaveTo(addAddress)} style={styles.addInSheet} />
       <View style={styles.manage}>
-        <TextLink onPress={() => leaveTo(() => router.push(ROUTES.addresses))}>Manage saved addresses</TextLink>
+        <TextLink onPress={() => leaveTo(() => router.push(ROUTES.addresses))}>{t('Manage saved addresses')}</TextLink>
       </View>
     </BottomSheet>
   );

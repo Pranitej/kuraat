@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Text as RNText, type TextProps as RNTextProps, type TextStyle } from 'react-native';
+import { getLanguage } from '@/i18n';
 import { FONT_FAMILY, MAX_FONT_SCALE, colors, type, type ColorName, type TypeToken, type Weight } from '@/theme/theme';
 
 export type TextProps = RNTextProps & {
@@ -16,7 +17,7 @@ export type TextProps = RNTextProps & {
 /** The only Text the app uses: token typography, capped font scaling, brand colours. */
 function TextBase({ variant = 'body', color = 'ink', weight, align, arabic, style, ...rest }: TextProps) {
   const base = type[variant];
-  const fontFamily = arabic
+  const fontFamily = arabic || getLanguage() === 'ar'
     ? weight === 500 || (!weight && base.fontFamily === FONT_FAMILY[500])
       ? FONT_FAMILY.arabic500
       : FONT_FAMILY.arabic700

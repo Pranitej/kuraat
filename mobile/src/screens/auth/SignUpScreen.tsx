@@ -11,6 +11,7 @@ import { LOCATION_FAILED, LOCATION_OUTSIDE, isInSaudi, parseAddressText, validat
 import { getDevicePosition } from '@/lib/location';
 import { colors } from '@/theme/theme';
 import type { Gender } from '@/types/api';
+import { t } from '@/i18n';
 
 type Errors = Partial<Record<'name' | 'phone' | 'gender' | 'address' | 'form', string>>;
 type SignupForm = { name: string; gender: Gender; address: { line: string; district: string; location?: unknown }; addressText: string };
@@ -65,7 +66,7 @@ export default function SignUpScreen() {
     const next: Errors = {
       name: validateName(name),
       phone: validateMobile(phone),
-      gender: gender ? '' : 'Choose an option',
+      gender: gender ? '' : t('Choose an option'),
       address: validateAddressLine(addressText),
     };
     setErrors(next);
@@ -88,14 +89,14 @@ export default function SignUpScreen() {
   };
 
   return (
-    <AuthLayout title="Create your account" backFallback={ROUTES.welcome}>
+    <AuthLayout title={t('Create your account')} backFallback={ROUTES.welcome}>
       <View style={styles.form}>
         <Field
-          label="Full name"
+          label={t('Full name')}
           icon={User}
           value={name}
           onChangeText={setName}
-          placeholder="Your full name"
+          placeholder={t('Your full name')}
           autoComplete="name"
           textContentType="name"
           autoCapitalize="words"
@@ -108,15 +109,13 @@ export default function SignUpScreen() {
           helper={
             <View style={styles.helper}>
               <WhatsAppIcon size={16} color={colors.muted} />
-              <Text variant="label" weight={400} color="muted">
-                We will send a 6-digit code on WhatsApp
-              </Text>
+              <Text variant="label" weight={400} color="muted">{t('We will send a 6-digit code on WhatsApp')}</Text>
             </View>
           }
         />
-        <FieldWrapper label="Gender" error={errors.gender}>
+        <FieldWrapper label={t('Gender')} error={errors.gender}>
           <Segmented
-            label="Gender"
+            label={t('Gender')}
             options={GENDERS as { value: Gender; label: string }[]}
             value={gender || null}
             onChange={(v) => {
@@ -127,11 +126,11 @@ export default function SignUpScreen() {
         </FieldWrapper>
         <View>
           <Field
-            label="Delivery address"
+            label={t('Delivery address')}
             icon={MapPin}
             value={addressText}
             onChangeText={setAddressText}
-            placeholder="Building, street, district"
+            placeholder={t('Building, street, district')}
             autoComplete="street-address"
             textContentType="fullStreetAddress"
             error={errors.address}
@@ -146,12 +145,12 @@ export default function SignUpScreen() {
           >
             {locating ? <Spinner size={18} /> : <LocateFixed size={18} color={colors.maroon} strokeWidth={1.8} />}
             <Text weight={600} color="maroon" style={styles.locateText}>
-              {locating ? 'Finding your location…' : located ? 'Location saved · tap to update' : 'Use my current location'}
+              {locating ? t('Finding your location…') : located ? t('Location saved · tap to update') : t('Use my current location')}
             </Text>
           </Pressable>
           {located ? (
             <Text variant="label" weight={400} color="muted">
-              {addressText.trim() ? 'Location saved.' : 'Location saved. Now type your building, street and district.'}
+              {addressText.trim() ? t('Location saved.') : t('Location saved. Now type your building, street and district.')}
             </Text>
           ) : null}
         </View>
@@ -162,10 +161,8 @@ export default function SignUpScreen() {
           </Text>
         ) : null}
 
-        <Button block loading={submitting} leftIcon={WhatsAppIcon} onPress={submit} style={styles.submit}>
-          Continue with WhatsApp
-        </Button>
-        <LeadLink lead="Already have an account?" link="Sign in" onPress={() => router.replace(ROUTES.signIn)} />
+        <Button block loading={submitting} leftIcon={WhatsAppIcon} onPress={submit} style={styles.submit}>{t('Continue with WhatsApp')}</Button>
+        <LeadLink lead={t('Already have an account?')} link={t('Sign in')} onPress={() => router.replace(ROUTES.signIn)} />
       </View>
     </AuthLayout>
   );

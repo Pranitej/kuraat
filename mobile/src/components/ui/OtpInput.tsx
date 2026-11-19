@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
 import { FONT_FAMILY, colors, radii, shadows } from '@/theme/theme';
 import { Text } from './Text';
+import { t } from '@/i18n';
 
 type Props = {
   value: string;
@@ -64,8 +65,8 @@ export function OtpInput({ value, onChange, onComplete, length = 6, error, disab
         maxLength={length}
         caretHidden
         contextMenuHidden={false}
-        accessibilityLabel="Verification code"
-        accessibilityHint={error ?? `Enter the ${length}-digit code`}
+        accessibilityLabel={t('Verification code')}
+        accessibilityHint={error ?? t('Enter the {length}-digit code', { length })}
         style={styles.hidden}
       />
     </Pressable>

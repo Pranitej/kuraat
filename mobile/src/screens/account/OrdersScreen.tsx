@@ -12,6 +12,7 @@ import { useOrders } from '@/context/OrderContext';
 import { ORDER_FILTERS, filterOrders } from '@/domain';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
+import { t } from '@/i18n';
 
 type Filter = string;
 const FILTER_OPTIONS = (ORDER_FILTERS as { id: string; label: string }[]).map((f) => ({ value: f.id, label: f.label }));
@@ -27,9 +28,9 @@ export default function OrdersScreen() {
 
   const header = (
     <ScreenHeader
-      title="My orders"
+      title={t('My orders')}
       backFallback={ROUTES.profile}
-      right={loaded ? <RefreshButton label="Refresh orders" onRefresh={() => refresh({ force: true })} /> : null}
+      right={loaded ? <RefreshButton label={t('Refresh orders')} onRefresh={() => refresh({ force: true })} /> : null}
     />
   );
 
@@ -40,9 +41,9 @@ export default function OrdersScreen() {
       <Screen header={header} contentStyle={styles.emptyTop}>
         <EmptyState
           icon={CloudOff}
-          title="We can't load your orders"
-          message={e?.message || 'Please try again in a moment.'}
-          actionLabel="Try again"
+          title={t('We can\'t load your orders')}
+          message={e?.message || t('Please try again in a moment.')}
+          actionLabel={t('Try again')}
           onAction={() => refresh()}
         />
       </Screen>
@@ -54,9 +55,9 @@ export default function OrdersScreen() {
       <Screen header={header} contentStyle={styles.emptyTop}>
         <EmptyState
           icon={Package}
-          title="No orders yet"
-          message="When you place an order it will appear here, together with the branch it was delivered from."
-          actionLabel="Start shopping"
+          title={t('No orders yet')}
+          message={t('When you place an order it will appear here, together with the branch it was delivered from.')}
+          actionLabel={t('Start shopping')}
           onAction={() => router.replace(ROUTES.home)}
         />
       </Screen>
@@ -117,7 +118,7 @@ function OrderList({
         />
       }
       ListHeaderComponent={
-        <SelectField variant="chip" label="Show" sheetTitle="Show orders" value={filter} options={FILTER_OPTIONS} onChange={setFilter} style={styles.filter} />
+        <SelectField variant="chip" label={t('Show')} sheetTitle={t('Show orders')} value={filter} options={FILTER_OPTIONS} onChange={setFilter} style={styles.filter} />
       }
       ItemSeparatorComponent={() => <View style={styles.gap} />}
       renderItem={({ item }) => <OrderCard order={item} now={now} />}
@@ -132,9 +133,9 @@ function OrderList({
           <EmptyState
             compact
             icon={Package}
-            title="No orders here"
-            message="Orders with this status will show here."
-            actionLabel="Show all orders"
+            title={t('No orders here')}
+            message={t('Orders with this status will show here.')}
+            actionLabel={t('Show all orders')}
             onAction={() => setFilter('all')}
           />
         ) : null

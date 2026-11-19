@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaroonPanel } from '@/components/ui/Brand';
 import { Text } from '@/components/ui/Text';
 import { colors, layout, radii } from '@/theme/theme';
+import { LanguageToggle } from './LanguageToggle';
 import { BackButton } from './ScreenHeader';
 
 type Props = {
@@ -30,7 +31,10 @@ export function AuthLayout({ title, children, backFallback = '/welcome', onBack,
       <KeyboardAwareScrollView bottomOffset={24} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll} bounces={false}>
         <MaroonPanel fade="down" style={{ height: insets.top + 200 }}>
           <View style={[styles.header, { paddingTop: insets.top + layout.headerTop }]}>
-            <View style={styles.backRow}>{showBack ? <BackButton variant="glass" fallback={backFallback} onPress={onBack} /> : null}</View>
+            <View style={styles.backRow}>
+              {showBack ? <BackButton variant="glass" fallback={backFallback} onPress={onBack} /> : <View />}
+              <LanguageToggle tone="glass" />
+            </View>
             <Text variant="display" color="white" accessibilityRole="header" style={styles.title}>
               {title}
             </Text>
@@ -48,7 +52,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.cream },
   scroll: { flexGrow: 1 },
   header: { flex: 1, paddingHorizontal: 24, paddingBottom: 52 },
-  backRow: { flexDirection: 'row' },
+  backRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { marginTop: 'auto', maxWidth: 232 },
   sheet: {
     flexGrow: 1,

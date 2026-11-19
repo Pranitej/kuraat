@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import { colors, radii } from '@/theme/theme';
+import { t } from '@/i18n';
 
 export type MapPin = { id: string; x: number; y: number; label: string };
 
@@ -81,7 +82,7 @@ export function MapIllustration({ pins = [], selectedId, onSelect, you, height =
             key={pin.id}
             onPress={() => onSelect(pin.id)}
             accessibilityRole="button"
-            accessibilityLabel={`Show ${pin.label}`}
+            accessibilityLabel={t('Show {label}', { label: pin.label })}
             accessibilityState={{ selected }}
             hitSlop={8}
             style={[styles.pin, position]}

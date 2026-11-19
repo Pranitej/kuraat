@@ -25,6 +25,7 @@ import { formatAddress, formatPhone, validateEmail, validateName } from '@/domai
 import { pickAvatar } from '@/lib/photo';
 import { FONT_FAMILY, MAX_FONT_SCALE, colors, radii, shadows } from '@/theme/theme';
 import type { Gender, User as UserType } from '@/types/api';
+import { t } from '@/i18n';
 
 type Form = { name: string; email: string; gender: Gender | null; avatar: string | null };
 type Errors = Partial<Record<'name' | 'email' | 'form', string>>;
@@ -62,7 +63,7 @@ export default function AccountScreen() {
       const avatar = await pickAvatar();
       if (avatar) set('avatar')(avatar);
     } catch {
-      toast.show('We could not read that photo', { tone: 'error' });
+      toast.show(t('We could not read that photo'), { tone: 'error' });
     }
   };
 
@@ -71,13 +72,13 @@ export default function AccountScreen() {
     setErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
     if (!dirty) {
-      toast.show('Your details are up to date', { tone: 'info' });
+      toast.show(t('Your details are up to date'), { tone: 'info' });
       return;
     }
     setSaving(true);
     try {
       await updateProfile(profileChanges() as never);
-      toast.show('Your changes have been saved');
+      toast.show(t('Your changes have been saved'));
     } catch (err) {
       fail(err);
     } finally {
@@ -102,13 +103,11 @@ export default function AccountScreen() {
 
   return (
     <Screen
-      header={<ScreenHeader title="Account" backFallback={ROUTES.profile} />}
+      header={<ScreenHeader title={t('Account')} backFallback={ROUTES.profile} />}
       keyboard
       bottomBar={
         <BottomBar>
-          <Button block loading={saving} onPress={save}>
-            Save changes
-          </Button>
+          <Button block loading={saving} onPress={save}>{t('Save changes')}</Button>
         </BottomBar>
       }
     >
@@ -118,7 +117,7 @@ export default function AccountScreen() {
           <Pressable
             onPress={pickPhoto}
             accessibilityRole="button"
-            accessibilityLabel="Change profile photo"
+            accessibilityLabel={t('Change profile photo')}
             hitSlop={6}
             style={styles.pencil}
           >
@@ -128,15 +127,13 @@ export default function AccountScreen() {
       </View>
       {form.avatar ? (
         <View style={styles.removePhoto}>
-          <TextLink role="button" size={13} weight={600} onPress={() => set('avatar')(null)}>
-            Remove photo
-          </TextLink>
+          <TextLink role="button" size={13} weight={600} onPress={() => set('avatar')(null)}>{t('Remove photo')}</TextLink>
         </View>
       ) : null}
 
       <View style={styles.form}>
         <Field
-          label="Full name"
+          label={t('Full name')}
           icon={User}
           value={form.name}
           onChangeText={set('name')}
@@ -147,16 +144,16 @@ export default function AccountScreen() {
 
         {/* The number is fixed when the account is created: orders are found by it. */}
         <PhoneField
-          label="Mobile number (WhatsApp)"
+          label={t('Mobile number (WhatsApp)')}
           value={u.phone}
           onChange={() => {}}
           disabled
-          helper="Your mobile number cannot be changed."
-          trailing={<Tag icon={Check}>Verified</Tag>}
+          helper={t('Your mobile number cannot be changed.')}
+          trailing={<Tag icon={Check}>{t('Verified')}</Tag>}
         />
 
         <Field
-          label="Email (optional)"
+          label={t('Email (optional)')}
           icon={Mail}
           keyboardType="email-address"
           autoCapitalize="none"
@@ -165,27 +162,25 @@ export default function AccountScreen() {
           textContentType="emailAddress"
           value={form.email}
           onChangeText={set('email')}
-          placeholder="name@example.com"
+          placeholder={t('name@example.com')}
           error={errors.email}
         />
 
-        <FieldWrapper label="Gender">
-          <Segmented label="Gender" options={GENDERS as { value: Gender; label: string }[]} value={form.gender} onChange={set('gender')} />
+        <FieldWrapper label={t('Gender')}>
+          <Segmented label={t('Gender')} options={GENDERS as { value: Gender; label: string }[]} value={form.gender} onChange={set('gender')} />
         </FieldWrapper>
 
         <Pressable
           onPress={() => router.push(ROUTES.addresses)}
           accessibilityRole="button"
-          accessibilityLabel={`Default address: ${defaultAddress ? formatAddress(defaultAddress) : 'Add a delivery address'}`}
+          accessibilityLabel={t('Default address: {v1}', { v1: defaultAddress ? formatAddress(defaultAddress) : 'Add a delivery address' })}
           style={({ pressed }) => [styles.address, pressed && styles.addressPressed]}
         >
           <IconTile icon={MapPin} />
           <View style={styles.flex}>
-            <Text variant="label" weight={400} color="muted">
-              Default address
-            </Text>
+            <Text variant="label" weight={400} color="muted">{t('Default address')}</Text>
             <Text weight={700} style={styles.addressText}>
-              {defaultAddress ? formatAddress(defaultAddress) : 'Add a delivery address'}
+              {defaultAddress ? formatAddress(defaultAddress) : t('Add a delivery address')}
             </Text>
           </View>
           <ChevronRight size={20} color={colors.ink} strokeWidth={1.8} />
@@ -200,14 +195,12 @@ export default function AccountScreen() {
         <Pressable
           onPress={() => setConfirmDelete(true)}
           accessibilityRole="button"
-          accessibilityLabel="Delete account"
+          accessibilityLabel={t('Delete account')}
           hitSlop={8}
           style={styles.delete}
         >
           <Trash2 size={18} color={colors.maroon} strokeWidth={1.8} />
-          <Text weight={600} color="maroon" style={styles.deleteText}>
-            Delete account
-          </Text>
+          <Text weight={600} color="maroon" style={styles.deleteText}>{t('Delete account')}</Text>
         </Pressable>
       </View>
 
@@ -217,10 +210,10 @@ export default function AccountScreen() {
         onConfirm={startDelete}
         loading={sendingDeleteCode}
         icon={Trash2}
-        title="Delete your account?"
-        message={`This removes your profile, saved addresses and cards. Past orders stay with the branch for its records. We will send a 6-digit code on WhatsApp to ${formatPhone(u.phone)} to confirm.`}
-        confirmLabel="Send code"
-        cancelLabel="Keep my account"
+        title={t('Delete your account?')}
+        message={t('This removes your profile, saved addresses and cards. Past orders stay with the branch for its records. We will send a 6-digit code on WhatsApp to {phone} to confirm.', { v1: formatPhone(u.phone) })}
+        confirmLabel={t('Send code')}
+        cancelLabel={t('Keep my account')}
       />
     </Screen>
   );

@@ -16,6 +16,7 @@ import { PICKUP, deliveryAddress } from '@/domain';
 import { useDeliveryQuote } from '@/hooks/quote';
 import { offeredMethod } from '@/services/orderService.js';
 import type { Address, Fulfilment, PaymentMethod } from '@/types/api';
+import { t } from '@/i18n';
 
 /** 13 · Delivery details (and, for branch pickup, Pickup details) */
 export default function DeliveryScreen() {
@@ -52,7 +53,7 @@ export default function DeliveryScreen() {
   };
 
   const next = () => {
-    const errs = { address: pickup || selected ? '' : 'Choose a delivery address' };
+    const errs = { address: pickup || selected ? '' : t('Choose a delivery address') };
     setErrors(errs);
     if (errs.address || (!pickup && !selected)) return;
     if (!pickup) checkout.patch({ addressId: selected!.id });
@@ -61,13 +62,11 @@ export default function DeliveryScreen() {
 
   return (
     <Screen
-      header={<ScreenHeader title={pickup ? 'Pickup details' : 'Delivery details'} backFallback={ROUTES.cart} />}
+      header={<ScreenHeader title={pickup ? t('Pickup details') : t('Delivery details')} backFallback={ROUTES.cart} />}
       keyboard
       bottomBar={
         <BottomBar>
-          <Button block rightIcon={ChevronRight} onPress={next}>
-            Continue to payment
-          </Button>
+          <Button block rightIcon={ChevronRight} onPress={next}>{t('Continue to payment')}</Button>
         </BottomBar>
       }
     >
@@ -97,13 +96,11 @@ export default function DeliveryScreen() {
       ) : (
         <>
           <View style={styles.titleRow}>
-            <Text variant="h3" accessibilityRole="header">
-              Deliver to
-            </Text>
-            <TextLink onPress={() => router.push(ROUTES.addresses)}>Manage</TextLink>
+            <Text variant="h3" accessibilityRole="header">{t('Deliver to')}</Text>
+            <TextLink onPress={() => router.push(ROUTES.addresses)}>{t('Manage')}</TextLink>
           </View>
 
-          <View accessibilityRole="radiogroup" accessibilityLabel="Delivery address" style={styles.addresses}>
+          <View accessibilityRole="radiogroup" accessibilityLabel={t('Delivery address')} style={styles.addresses}>
             {addresses.map((a) => (
               <AddressOption key={a.id} address={a} checked={a.id === selected?.id} onSelect={select} />
             ))}
@@ -118,11 +115,11 @@ export default function DeliveryScreen() {
 
           {/* The order always carries the account's number (it cannot be edited here): RSOF finds the customer's orders by it. */}
           <PhoneField
-            label="Phone number for this delivery"
+            label={t('Phone number for this delivery')}
             value={user?.phone ?? ''}
             onChange={() => {}}
             disabled
-            helper="Your account's mobile number. The courier will call it on arrival."
+            helper={t('Your account\'s mobile number. The courier will call it on arrival.')}
             style={styles.phone}
           />
 

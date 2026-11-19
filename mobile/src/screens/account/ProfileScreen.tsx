@@ -12,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 import { formatPhone } from '@/domain';
 import { colors, layout, radii } from '@/theme/theme';
+import { t } from '@/i18n';
 
 /** 17 · Profile */
 export default function ProfileScreen() {
@@ -24,13 +25,13 @@ export default function ProfileScreen() {
   const [leaving, setLeaving] = useState(false);
 
   const items: { to: Href; icon: typeof User; title: string; subtitle: string }[] = [
-    { to: ROUTES.account, icon: User, title: 'Account', subtitle: 'Name, phone number, gender' },
-    { to: ROUTES.password, icon: KeyRound, title: 'Password', subtitle: 'Set or change your password' },
-    { to: ROUTES.orders, icon: ReceiptText, title: 'Orders', subtitle: 'View your previous orders' },
+    { to: ROUTES.account, icon: User, title: t('Account'), subtitle: t('Name, phone number, gender') },
+    { to: ROUTES.password, icon: KeyRound, title: t('Password'), subtitle: t('Set or change your password') },
+    { to: ROUTES.orders, icon: ReceiptText, title: t('Orders'), subtitle: t('View your previous orders') },
     {
       to: ROUTES.addresses,
       icon: MapPin,
-      title: 'Saved addresses',
+      title: t('Saved addresses'),
       subtitle: `${addresses.length} saved ${addresses.length === 1 ? 'address' : 'addresses'}`,
     },
   ];
@@ -38,7 +39,7 @@ export default function ProfileScreen() {
   const logOut = async () => {
     setLeaving(true);
     await signOut();
-    toast.show('You have been logged out', { tone: 'info' });
+    toast.show(t('You have been logged out'), { tone: 'info' });
     router.replace(ROUTES.welcome);
   };
 
@@ -50,9 +51,7 @@ export default function ProfileScreen() {
           <View style={styles.column}>
             <View style={styles.titleRow}>
               <BackButton variant="glass" fallback={ROUTES.home} />
-              <Text variant="heading" color="white" accessibilityRole="header" style={styles.title}>
-                Profile
-              </Text>
+              <Text variant="heading" color="white" accessibilityRole="header" style={styles.title}>{t('Profile')}</Text>
               <View style={styles.spacer} />
             </View>
             <View style={styles.who}>
@@ -91,9 +90,7 @@ export default function ProfileScreen() {
                 <ChevronRight size={20} color={colors.ink} strokeWidth={1.8} />
               </Pressable>
             ))}
-            <Button variant="secondary" block leftIcon={LogOut} onPress={() => setConfirm(true)} style={styles.logout}>
-              Log out
-            </Button>
+            <Button variant="secondary" block leftIcon={LogOut} onPress={() => setConfirm(true)} style={styles.logout}>{t('Log out')}</Button>
           </View>
         </View>
       </ScrollView>
@@ -104,10 +101,10 @@ export default function ProfileScreen() {
         onConfirm={logOut}
         loading={leaving}
         icon={LogOut}
-        title="Log out of kuraat?"
-        message="Your cart and saved addresses will be here when you sign back in."
-        confirmLabel="Log out"
-        cancelLabel="Stay signed in"
+        title={t('Log out of kuraat?')}
+        message={t('Your cart and saved addresses will be here when you sign back in.')}
+        confirmLabel={t('Log out')}
+        cancelLabel={t('Stay signed in')}
       />
     </View>
   );

@@ -1,13 +1,14 @@
 import { Stack, type ErrorBoundaryProps } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { I18nManager, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ErrorFallback, OfflineBanner } from '@/components/layout';
 import { AppProviders } from '@/context/AppProviders';
 import { useAuth } from '@/context/AuthContext';
+import { I18nProvider, LocalizedTree } from '@/context/I18nContext';
 import { ToastProvider } from '@/context/ToastContext';
 import { setClockReader } from '@/domain';
 import { readPhoneClock } from '@/lib/clock';
@@ -15,9 +16,6 @@ import { initMonitoring } from '@/lib/monitoring';
 import { useAppFonts } from '@/theme/fonts';
 import { colors } from '@/theme/theme';
 
-// The UI is English (PDF): keep left-to-right on Arabic-language phones too.
-I18nManager.allowRTL(false);
-I18nManager.forceRTL(false);
 SplashScreen.preventAutoHideAsync().catch(() => {});
 SplashScreen.setOptions({ fade: true, duration: 200 });
 initMonitoring();
@@ -43,12 +41,16 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <KeyboardProvider>
-          <ToastProvider>
-            <AppProviders>
-              <RootStack />
-              <OfflineBanner />
-            </AppProviders>
-          </ToastProvider>
+          <I18nProvider>
+            <ToastProvider>
+              <AppProviders>
+                <LocalizedTree>
+                  <RootStack />
+                  <OfflineBanner />
+                </LocalizedTree>
+              </AppProviders>
+            </ToastProvider>
+          </I18nProvider>
         </KeyboardProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

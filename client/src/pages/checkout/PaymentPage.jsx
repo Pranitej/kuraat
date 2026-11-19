@@ -18,14 +18,15 @@ import { CARD_PAYMENT, PICKUP, formatSAR } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
 import { cn } from '@/lib/cn.js';
+import { t, localized } from '@/i18n';
 
 // Saudi Arabia: card (incl. Mada) and cash on delivery; branch pickup pays now (card) or at the branch.
 // UPI (shown in the PDF) was removed — it is India-only. A card is paid on RSOF's secure payment page after the
 // order is placed (19 Nov 2026): no card details are typed here.
-const DELIVERY_METHODS = [
+const DELIVERY_METHODS = localized([
   { id: 'card', title: CARD_PAYMENT.title, subtitle: CARD_PAYMENT.subtitle, icon: CreditCard },
   { id: 'cod', title: 'Cash on delivery', subtitle: 'Pay when your order arrives', icon: Banknote },
-];
+]);
 const PICKUP_METHODS = [
   { id: 'card', title: PICKUP.payNow, subtitle: PICKUP.payNowSub, icon: CreditCard },
   { id: 'branch', title: PICKUP.payAtBranch, subtitle: PICKUP.payAtBranchSub, icon: Store },
@@ -33,7 +34,7 @@ const PICKUP_METHODS = [
 
 /** 14 · Payment */
 export default function PaymentPage() {
-  useDocumentTitle('Payment');
+  useDocumentTitle(t('Payment'));
   const navigate = useNavigate();
   const toast = useToast();
   const isDesktop = useIsDesktop();
@@ -110,13 +111,13 @@ export default function PaymentPage() {
       }
       setProcessing(false);
       setErrors({ form: err.message });
-      toast.show('Your order could not be placed', { tone: 'error' });
+      toast.show(t('Your order could not be placed'), { tone: 'error' });
     }
   };
 
   const later = method === 'cod' || method === 'branch';
   // Card: the order is placed first, then paid on the secure payment page (the next screen opens it).
-  const payLabel = !totals ? 'Pay' : later ? `Place order · ${formatSAR(totals.total)}` : `Continue to payment · ${formatSAR(totals.total)}`;
+  const payLabel = !totals ? t('Pay') : later ? t('Place order · {amount}', { amount: formatSAR(totals.total) }) : t('Continue to payment · {amount}', { amount: formatSAR(totals.total) });
   const cta = (
     <Button block leftIcon={later ? undefined : Lock} loading={processing} disabled={!totals || cardOff} onClick={pay}>
       {payLabel}
@@ -125,14 +126,14 @@ export default function PaymentPage() {
 
   return (
     <CheckoutLayout
-      header={<ScreenHeader title="Payment" backFallback={ROUTES.delivery} />}
+      header={<ScreenHeader title={t('Payment')} backFallback={ROUTES.delivery} />}
       steps={<CheckoutSteps current={2} />}
       aside={
         <div className="flex flex-col gap-4">
           {totals ? (
-            <OrderSummary totals={totals} title="Order summary" />
+            <OrderSummary totals={totals} title={t('Order summary')} />
           ) : quoteError ? null : (
-            <div role="status" aria-busy="true" aria-label="Getting your total">
+            <div role="status" aria-busy="true" aria-label={t('Getting your total')}>
               <Skeleton className="h-[180px] rounded-xl" />
             </div>
           )}
@@ -141,7 +142,7 @@ export default function PaymentPage() {
         </div>
       }
     >
-      <h2 className="text-h3 text-ink">Payment method</h2>
+      <h2 className="text-h3 text-ink">{t('Payment method')}</h2>
       {errors.form && (
         <div role="alert" className="mt-3 flex gap-2.5 rounded-lg border border-hotpink/40 bg-hotpink/[0.06] px-4 py-3 text-[15px] text-ink">
           <TriangleAlert size={20} strokeWidth={1.8} className="mt-px shrink-0 text-hotpink" aria-hidden />
@@ -156,13 +157,11 @@ export default function PaymentPage() {
             <TriangleAlert size={20} strokeWidth={1.8} className="mt-px shrink-0 text-hotpink" aria-hidden />
             {quoteError.message}
           </span>
-          <Button variant="secondary" size="sm" onClick={retryQuote}>
-            Try again
-          </Button>
+          <Button variant="secondary" size="sm" onClick={retryQuote}>{t('Try again')}</Button>
         </div>
       )}
 
-      <div role="radiogroup" aria-label="Payment method" className="mt-3 flex flex-col gap-3">
+      <div role="radiogroup" aria-label={t('Payment method')} className="mt-3 flex flex-col gap-3">
         {METHODS.map((m) => {
           const checked = method === m.id;
           const off = m.id === 'card' && cardAvailable === false;
@@ -174,7 +173,7 @@ export default function PaymentPage() {
                 aria-checked={checked}
                 disabled={processing || off}
                 onClick={() => choose(m.id)}
-                className={cn('flex w-full items-center gap-3.5 p-4 text-left disabled:cursor-default', off && 'opacity-50')}
+                className={cn('flex w-full items-center gap-3.5 p-4 text-start disabled:cursor-default', off && 'opacity-50')}
               >
                 <RadioDot checked={checked} />
                 <span className="grid size-[42px] shrink-0 place-items-center rounded-sm bg-sand text-maroon" aria-hidden>
@@ -189,9 +188,7 @@ export default function PaymentPage() {
               {checked && m.id === 'card' && <p className="animate-fade-in px-4 pb-4 text-small text-muted">{CARD_PAYMENT.returnHint}</p>}
 
               {checked && m.id === 'cod' && totals && (
-                <p className="animate-fade-in px-4 pb-4 text-small text-muted">
-                  Please keep {formatSAR(totals.total)} ready. The courier carries change and a card machine.
-                </p>
+                <p className="animate-fade-in px-4 pb-4 text-small text-muted">{t('Please keep {total} ready. The courier carries change and a card machine.', { total: formatSAR(totals.total) })}</p>
               )}
 
               {checked && m.id === 'branch' && totals && <p className="animate-fade-in px-4 pb-4 text-small text-muted">{PICKUP.payAtBranchHint(formatSAR(totals.total))}</p>}
@@ -202,11 +199,10 @@ export default function PaymentPage() {
 
       {!isDesktop && (
         <BottomBar>
-          {!totals && !quoteError && <p className="mb-3 px-1 text-body text-muted">Getting your total…</p>}
+          {!totals && !quoteError && <p className="mb-3 px-1 text-body text-muted">{t('Getting your total…')}</p>}
           {totals && (
             <div className="mb-3 flex items-baseline justify-between px-1">
-              <span className="text-body text-muted">
-                Total · {totals.count} {totals.count === 1 ? 'item' : 'items'}
+              <span className="text-body text-muted">{t('Total · {count}', { count: totals.count })}{' '}{totals.count === 1 ? t('item') : t('items')}
               </span>
               <span className="tabular text-[18px] font-bold text-ink">{formatSAR(totals.total)}</span>
             </div>

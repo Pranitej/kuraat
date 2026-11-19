@@ -1,6 +1,7 @@
 import { cn } from '@/lib/cn.js';
+import { t } from '@/i18n';
 
-export default function Spinner({ size = 20, className, label = 'Loading' }) {
+export default function Spinner({ size = 20, className, label = t('Loading') }) {
   return (
     <svg
       role="status"

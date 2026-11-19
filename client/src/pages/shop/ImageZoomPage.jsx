@@ -7,6 +7,7 @@ import { ROUTES } from '@/config/routes.js';
 import { useToast } from '@/context/ToastContext.jsx';
 import { useDocumentTitle, useGoBack, useLockBodyScroll } from '@/hooks';
 import { cn } from '@/lib/cn.js';
+import { t } from '@/i18n';
 
 const MIN = 1;
 const MAX = 3;
@@ -20,7 +21,7 @@ export default function ImageZoomPage() {
   const [params, setParams] = useSearchParams();
   const goBack = useGoBack(product ? ROUTES.product(product.id) : ROUTES.home);
   const toast = useToast();
-  useDocumentTitle(product ? `${product.name} photos` : 'Photos');
+  useDocumentTitle(product ? `${product.name} photos` : t('Photos'));
   useLockBodyScroll(true);
 
   const images = product ? product.images : [];
@@ -131,23 +132,23 @@ export default function ImageZoomPage() {
         await navigator.share({ title: `${product.name} · kuraat`, text: product.description[0], url });
       } else {
         await navigator.clipboard.writeText(url);
-        toast.show('Link copied to clipboard');
+        toast.show(t('Link copied to clipboard'));
       }
     } catch (err) {
-      if (err?.name !== 'AbortError') toast.show('Could not share this photo', { tone: 'error' });
+      if (err?.name !== 'AbortError') toast.show(t('Could not share this photo'), { tone: 'error' });
     }
   };
 
   const percent = Math.round(scale * 100);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-viewer text-white" role="dialog" aria-modal="true" aria-label={`${product.name} photo viewer`}>
+    <div className="fixed inset-0 z-50 flex flex-col bg-viewer text-white" role="dialog" aria-modal="true" aria-label={t('{name} photo viewer', { name: product.name })}>
       <div className="relative z-10 mx-auto flex w-full max-w-[960px] items-center justify-between px-5 pb-3 pt-4">
-        <IconButton icon={X} label="Close" variant="viewer" onClick={goBack} />
+        <IconButton icon={X} label={t('Close')} variant="viewer" onClick={goBack} />
         <p className="tabular text-[16px] font-bold" aria-live="polite">
           {index + 1} / {images.length}
         </p>
-        <IconButton icon={Share2} label="Share" variant="viewer" onClick={share} />
+        <IconButton icon={Share2} label={t('Share')} variant="viewer" onClick={share} />
       </div>
 
       <div
@@ -167,18 +168,18 @@ export default function ImageZoomPage() {
         <img
           key={images[index]}
           src={images[index]}
-          alt={`${product.name} — photo ${index + 1}`}
+          alt={t('{name} — photo {n}', { name: product.name, n: index + 1 })}
           draggable="false"
           className="absolute inset-0 m-auto max-h-full w-full animate-fade-in select-none object-contain lg:w-auto"
           style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`, transition: gesture.current ? 'none' : 'transform 160ms ease-out' }}
         />
 
-        <div className="absolute right-5 top-1/2 flex -translate-y-1/2 flex-col gap-1 rounded-pill border border-white/20 bg-white/[0.12] p-1.5 backdrop-blur-md" onPointerDown={(e) => e.stopPropagation()}>
-          <IconButton icon={ZoomIn} label="Zoom in" variant="plain" className="text-white hover:bg-white/15" onClick={() => zoomTo(scale + 0.25)} disabled={scale >= MAX} />
-          <IconButton icon={ZoomOut} label="Zoom out" variant="plain" className="text-white hover:bg-white/15" onClick={() => zoomTo(scale - 0.25)} disabled={scale <= MIN} />
+        <div className="absolute end-5 top-1/2 flex -translate-y-1/2 flex-col gap-1 rounded-pill border border-white/20 bg-white/[0.12] p-1.5 backdrop-blur-md" onPointerDown={(e) => e.stopPropagation()}>
+          <IconButton icon={ZoomIn} label={t('Zoom in')} variant="plain" className="text-white hover:bg-white/15" onClick={() => zoomTo(scale + 0.25)} disabled={scale >= MAX} />
+          <IconButton icon={ZoomOut} label={t('Zoom out')} variant="plain" className="text-white hover:bg-white/15" onClick={() => zoomTo(scale - 0.25)} disabled={scale <= MIN} />
           <IconButton
             icon={Minimize2}
-            label="Fit to screen"
+            label={t('Fit to screen')}
             variant="plain"
             className="text-white hover:bg-white/15"
             onClick={() => {
@@ -188,12 +189,12 @@ export default function ImageZoomPage() {
           />
         </div>
 
-        <span className="tabular absolute bottom-4 left-5 rounded-pill bg-maroon/90 px-3 py-1.5 text-label">{percent}%</span>
+        <span className="tabular absolute bottom-4 start-5 rounded-pill bg-maroon/90 px-3 py-1.5 text-label">{percent}%</span>
       </div>
 
       <div className="mx-auto w-full max-w-[640px] px-5 pb-[max(20px,env(safe-area-inset-bottom))] pt-4">
         <div className="flex items-center gap-3">
-          <button type="button" aria-label="Zoom out" onClick={() => zoomTo(scale - 0.25)} className="text-white/80 hover:text-white">
+          <button type="button" aria-label={t('Zoom out')} onClick={() => zoomTo(scale - 0.25)} className="text-white/80 hover:text-white">
             <ZoomOut size={20} strokeWidth={1.8} />
           </button>
           <input
@@ -203,11 +204,11 @@ export default function ImageZoomPage() {
             step={5}
             value={percent}
             onChange={(e) => zoomTo(Number(e.target.value) / 100)}
-            aria-label="Zoom level"
+            aria-label={t('Zoom level')}
             className="h-1 flex-1 cursor-pointer appearance-none rounded-pill bg-white/25 accent-white [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-white [&::-webkit-slider-thumb]:size-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
             style={{ background: `linear-gradient(to right, #fff ${((scale - MIN) / (MAX - MIN)) * 100}%, rgba(255,255,255,.25) 0)` }}
           />
-          <button type="button" aria-label="Zoom in" onClick={() => zoomTo(scale + 0.25)} className="text-white/80 hover:text-white">
+          <button type="button" aria-label={t('Zoom in')} onClick={() => zoomTo(scale + 0.25)} className="text-white/80 hover:text-white">
             <ZoomIn size={20} strokeWidth={1.8} />
           </button>
         </div>
@@ -217,7 +218,7 @@ export default function ImageZoomPage() {
               key={src}
               type="button"
               onClick={() => select(i)}
-              aria-label={`Photo ${i + 1}`}
+              aria-label={t('Photo {n}', { n: i + 1 })}
               aria-current={i === index}
               className={cn('size-16 overflow-hidden rounded-lg border-2 transition', i === index ? 'scale-105 border-white' : 'border-transparent opacity-70 hover:opacity-100')}
             >
@@ -225,7 +226,7 @@ export default function ImageZoomPage() {
             </button>
           ))}
         </div>
-        <p className="mt-4 text-center text-label font-normal text-white/70">Pinch or double-tap to zoom · drag to pan</p>
+        <p className="mt-4 text-center text-label font-normal text-white/70">{t('Pinch or double-tap to zoom · drag to pan')}</p>
       </div>
     </div>
   );

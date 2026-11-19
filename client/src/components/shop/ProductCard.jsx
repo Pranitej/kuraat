@@ -6,6 +6,7 @@ import { ROUTES } from '@/config/routes.js';
 import { useCart } from '@/context/CartContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
 import { cn } from '@/lib/cn.js';
+import { t } from '@/i18n';
 
 /** Product card (PDF screens 07/08): photo, name, meta, price, "+" add button. */
 export default function ProductCard({ product, className, style }) {
@@ -19,7 +20,7 @@ export default function ProductCard({ product, className, style }) {
     e.stopPropagation();
     add(product.id, 1);
     setAdded((n) => n + 1);
-    toast.show(`${product.name} added to your cart`, { action: { label: 'View cart', onClick: () => navigate(ROUTES.cart) } });
+    toast.show(`${product.name} added to your cart`, { action: { label: t('View cart'), onClick: () => navigate(ROUTES.cart) } });
   };
 
   return (
@@ -49,7 +50,7 @@ export default function ProductCard({ product, className, style }) {
           <button
             type="button"
             onClick={quickAdd}
-            aria-label={`Add ${product.name} to cart`}
+            aria-label={t('Add {name} to cart', { name: product.name })}
             className="grid size-9 place-items-center rounded-full bg-maroon text-white transition hover:bg-maroon-dark active:scale-90"
           >
             <Plus key={added} size={20} strokeWidth={2} className={cn(added > 0 && 'animate-pop')} />

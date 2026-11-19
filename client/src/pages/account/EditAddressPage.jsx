@@ -13,6 +13,7 @@ import { ADDRESS_LABELS, LOCATION_FAILED, LOCATION_OUTSIDE, deliveryCities, isIn
 import { getBrowserPosition } from '@/lib/geolocation.js';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
+import { t } from '@/i18n';
 
 /** 24 · Edit address (also "Add address"). Waits for the saved addresses before filling the form. */
 export default function EditAddressPage() {
@@ -24,7 +25,7 @@ export default function EditAddressPage() {
 
 function AddressForm({ addressId }) {
   const isNew = !addressId;
-  useDocumentTitle(isNew ? 'Add address' : 'Edit address');
+  useDocumentTitle(isNew ? t('Add address') : t('Edit address'));
   const navigate = useNavigate();
   const location = useLocation();
   const returnTo = location.state?.returnTo || ROUTES.addresses;
@@ -86,20 +87,20 @@ function AddressForm({ addressId }) {
     const position = await getBrowserPosition({ precise: true });
     setLocating(false);
     if (!position || !isInSaudi(position)) {
-      toast.show(position ? LOCATION_OUTSIDE : LOCATION_FAILED, { tone: 'error' });
+      toast.show(t(position ? LOCATION_OUTSIDE : LOCATION_FAILED), { tone: 'error' });
       return;
     }
     setForm((f) => ({ ...f, location: position }));
     setPinned(true);
-    toast.show('Location saved for this address. Add the building and street.', { tone: 'info' });
+    toast.show(t('Location saved for this address. Add the building and street.'), { tone: 'info' });
   };
 
   const save = async () => {
     const errs = {
-      label: form.type === 'other' ? validateRequired(form.label, 'Give this address a name') : '',
-      line: validateRequired(form.line, 'Enter the building and street'),
-      district: validateRequired(form.district, 'Enter the district'),
-      city: validateRequired(city, 'Choose a city'),
+      label: form.type === 'other' ? validateRequired(form.label, t('Give this address a name')) : '',
+      line: validateRequired(form.line, t('Enter the building and street')),
+      district: validateRequired(form.district, t('Enter the district')),
+      city: validateRequired(city, t('Choose a city')),
     };
     setErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
@@ -109,7 +110,7 @@ function AddressForm({ addressId }) {
       const saved = isNew ? await create(payload) : await update(existing.id, payload);
       // Added from Delivery or Home's "Deliver to": deliver to the new address straight away.
       if (returnTo === ROUTES.delivery || returnTo === ROUTES.home) checkout.patch({ addressId: saved.id });
-      toast.show(isNew ? 'Address added' : 'Address saved');
+      toast.show(isNew ? t('Address added') : t('Address saved'));
       navigate(returnTo, { replace: true });
     } catch (err) {
       setErrors({ form: err.message });
@@ -135,23 +136,23 @@ function AddressForm({ addressId }) {
   return (
     <div className="pb-6">
       <div className="mx-auto max-w-column lg:max-w-[640px]">
-        <ScreenHeader title={isNew ? 'Add address' : 'Edit address'} backFallback={returnTo} />
+        <ScreenHeader title={isNew ? t('Add address') : t('Edit address')} backFallback={returnTo} />
         <div className="px-5 lg:px-0">
-          <MapIllustration height="h-[166px]" pins={[{ id: 'here', x: 49, y: 50, label: 'Address' }]} selectedId="here">
+          <MapIllustration height="h-[166px]" pins={[{ id: 'here', x: 49, y: 50, label: t('Address') }]} selectedId="here">
             <button
               type="button"
               onClick={locate}
               disabled={locating}
-              className="absolute bottom-3 right-3 inline-flex h-11 items-center gap-2 rounded-pill bg-white px-4 text-[15px] font-semibold text-ink shadow-float transition hover:bg-cream disabled:opacity-80"
+              className="absolute bottom-3 end-3 inline-flex h-11 items-center gap-2 rounded-pill bg-white px-4 text-[15px] font-semibold text-ink shadow-float transition hover:bg-cream disabled:opacity-80"
             >
               {locating ? <Spinner size={18} className="text-maroon" /> : <LocateFixed size={18} strokeWidth={1.8} className="text-maroon" />}
-              {locating ? 'Locating…' : pinned ? 'Location saved' : 'Use current location'}
+              {locating ? t('Locating…') : pinned ? t('Location saved') : t('Use current location')}
             </button>
           </MapIllustration>
 
           <div className="mt-5 flex flex-col gap-5">
-            <FieldWrapper id="address-label" label="Label" error={errors.label}>
-              <div className="flex gap-2.5" role="radiogroup" aria-label="Address label">
+            <FieldWrapper id="address-label" label={t('Label')} error={errors.label}>
+              <div className="flex gap-2.5" role="radiogroup" aria-label={t('Address label')}>
                 {ADDRESS_LABELS.map((l) => (
                   <Chip key={l.id} active={form.type === l.id} role="radio" aria-checked={form.type === l.id} onClick={() => set('type')(l.id)}>
                     {l.label}
@@ -159,29 +160,27 @@ function AddressForm({ addressId }) {
                 ))}
               </div>
               {form.type === 'other' && (
-                <TextField className="mt-3" aria-label="Address name" placeholder="e.g. Parents’ home" value={form.label} onChange={(e) => set('label')(e.target.value)} />
+                <TextField className="mt-3" aria-label={t('Address name')} placeholder={t('e.g. Parents’ home')} value={form.label} onChange={(e) => set('label')(e.target.value)} />
               )}
             </FieldWrapper>
 
-            <TextField label="Address" icon={MapPin} value={form.line} onChange={(e) => set('line')(e.target.value)} placeholder="Building, street" autoComplete="address-line1" error={errors.line} />
+            <TextField label={t('Address')} icon={MapPin} value={form.line} onChange={(e) => set('line')(e.target.value)} placeholder={t('Building, street')} autoComplete="address-line1" error={errors.line} />
 
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
-              <TextField label="District" value={form.district} onChange={(e) => set('district')(e.target.value)} placeholder="District" error={errors.district} />
-              <SelectField label="City" options={cities} value={city} onChange={(e) => set('city')(e.target.value)} error={errors.city} />
+              <TextField label={t('District')} value={form.district} onChange={(e) => set('district')(e.target.value)} placeholder={t('District')} error={errors.district} />
+              <SelectField label={t('City')} options={cities} value={city} onChange={(e) => set('city')(e.target.value)} error={errors.city} />
             </div>
 
-            <TextField label="Landmark (optional)" value={form.landmark} onChange={(e) => set('landmark')(e.target.value)} placeholder="Near Al Rakah Park" />
+            <TextField label={t('Landmark (optional)')} value={form.landmark} onChange={(e) => set('landmark')(e.target.value)} placeholder={t('Near Al Rakah Park')} />
 
             <div className="flex items-center justify-between gap-4">
-              <label htmlFor="default-toggle" className="text-[15px] font-bold text-ink">
-                Make this my default address
-              </label>
+              <label htmlFor="default-toggle" className="text-[15px] font-bold text-ink">{t('Make this my default address')}</label>
               <Toggle
                 id="default-toggle"
                 checked={form.isDefault}
                 onChange={set('isDefault')}
                 disabled={existing?.isDefault && addresses.length <= 1}
-                label="Make this my default address"
+                label={t('Make this my default address')}
               />
             </div>
 
@@ -192,17 +191,14 @@ function AddressForm({ addressId }) {
                 disabled={onlyAddress}
                 className="mx-auto inline-flex items-center gap-2 text-[15px] font-semibold text-maroon hover:underline disabled:opacity-40 disabled:hover:no-underline"
               >
-                <Trash2 size={18} strokeWidth={1.8} /> Delete this address
-              </button>
+                <Trash2 size={18} strokeWidth={1.8} />{' '}{t('Delete this address')}</button>
             )}
-            {onlyAddress && <p className="-mt-3 text-center text-caption text-muted">Add another address before deleting your only one.</p>}
+            {onlyAddress && <p className="-mt-3 text-center text-caption text-muted">{t('Add another address before deleting your only one.')}</p>}
             {errors.form && <p className="text-label text-hotpink">{errors.form}</p>}
           </div>
 
           <BottomBar>
-            <Button block loading={saving} onClick={save}>
-              Save address
-            </Button>
+            <Button block loading={saving} onClick={save}>{t('Save address')}</Button>
           </BottomBar>
         </div>
       </div>
@@ -214,10 +210,10 @@ function AddressForm({ addressId }) {
           onConfirm={doDelete}
           loading={deleting}
           icon={Trash2}
-          title={`Delete ${existing.label} address?`}
-          message={existing.isDefault ? 'This is your default address. Another saved address will become your default.' : 'You can add it again at any time.'}
-          confirmLabel="Delete address"
-          cancelLabel="Keep address"
+          title={t('Delete {label} address?', { label: existing.label })}
+          message={existing.isDefault ? t('This is your default address. Another saved address will become your default.') : t('You can add it again at any time.')}
+          confirmLabel={t('Delete address')}
+          cancelLabel={t('Keep address')}
         />
       )}
     </div>

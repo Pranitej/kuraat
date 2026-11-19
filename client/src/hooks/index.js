@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { t } from '@/i18n';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 /** Seconds remaining until `endsAt` (ms timestamp). */
@@ -59,7 +60,7 @@ export function useScrollY() {
 
 export function useDocumentTitle(title) {
   useEffect(() => {
-    document.title = title ? `${title} · kuraat` : 'kuraat — Your partner for every gathering';
+    document.title = title ? t('{title} · kuraat', { title }) : t('kuraat — Your partner for every gathering');
   }, [title]);
 }
 

@@ -8,6 +8,7 @@ import { useOrderPayment } from '@/hooks/useOrderPayment.js';
 import { CARD_PAYMENT, PENDING_BRANCH, PICKUP, awaitingPayment, formatDateTime, formatSAR, paymentLabel } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
+import { t } from '@/i18n';
 
 /**
  * 15 · Payment successful — then confirms the order with the branch before continuing.
@@ -28,7 +29,7 @@ export default function PaymentSuccessPage() {
   const waiting = awaitingPayment(order);
   // Cash on delivery and pay at the branch: placed now, paid later.
   const later = order?.payment?.method === 'cod' || order?.payment?.method === 'branch';
-  useDocumentTitle(waiting ? CARD_PAYMENT.waitingTitle : later ? 'Order placed' : 'Payment successful');
+  useDocumentTitle(waiting ? CARD_PAYMENT.waitingTitle : later ? t('Order placed') : t('Payment successful'));
   const [progress, setProgress] = useState(8);
   const confirmed = progress >= 100;
 
@@ -53,7 +54,7 @@ export default function PaymentSuccessPage() {
         <CirclePattern variant="sand" fade="down" className="-z-10 h-[420px]" />
         <div className="mx-auto flex min-h-[calc(100dvh-76px)] max-w-column flex-col px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-16 lg:max-w-[520px] lg:pt-20">
           <h1 className="text-center text-title text-ink">{CARD_PAYMENT.waitingTitle}</h1>
-          <p className="mt-2 text-center text-body text-muted">Order #{order.number}</p>
+          <p className="mt-2 text-center text-body text-muted">{t('Order #{number}', { number: order.number })}</p>
           <PaymentDueCard order={order} payment={payment} className="mt-6" />
           <div className="mt-auto pt-10">
             <Button block variant="secondary" onClick={toOrders}>
@@ -67,17 +68,17 @@ export default function PaymentSuccessPage() {
 
   const rows = later
     ? [
-        ['Order number', `#${order.number}`],
-        ['Date', formatDateTime(order.createdAt)],
-        ['Method', paymentLabel(order.payment)],
-        ['Amount due', formatSAR(order.total)],
+        [t('Order number'), `#${order.number}`],
+        [t('Date'), formatDateTime(order.createdAt)],
+        [t('Method'), paymentLabel(order.payment)],
+        [t('Amount due'), formatSAR(order.total)],
       ]
     : [
         // Paid on RSOF's page: RSOF keeps the card and the transaction; older payments still have their id.
-        order.payment?.transactionId ? ['Transaction ID', order.payment.transactionId] : ['Order number', `#${order.number}`],
-        ['Date', formatDateTime(order.payment?.paidAt || order.createdAt)],
-        ['Method', paymentLabel(order.payment)],
-        ['Amount', formatSAR(order.total)],
+        order.payment?.transactionId ? [t('Transaction ID'), order.payment.transactionId] : [t('Order number'), `#${order.number}`],
+        [t('Date'), formatDateTime(order.payment?.paidAt || order.createdAt)],
+        [t('Method'), paymentLabel(order.payment)],
+        [t('Amount'), formatSAR(order.total)],
       ];
 
   return (
@@ -89,14 +90,14 @@ export default function PaymentSuccessPage() {
             <Check size={56} strokeWidth={2.6} className="animate-check-draw [stroke-dasharray:48]" />
           </span>
         </div>
-        <h1 className="mt-8 text-center text-title text-ink">{later ? 'Order placed' : 'Payment successful'}</h1>
+        <h1 className="mt-8 text-center text-title text-ink">{later ? t('Order placed') : t('Payment successful')}</h1>
         <p className="mt-2 text-center text-body text-muted">
           {order.payment?.method === 'branch'
             ? PICKUP.paidLater(formatSAR(order.total))
             : later
-              ? `Pay ${formatSAR(order.total)} in cash when your order arrives`
+              ? t('Pay {total} in cash when your order arrives', { total: formatSAR(order.total) })
               : order.payment?.last4
-                ? `${formatSAR(order.total)} paid with ${paymentLabel(order.payment)}`
+                ? t('{total} paid with {method}', { total: formatSAR(order.total), method: paymentLabel(order.payment) })
                 : CARD_PAYMENT.paidBody(formatSAR(order.total))}
         </p>
 
@@ -105,7 +106,7 @@ export default function PaymentSuccessPage() {
             {rows.map(([label, value]) => (
               <div key={label} className="flex items-baseline justify-between gap-4 py-2">
                 <dt className="text-body text-muted">{label}</dt>
-                <dd className="tabular text-right text-[15px] font-bold text-ink">{value}</dd>
+                <dd className="tabular text-end text-[15px] font-bold text-ink">{value}</dd>
               </div>
             ))}
           </dl>
@@ -113,18 +114,16 @@ export default function PaymentSuccessPage() {
 
         <p className="mt-8 flex items-center justify-center gap-2.5 text-body text-copy">
           <WhatsAppIcon size={20} className="text-muted" />
-          {/* RSOF messages the customer about the order on WhatsApp; it sends no payment receipt (19 Nov 2026). */}
-          Your order details have been sent to your WhatsApp
-        </p>
+          {/* RSOF messages the customer about the order on WhatsApp; it sends no payment receipt (19 Nov 2026). */}{t('Your order details have been sent to your WhatsApp')}</p>
 
         <div className="mt-auto pt-10">
           <p className="text-center text-body text-muted" aria-live="polite">
-            {confirmed ? (order.branch ? `Confirmed by ${order.branch.name}` : PENDING_BRANCH.sent) : 'Confirming your order with the branch…'}
+            {confirmed ? (order.branch ? t('Confirmed by {name}', { name: order.branch.name }) : PENDING_BRANCH.sent) : t('Confirming your order with the branch…')}
           </p>
-          <ProgressBar value={progress} className="mt-3" label="Confirming with the branch" />
+          <ProgressBar value={progress} className="mt-3" label={t('Confirming with the branch')} />
           {/* Card orders end on the Orders page: the order is there with its latest status, ready to track. */}
           <Button block className="mt-5" disabled={!confirmed} onClick={later ? () => navigate(ROUTES.orderConfirmed(order.id), { replace: true }) : toOrders}>
-            {later ? 'Continue' : CARD_PAYMENT.viewOrders}
+            {later ? t('Continue') : CARD_PAYMENT.viewOrders}
           </Button>
         </div>
       </div>

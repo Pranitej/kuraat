@@ -7,6 +7,7 @@
  */
 import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js/mobile';
 import { COUNTRIES, DEFAULT_COUNTRY } from './countries.js';
+import { t } from '@/i18n';
 
 const digitsOf = (value) => String(value ?? '').replace(/\D/g, '');
 
@@ -65,13 +66,13 @@ export function formatInternationalPhone(value) {
 /** '' when the API-form value is a valid mobile number of another country; otherwise the message to show. */
 export function internationalPhoneProblem(value) {
   const { iso, national } = splitPhone(value);
-  if (!national) return 'Enter your mobile number';
+  if (!national) return t('Enter your mobile number');
   const parsed = parsePhoneNumberFromString(String(value));
   if (parsed && parsed.isValid()) return '';
   // Name the country only when its calling code is its own (+44 is the UK, Jersey, Guernsey…: say the code).
   const { dial, name } = countryOf(iso);
   const sharing = COUNTRIES.filter((c) => c.dial === dial).length > 1;
-  return `Enter a valid mobile number for ${sharing ? `+${dial}` : name}`;
+  return t('Enter a valid mobile number for {place}', { place: sharing ? `+${dial}` : name });
 }
 
 /** The API form for a request body: Saudi digits, or "+" and digits. */
@@ -81,5 +82,5 @@ export function toWirePhone(value) {
 
 /** Placeholder digits for the number box of a country (its own example mobile number, nationally formatted). */
 export function phonePlaceholder(iso) {
-  return iso === 'SA' ? '50 123 4821' : 'Mobile number';
+  return iso === 'SA' ? '50 123 4821' : t('Mobile number');
 }

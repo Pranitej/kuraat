@@ -2,7 +2,9 @@
 @import '@fontsource/source-sans-3/500.css';
 @import '@fontsource/source-sans-3/600.css';
 @import '@fontsource/source-sans-3/700.css';
+@import '@fontsource/noto-sans-arabic/400.css';
 @import '@fontsource/noto-sans-arabic/500.css';
+@import '@fontsource/noto-sans-arabic/600.css';
 @import '@fontsource/noto-sans-arabic/700.css';
 
 @tailwind base;
@@ -31,6 +33,26 @@
 
   #root {
     min-height: 100dvh;
+  }
+
+  /* Arabic: its own typeface first; arrows that point "forward" turn around; numbers and addresses stay left-to-right. */
+  html[dir='rtl'] body {
+    font-family: 'Noto Sans Arabic', 'Source Sans 3', system-ui, sans-serif;
+  }
+
+
+  input[type='tel'],
+  input[type='email'],
+  input[type='password'],
+  input[inputmode='numeric'] {
+    direction: ltr;
+  }
+
+  html[dir='rtl'] input[type='tel'],
+  html[dir='rtl'] input[type='email'],
+  html[dir='rtl'] input[type='password'],
+  html[dir='rtl'] input[inputmode='numeric'] {
+    text-align: right;
   }
 
   button,
@@ -136,4 +158,12 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Outside @layer on purpose: Tailwind would drop it (no source file uses these class names). */
+html[dir='rtl'] svg.lucide-chevron-left,
+html[dir='rtl'] svg.lucide-chevron-right,
+html[dir='rtl'] svg.lucide-arrow-left,
+html[dir='rtl'] svg.lucide-arrow-right {
+  transform: scaleX(-1);
 }

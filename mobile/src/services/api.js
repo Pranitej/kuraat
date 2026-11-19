@@ -12,6 +12,7 @@
  */
 import { API_BASE_URL } from '../lib/env.js';
 import { tokenStore } from '../lib/storage.js';
+import { t } from '@/i18n';
 
 export { API_BASE_URL };
 
@@ -86,7 +87,7 @@ async function send(path, { method = 'GET', body, signal, token, timeoutMs = REQ
     });
   } catch (error) {
     if (error?.name === 'AbortError' && !timedOut) throw error;
-    throw new ApiError(NETWORK_MESSAGE, { code: 'network' });
+    throw new ApiError(t(NETWORK_MESSAGE), { code: 'network' });
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener('abort', forwardAbort);
@@ -99,7 +100,7 @@ async function send(path, { method = 'GET', body, signal, token, timeoutMs = REQ
     data = null;
   }
   if (!res.ok) {
-    throw new ApiError(data?.message || GENERIC_MESSAGE, { code: data?.code || 'error', field: data?.field ?? null, status: res.status });
+    throw new ApiError(data?.message || t(GENERIC_MESSAGE), { code: data?.code || 'error', field: data?.field ?? null, status: res.status });
   }
   return data;
 }
@@ -142,7 +143,7 @@ export async function apiRequest(path, options = {}) {
     const renewed = current && current !== token ? true : await refreshSession();
     if (!renewed) {
       endSession();
-      throw new ApiError('Please sign in again.', { code: 'unauthorized', status: 401 });
+      throw new ApiError(t('Please sign in again.'), { code: 'unauthorized', status: 401 });
     }
     return send(path, { ...options, token: getTokens().accessToken });
   }

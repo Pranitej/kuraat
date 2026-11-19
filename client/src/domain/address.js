@@ -1,11 +1,12 @@
+import { localized } from '@/i18n';
 /** Address helpers (pure). */
 
 
-export const ADDRESS_LABELS = [
+export const ADDRESS_LABELS = localized([
   { id: 'home', label: 'Home' },
   { id: 'office', label: 'Office' },
   { id: 'other', label: 'Other' },
-];
+]);
 
 /** "Building 14, King Fahd Rd, Al Rakah, Al Khobar 34445" (the postcode only when the address has one) */
 export function formatAddress(address) {

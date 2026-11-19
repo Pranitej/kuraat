@@ -14,17 +14,18 @@ import { useDeliveryQuote } from '@/hooks/useDeliveryQuote.js';
 import { useAddresses } from '@/context/AddressContext.jsx';
 import { useDocumentTitle, useGoBack, useIsDesktop, useScrollY } from '@/hooks';
 import { cn } from '@/lib/cn.js';
+import { t } from '@/i18n';
 
 function Thumbs({ images, active, onSelect, className, size = 'sm' }) {
   return (
-    <div className={cn('flex gap-2.5', className)} role="tablist" aria-label="Product photos">
+    <div className={cn('flex gap-2.5', className)} role="tablist" aria-label={t('Product photos')}>
       {images.map((src, i) => (
         <button
           key={src}
           type="button"
           role="tab"
           aria-selected={i === active}
-          aria-label={`Photo ${i + 1}`}
+          aria-label={t('Photo {n}', { n: i + 1 })}
           onClick={(e) => {
             e.stopPropagation();
             onSelect(i);
@@ -51,7 +52,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     loadProduct(productId);
   }, [productId, loadProduct]);
-  useDocumentTitle(product?.name || 'Product');
+  useDocumentTitle(product?.name || t('Product'));
   const navigate = useNavigate();
   const goBack = useGoBack(ROUTES.home);
   const toast = useToast();
@@ -81,7 +82,7 @@ export default function ProductDetailPage() {
   if (!product) {
     return (
       <div className="mx-auto max-w-column pt-10">
-        <EmptyState icon={PackageSearch} title="This sweet is not available" message="It may have been removed from our menu." actionLabel="Browse sweets" actionTo={ROUTES.home} />
+        <EmptyState icon={PackageSearch} title={t('This sweet is not available')} message={t('It may have been removed from our menu.')} actionLabel={t('Browse sweets')} actionTo={ROUTES.home} />
       </div>
     );
   }
@@ -95,7 +96,7 @@ export default function ProductDetailPage() {
 
   const addToCart = () => {
     add(product.id, qty);
-    toast.show(`${qty} × ${product.name} added to your cart`, { action: { label: 'View cart', onClick: () => navigate(ROUTES.cart) } });
+    toast.show(t('{qty} × {name} added to your cart', { qty, name: product.name }), { action: { label: t('View cart'), onClick: () => navigate(ROUTES.cart) } });
   };
   const buyNow = () => {
     add(product.id, qty);
@@ -125,7 +126,7 @@ export default function ProductDetailPage() {
         aria-hidden={!showCompactHeader}
       >
         <div className="mx-auto grid h-[76px] max-w-column grid-cols-[44px_1fr_44px] items-center gap-3 px-5">
-          <IconButton icon={ChevronLeft} label="Back" iconSize={22} strokeWidth={2} onClick={goBack} tabIndex={showCompactHeader ? 0 : -1} />
+          <IconButton icon={ChevronLeft} label={t('Back')} iconSize={22} strokeWidth={2} onClick={goBack} tabIndex={showCompactHeader ? 0 : -1} />
           <p className="truncate text-center text-heading text-ink">{product.name}</p>
           <span aria-hidden />
         </div>
@@ -143,7 +144,7 @@ export default function ProductDetailPage() {
               <img
                 key={src}
                 src={src}
-                alt={i === active ? `${product.name} — photo ${i + 1} of ${images.length}` : ''}
+                alt={i === active ? t('{name} — photo {n} of {total}', { name: product.name, n: i + 1, total: images.length }) : ''}
                 aria-hidden={i !== active}
                 draggable="false"
                 className={cn('absolute inset-0 size-full object-cover transition-opacity duration-300', i === active ? 'opacity-100' : 'opacity-0')}
@@ -151,12 +152,12 @@ export default function ProductDetailPage() {
             ))}
             <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/10 to-transparent lg:hidden" aria-hidden />
 
-            <div className="absolute inset-x-5 top-4 flex items-center justify-between lg:inset-x-auto lg:right-4" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
-              <IconButton icon={ChevronLeft} label="Back" variant="overlay" iconSize={22} strokeWidth={2} onClick={goBack} className="lg:hidden" />
-              <IconButton icon={Maximize} label="View full screen" variant="overlay" onClick={() => openZoom()} />
+            <div className="absolute inset-x-5 top-4 flex items-center justify-between lg:inset-x-auto lg:end-4" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
+              <IconButton icon={ChevronLeft} label={t('Back')} variant="overlay" iconSize={22} strokeWidth={2} onClick={goBack} className="lg:hidden" />
+              <IconButton icon={Maximize} label={t('View full screen')} variant="overlay" onClick={() => openZoom()} />
             </div>
 
-            <div className="absolute inset-x-5 bottom-10 flex items-end justify-between lg:bottom-4 lg:left-auto lg:right-4" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
+            <div className="absolute inset-x-5 bottom-10 flex items-end justify-between lg:bottom-4 lg:start-auto lg:end-4" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
               <Thumbs images={images} active={active} onSelect={setActive} className="lg:hidden" />
               <button
                 type="button"
@@ -164,8 +165,7 @@ export default function ProductDetailPage() {
                 className="inline-flex h-8 items-center gap-1.5 rounded-pill bg-white/90 px-3 text-label text-ink shadow-float backdrop-blur-sm transition hover:bg-white"
               >
                 <ZoomIn size={16} strokeWidth={2} className="text-maroon" aria-hidden />
-                {active + 1} / {images.length} · Tap to zoom
-              </button>
+                {t('{n} / {total} · Tap to zoom', { n: active + 1, total: images.length })}</button>
             </div>
           </div>
           <Thumbs images={images} active={active} onSelect={setActive} size="lg" className="mt-4 hidden lg:flex" />
@@ -208,9 +208,7 @@ export default function ProductDetailPage() {
             )}
 
             <section className="mt-6 lg:mt-10" aria-labelledby="desc-title">
-              <h2 id="desc-title" className="text-h3 text-ink">
-                Description
-              </h2>
+              <h2 id="desc-title" className="text-h3 text-ink">{t('Description')}</h2>
               <div className={cn('mt-2 flex flex-col gap-3 text-body-lg text-copy', !expanded && 'lg:hidden')}>
                 {expanded ? product.description.map((p) => <p key={p}>{p}</p>) : <p className="line-clamp-3">{product.description[0]}</p>}
               </div>
@@ -221,9 +219,7 @@ export default function ProductDetailPage() {
                       <p key={p}>{p}</p>
                     ))}
                   </div>
-                  <button type="button" onClick={() => setExpanded(true)} className="mt-2 text-[15px] font-bold text-maroon hover:underline lg:hidden" aria-expanded={false}>
-                    Read more
-                  </button>
+                  <button type="button" onClick={() => setExpanded(true)} className="mt-2 text-[15px] font-bold text-maroon hover:underline lg:hidden" aria-expanded={false}>{t('Read more')}</button>
                 </>
               )}
             </section>
@@ -231,15 +227,13 @@ export default function ProductDetailPage() {
             <div className={cn(!expanded && 'hidden lg:block')}>
               {product.details.length > 0 && (
                 <section className="mt-6" aria-labelledby="details-title">
-                  <h2 id="details-title" className="text-h3 text-ink">
-                    Product details
-                  </h2>
+                  <h2 id="details-title" className="text-h3 text-ink">{t('Product details')}</h2>
                   <Card className="mt-3 px-4 py-1.5">
                     <dl>
                       {product.details.map(({ key, label, value }) => (
                         <div key={key} className="flex items-baseline justify-between gap-4 py-2">
                           <dt className="text-body text-muted">{label}</dt>
-                          <dd className="text-right text-[15px] font-semibold text-ink">{value}</dd>
+                          <dd className="text-end text-[15px] font-semibold text-ink">{value}</dd>
                         </div>
                       ))}
                     </dl>
@@ -249,9 +243,7 @@ export default function ProductDetailPage() {
 
               {(product.ingredients || product.allergens.length > 0) && (
                 <section className="mt-6" aria-labelledby="ingredients-title">
-                  <h2 id="ingredients-title" className="text-h3 text-ink">
-                    Ingredients &amp; allergens
-                  </h2>
+                  <h2 id="ingredients-title" className="text-h3 text-ink">{t('Ingredients & allergens')}</h2>
                   {product.ingredients && <p className="mt-2 text-body-lg text-copy">{product.ingredients}</p>}
                   {product.allergens.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -285,14 +277,10 @@ function PurchaseControls({ qty, setQty, onAdd, onBuy, inCart }) {
       <div className="flex items-center gap-2">
         <QuantityStepper value={qty} onChange={setQty} size="lg" />
         <Button variant="secondary" className="min-w-0 flex-[1.15] px-3" onClick={onAdd}>
-          <ShoppingBag size={20} strokeWidth={1.9} className="max-[379px]:hidden" aria-hidden />
-          Add to cart
-        </Button>
-        <Button className="min-w-0 flex-1 px-3" onClick={onBuy}>
-          Buy now
-        </Button>
+          <ShoppingBag size={20} strokeWidth={1.9} className="max-[379px]:hidden" aria-hidden />{t('Add to cart')}</Button>
+        <Button className="min-w-0 flex-1 px-3" onClick={onBuy}>{t('Buy now')}</Button>
       </div>
-      {inCart > 0 && <p className="mt-2 hidden text-small text-muted lg:block">{inCart} already in your cart</p>}
+      {inCart > 0 && <p className="mt-2 hidden text-small text-muted lg:block">{t('{inCart} already in your cart', { inCart })}</p>}
     </div>
   );
 }

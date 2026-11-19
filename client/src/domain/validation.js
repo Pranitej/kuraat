@@ -2,12 +2,13 @@
 
 import { onlyDigits } from './format.js';
 import { internationalPhoneProblem, isInternationalPhone } from './phone.js';
+import { t } from '@/i18n';
 
 export function validateName(value) {
   const v = (value || '').trim();
-  if (!v) return 'Enter your full name';
-  if (v.length < 2) return 'Name looks too short';
-  if (!/^[\p{L}\s.'-]+$/u.test(v)) return 'Use letters only';
+  if (!v) return t('Enter your full name');
+  if (v.length < 2) return t('Name looks too short');
+  if (!/^[\p{L}\s.'-]+$/u.test(v)) return t('Use letters only');
   return '';
 }
 
@@ -18,26 +19,26 @@ export function validateName(value) {
 export function validateMobile(value) {
   if (isInternationalPhone(value)) return internationalPhoneProblem(value);
   const d = onlyDigits(value);
-  if (!d) return 'Enter your mobile number';
-  if (d.length !== 9 || d[0] !== '5') return 'Enter a valid Saudi mobile number, e.g. 50 123 4821';
+  if (!d) return t('Enter your mobile number');
+  if (d.length !== 9 || d[0] !== '5') return t('Enter a valid Saudi mobile number, e.g. 50 123 4821');
   return '';
 }
 
 export function validateEmail(value, { required = false } = {}) {
   const v = (value || '').trim();
-  if (!v) return required ? 'Enter your email' : '';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) return 'Enter a valid email address';
+  if (!v) return required ? t('Enter your email') : '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) return t('Enter a valid email address');
   return '';
 }
 
-export function validateRequired(value, message = 'This field is required') {
+export function validateRequired(value, message = t('This field is required')) {
   return (value || '').toString().trim() ? '' : message;
 }
 
 export function validateAddressLine(value) {
   const v = (value || '').trim();
-  if (!v) return 'Enter your delivery address';
-  if (v.length < 5) return 'Add a building or street name';
+  if (!v) return t('Enter your delivery address');
+  if (v.length < 5) return t('Add a building or street name');
   return '';
 }
 
@@ -66,7 +67,7 @@ export function cardBrand(number) {
   if (/^4/.test(d)) return 'Visa';
   if (/^(5[1-5]|2[2-7])/.test(d)) return 'Mastercard';
   if (/^3[47]/.test(d)) return 'Amex';
-  return 'Card';
+  return t('Card');
 }
 
 export function formatCardNumber(value) {
@@ -87,19 +88,19 @@ export function formatExpiry(value, previous = '') {
 
 export function validateCardNumber(value) {
   const d = onlyDigits(value);
-  if (!d) return 'Enter your card number';
-  if (!luhnValid(d)) return 'Check the card number';
+  if (!d) return t('Enter your card number');
+  if (!luhnValid(d)) return t('Check the card number');
   return '';
 }
 
 export function validateExpiry(value, now = new Date()) {
   const d = onlyDigits(value);
-  if (d.length !== 4) return 'Use MM / YY';
+  if (d.length !== 4) return t('Use MM / YY');
   const month = Number(d.slice(0, 2));
   const year = 2000 + Number(d.slice(2));
-  if (month < 1 || month > 12) return 'Invalid month';
+  if (month < 1 || month > 12) return t('Invalid month');
   const endOfMonth = new Date(year, month, 0, 23, 59, 59);
-  if (endOfMonth < now) return 'Card has expired';
+  if (endOfMonth < now) return t('Card has expired');
   return '';
 }
 

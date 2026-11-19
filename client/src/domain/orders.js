@@ -3,13 +3,14 @@
  * tracking steps (+ cancelled), with real times only (no made-up estimates). Times are shown in the device time zone.
  */
 import { formatDayMonth, formatSAR, formatTime, isSameDay } from './format.js';
+import { t, localized } from '@/i18n';
 
 const DAY_MS = 24 * 3600 * 1000;
 
 /** '' for today, 'Tomorrow, ' or '8 Nov, ' otherwise. */
 function dayPrefix(value, now) {
   if (isSameDay(value, now)) return '';
-  return isSameDay(value, new Date(new Date(now).getTime() + DAY_MS)) ? 'Tomorrow, ' : `${formatDayMonth(value)}, `;
+  return isSameDay(value, new Date(new Date(now).getTime() + DAY_MS)) ? t('Tomorrow, ') : `${formatDayMonth(value)}, `;
 }
 
 const GROUP_BY_STEP = ['placed', 'preparing', 'on_the_way', 'completed'];
@@ -30,7 +31,7 @@ export function orderStatusView(order) {
 export const isPickup = (order) => order?.fulfilment === 'pickup';
 
 /** Branch pickup copy (design 2026-11-18 §5.3), shared by the web and the app. */
-export const PICKUP = {
+export const PICKUP = localized({
   switchLabel: 'How would you like your order?',
   delivery: 'Delivery',
   pickup: 'Branch pickup',
@@ -42,34 +43,34 @@ export const PICKUP = {
   payNowSub: 'Pay online on a secure payment page',
   payAtBranch: 'Pay at branch',
   payAtBranchSub: 'Pay when you collect your order',
-  payAtBranchHint: (total) => `Please pay ${total} at the pickup counter when you collect your order.`,
+  payAtBranchHint: (total) => t('Please pay {total} at the pickup counter when you collect your order.', { total }),
   counterTitle: 'Show this at the pickup counter',
   /** The counter searches by RSOF's plain order number (no "KR-"), by phone, or by approval number. */
-  counterHelp: (number) => `Staff can find it by the number ${String(number).replace(/^KR-/i, '')} or your phone number.`,
+  counterHelp: (number) => t('Staff can find it by the number {number} or your phone number.', { number: String(number).replace(/^KR-/i, '') }),
   confirmedLead: 'Pick up your order from',
   confirmedNote: 'Chosen near you. Stock is confirmed by the branch.',
   pickupFrom: 'Pick up from',
   pickedUpFrom: 'Picked up from',
   collectFrom: 'Collect from',
   confirmedCardLabel: 'Pickup',
-  paidLater: (total) => `Pay ${total} at the branch when you collect your order`,
-};
+  paidLater: (total) => t('Pay {total} at the branch when you collect your order', { total }),
+});
 
 /**
  * ROF assigns the branch after the order is placed (design 2026-11-18 §5.2). Until then the order
  * screens show this in the places the branch normally goes (same components, DESIGN_SYSTEM rule 12).
  */
-export const PENDING_BRANCH = {
+export const PENDING_BRANCH = localized({
   title: 'Branch being confirmed',
   body: 'We send your order to the nearest branch with everything in stock. Its name, phone and directions appear here once it accepts.',
   popupTitle: 'The nearest branch with your items',
   popupBody: "We'll show the branch here and on the tracking screen once it accepts.",
   popupNote: 'Chosen for your delivery address. Stock is confirmed by the branch.',
   sent: 'Sent to the nearest branch',
-};
+});
 
 /** The My orders status dropdown (design 2026-11-18 §5.4); ids are the server's filter groups. */
-export const ORDER_FILTERS = [
+export const ORDER_FILTERS = localized([
   { id: 'all', label: 'All orders' },
   { id: 'placed', label: 'Placed' },
   { id: 'attention', label: 'Needs attention' },
@@ -78,7 +79,7 @@ export const ORDER_FILTERS = [
   { id: 'on_the_way', label: 'On the way' },
   { id: 'completed', label: 'Completed' },
   { id: 'cancelled', label: 'Cancelled' },
-];
+]);
 
 /** Orders shown for a dropdown choice ('all' or a filter group). */
 export function filterOrders(orders = [], filterId = 'all') {
@@ -98,7 +99,7 @@ export function orderTimelineView(order, now = new Date()) {
   if (!order.status.cancelled) return rows;
   const reached = rows.filter((r) => r.state !== 'todo');
   const at = order.cancelledAt;
-  return [...reached, { id: 'cancelled', title: 'Order cancelled', state: 'cancelled', time: at ? `${dayPrefix(at, now)}${formatTime(at)}` : '' }];
+  return [...reached, { id: 'cancelled', title: t('Order cancelled'), state: 'cancelled', time: at ? `${dayPrefix(at, now)}${formatTime(at)}` : '' }];
 }
 
 /** Every status change RSOF recorded, oldest first (the full history behind "View full history"); a cancelled step stays visible even if RSOF reopens the order. */
@@ -126,13 +127,13 @@ export const paidLater = (payment) => payment?.method === 'cod' || payment?.meth
 export const awaitingPayment = (order) => order?.payment?.method === 'card' && order.payment.status === 'pending' && !order.status?.cancelled;
 
 /** Card payment on RSOF's secure payment page (19 Nov 2026), shared by the web and the app. */
-export const CARD_PAYMENT = {
+export const CARD_PAYMENT = localized({
   title: 'Pay online',
   subtitle: 'Choose how to pay on a secure payment page',
   unavailable: 'Online payment is not available right now',
   waitingTitle: 'Complete your payment',
-  waitingBody: (total) => `Your order is placed. Pay ${total} on the secure payment page to confirm it.`,
-  pay: (total) => `Pay ${total}`,
+  waitingBody: (total) => t('Your order is placed. Pay {total} on the secure payment page to confirm it.', { total }),
+  pay: (total) => t('Pay {total}', { total }),
   payNow: 'Pay now',
   returnHint: "The payment page opens in a window. When you're done, we update your order for you.",
   popupHint: "Finish your payment in the payment window. This page updates when you're done.",
@@ -145,28 +146,28 @@ export const CARD_PAYMENT = {
   waitingTag: 'Waiting for payment',
   paidTitle: 'Payment received',
   paidBody: (total) => `${total} paid online`,
-};
+});
 
 /** What the "cancel this order?" dialog says about the money. */
 export function cancelRefundText(order) {
   const payment = order.payment;
-  if (!payment || paidLater(payment) || payment.status === 'pending') return 'Nothing has been charged.';
+  if (!payment || paidLater(payment) || payment.status === 'pending') return t('Nothing has been charged.');
   // Older payments carry the card's last digits; payments on RSOF's page do not (RSOF keeps the card).
-  if (payment.last4) return `We will refund ${formatSAR(order.total)} to ${paymentLabel(payment)}.`;
-  return `Your ${formatSAR(order.total)} online payment will be refunded.`;
+  if (payment.last4) return t('We will refund {amount} to {method}.', { amount: formatSAR(order.total), method: paymentLabel(payment) });
+  return t('Your {amount} online payment will be refunded.', { amount: formatSAR(order.total) });
 }
 
 export function paymentLabel(payment) {
   if (!payment) return '';
   if (payment.method === 'card' && payment.last4) return `${payment.brand} •••• ${payment.last4}`;
   if (payment.method === 'card') {
-    if (payment.status === 'paid') return 'Online · Paid';
-    if (payment.status === 'pending') return `Online · ${CARD_PAYMENT.waitingTag}`;
-    if (payment.status === 'refund_pending') return 'Online · Refund on its way';
-    if (payment.status === 'cancelled') return 'Online · Not paid';
-    return 'Online payment';
+    if (payment.status === 'paid') return t('Online · Paid');
+    if (payment.status === 'pending') return t('Online · {waitingTag}', { waitingTag: CARD_PAYMENT.waitingTag });
+    if (payment.status === 'refund_pending') return t('Online · Refund on its way');
+    if (payment.status === 'cancelled') return t('Online · Not paid');
+    return t('Online payment');
   }
-  if (payment.method === 'cod') return 'Cash on delivery';
-  if (payment.method === 'branch') return 'Pay at branch';
+  if (payment.method === 'cod') return t('Cash on delivery');
+  if (payment.method === 'branch') return t('Pay at branch');
   return ''; // a method no longer offered (e.g. an old UPI test order): no label rather than a wrong one
 }

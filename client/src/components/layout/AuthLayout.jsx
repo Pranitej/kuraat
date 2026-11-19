@@ -1,5 +1,6 @@
 import { Logo, MaroonPanel } from '@/components/ui';
 import { BackButton } from './ScreenHeader.jsx';
+import LanguageToggle from './LanguageToggle.jsx';
 
 /**
  * Auth screens (PDF 03–06): maroon gradient header with glass back button and large white title,
@@ -12,7 +13,10 @@ export default function AuthLayout({ title, subtitle, children, backFallback = '
         <div className="mx-auto flex h-full max-w-column flex-col px-6 pb-[52px] pt-4 lg:max-w-none lg:px-14 lg:pb-14 lg:pt-12">
           <div className="flex items-center justify-between">
             {showBack ? <BackButton variant="glass" fallback={backFallback} onClick={onBack} /> : <span />}
-            <Logo tone="white" className="hidden w-[132px] lg:block" />
+            <div className="flex items-center gap-4">
+              <LanguageToggle tone="glass" />
+              <Logo tone="white" className="hidden w-[132px] lg:block" />
+            </div>
           </div>
           <h1 className="mt-auto max-w-[232px] text-display text-white lg:max-w-[420px] lg:text-[44px] lg:leading-[50px]">{title}</h1>
           {/* The PDF keeps these subtitles in the header layer, hidden under the sheet on phones; desktop has room to show them. */}

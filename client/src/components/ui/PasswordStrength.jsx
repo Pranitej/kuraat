@@ -1,5 +1,6 @@
 import { cn } from '@/lib/cn.js';
 import { CheckCircle } from './Controls.jsx';
+import { t } from '@/i18n';
 
 /** 4-segment strength meter + caption (PDF screens 05, 19). */
 export function StrengthMeter({ evaluation, className }) {
@@ -25,7 +26,7 @@ export function PasswordRules({ evaluation, className }) {
         <li key={r.id} className={cn('flex items-center gap-3 text-body transition-colors', r.met ? 'text-ink' : 'text-muted')}>
           <CheckCircle checked={r.met} />
           <span>{r.label}</span>
-          <span className="sr-only">{r.met ? '(met)' : '(not met)'}</span>
+          <span className="sr-only">{r.met ? t('(met)') : t('(not met)')}</span>
         </li>
       ))}
     </ul>

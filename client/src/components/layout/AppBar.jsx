@@ -2,17 +2,19 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, ShoppingBag, X } from 'lucide-react';
 import { Avatar, IconButton, Logo } from '@/components/ui';
+import LanguageToggle from './LanguageToggle.jsx';
 import { useAuth } from '@/context/AuthContext.jsx';
 import { useCart } from '@/context/CartContext.jsx';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
+import { t, localized } from '@/i18n';
 
 export function CountBadge({ count, className }) {
   if (!count) return null;
   return (
     <span
       className={cn(
-        'absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-pill border-2 border-cream bg-maroon px-1 text-[11px] font-bold leading-none text-white',
+        'absolute -end-1 -top-1 grid h-5 min-w-5 place-items-center rounded-pill border-2 border-cream bg-maroon px-1 text-[11px] font-bold leading-none text-white',
         className,
       )}
     >
@@ -21,11 +23,11 @@ export function CountBadge({ count, className }) {
   );
 }
 
-const NAV = [
+const NAV = localized([
   { to: ROUTES.home, label: 'Shop' },
   { to: ROUTES.branches, label: 'Branches' },
   { to: ROUTES.orders, label: 'Orders' },
-];
+]);
 
 /** Desktop app bar (≥1024): logo · search · nav · cart · profile. */
 export default function AppBar() {
@@ -52,13 +54,13 @@ export default function AppBar() {
   return (
     <header className="sticky top-0 z-40 hidden border-b border-line-subtle bg-cream/90 backdrop-blur-md lg:block">
       <div className="mx-auto flex h-[76px] max-w-app items-center gap-8 px-8">
-        <Link to={ROUTES.home} aria-label="kuraat home" className="shrink-0">
+        <Link to={ROUTES.home} aria-label={t('kuraat home')} className="shrink-0">
           <Logo className="w-[104px]" />
         </Link>
 
         <form
           role="search"
-          className="flex h-12 max-w-[440px] flex-1 items-center gap-3 rounded-pill border border-line bg-white pl-4 pr-1.5 transition focus-within:border-maroon focus-within:shadow-ring"
+          className="flex h-12 max-w-[440px] flex-1 items-center gap-3 rounded-pill border border-line bg-white ps-4 pe-1.5 transition focus-within:border-maroon focus-within:shadow-ring"
           onSubmit={(e) => {
             e.preventDefault();
             submit(query);
@@ -72,16 +74,16 @@ export default function AppBar() {
               setQuery(e.target.value);
               if (onHome) submit(e.target.value);
             }}
-            placeholder="Search truffles, cakes, pastries"
-            aria-label="Search products"
+            placeholder={t('Search truffles, cakes, pastries')}
+            aria-label={t('Search products')}
             className="h-full min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-placeholder [&::-webkit-search-cancel-button]:hidden"
           />
           {query && (
-            <IconButton icon={X} label="Clear search" variant="plain" size="sm" iconSize={18} onClick={() => { setQuery(''); submit(''); }} />
+            <IconButton icon={X} label={t('Clear search')} variant="plain" size="sm" iconSize={18} onClick={() => { setQuery(''); submit(''); }} />
           )}
         </form>
 
-        <nav className="ml-auto flex items-center gap-1" aria-label="Main">
+        <nav className="ms-auto flex items-center gap-1" aria-label={t('Main')}>
           {NAV.map((item) => (
             <NavLink
               key={item.to}
@@ -99,8 +101,9 @@ export default function AppBar() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <IconButton icon={ShoppingBag} label={`Cart, ${count} items`} to={ROUTES.cart} badge={<CountBadge count={count} />} />
-          <Link to={ROUTES.profile} aria-label="Profile" className="rounded-full transition hover:opacity-90">
+          <LanguageToggle />
+          <IconButton icon={ShoppingBag} label={t('Cart, {count} items', { count })} to={ROUTES.cart} badge={<CountBadge count={count} />} />
+          <Link to={ROUTES.profile} aria-label={t('Profile')} className="rounded-full transition hover:opacity-90">
             <Avatar name={user?.name} src={user?.avatar} size={44} />
           </Link>
         </div>

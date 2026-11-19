@@ -11,6 +11,7 @@ import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress,
 import { ROUTES } from '@/config/routes.js';
 import { useCountdown, useDocumentTitle } from '@/hooks';
 import { useOrderPayment } from '@/hooks/useOrderPayment.js';
+import { t } from '@/i18n';
 
 /** "Your delivery code is sent on WhatsApp" + Resend (only while RSOF says out for delivery). */
 function DeliveryCodeNote({ order, onResend }) {
@@ -24,7 +25,7 @@ function DeliveryCodeNote({ order, onResend }) {
     try {
       const result = await onResend();
       setResendAt(Date.parse(result.resendAt));
-      toast.show('We sent the delivery code again on WhatsApp');
+      toast.show(t('We sent the delivery code again on WhatsApp'));
     } catch (err) {
       toast.show(err.message, { tone: 'error' });
     } finally {
@@ -36,14 +37,14 @@ function DeliveryCodeNote({ order, onResend }) {
     <div className="mt-4 flex items-start gap-3 rounded-lg bg-sand px-4 py-3.5">
       <WhatsAppIcon size={20} className="mt-0.5 shrink-0 text-maroon" />
       <div className="min-w-0 flex-1 text-[15px] leading-[22px] text-copy">
-        <p>Your delivery code is sent on WhatsApp. Share it with the courier when your order arrives.</p>
+        <p>{t('Your delivery code is sent on WhatsApp. Share it with the courier when your order arrives.')}</p>
         <button
           type="button"
           onClick={resend}
           disabled={!order.canResendCode || sending || left > 0}
           className="mt-1 font-bold text-maroon hover:underline disabled:cursor-default disabled:no-underline disabled:opacity-60"
         >
-          {left > 0 ? `Resend in 0:${String(left).padStart(2, '0')}` : sending ? 'Sending…' : 'Resend code'}
+          {left > 0 ? t('Resend in 0:{seconds}', { seconds: String(left).padStart(2, '0') }) : sending ? t('Sending…') : t('Resend code')}
         </button>
       </div>
     </div>
@@ -59,16 +60,16 @@ export default function OrderDetailPage() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  useDocumentTitle(order ? `Order #${order.number}` : 'Order');
+  useDocumentTitle(order ? t('Order #{number}', { number: order.number }) : t('Order'));
   // A card order not paid yet: the payment page, checked again when the customer comes back to the tab.
   const payment = useOrderPayment(order, { onPaid: refresh });
 
   if (!order) {
     return (
       <div className="mx-auto max-w-column lg:max-w-[720px]">
-        <ScreenHeader title="Order" backFallback={ROUTES.orders} />
+        <ScreenHeader title={t('Order')} backFallback={ROUTES.orders} />
         {!loading && (
-          <EmptyState icon={PackageSearch} title="Order not found" message="We could not find this order on your account." actionLabel="View my orders" actionTo={ROUTES.orders} />
+          <EmptyState icon={PackageSearch} title={t('Order not found')} message={t('We could not find this order on your account.')} actionLabel={t('View my orders')} actionTo={ROUTES.orders} />
         )}
       </div>
     );
@@ -84,7 +85,7 @@ export default function OrderDetailPage() {
     setCancelling(true);
     try {
       await cancel();
-      toast.show('Order cancelled', { tone: 'info' });
+      toast.show(t('Order cancelled'), { tone: 'info' });
     } catch (err) {
       toast.show(err.message, { tone: 'error' });
     } finally {
@@ -97,7 +98,7 @@ export default function OrderDetailPage() {
     <div className="pb-10">
       <div className="mx-auto max-w-column lg:max-w-[1080px] lg:px-8">
         <ScreenHeader
-          title={`Order #${order.number}`}
+          title={t('Order #{number}', { number: order.number })}
           backFallback={ROUTES.orders}
           right={
             <span className="flex items-center gap-2">
@@ -124,11 +125,11 @@ export default function OrderDetailPage() {
                   aria-expanded={showHistory}
                   className="mt-4 flex w-full items-center justify-center gap-1.5 border-t border-divider pt-3 text-label font-bold text-maroon"
                 >
-                  {showHistory ? 'Hide full history' : 'View full history'}
+                  {showHistory ? t('Hide full history') : t('View full history')}
                   <ChevronDown size={16} strokeWidth={2.2} aria-hidden className={`transition-transform ${showHistory ? 'rotate-180' : ''}`} />
                 </button>
                 {showHistory && (
-                  <ul className="mt-3 flex flex-col gap-3" aria-label="Order history">
+                  <ul className="mt-3 flex flex-col gap-3" aria-label={t('Order history')}>
                     {history.map((h) => (
                       <li key={h.id}>
                         <div className="flex items-baseline justify-between gap-4">
@@ -170,14 +171,10 @@ export default function OrderDetailPage() {
               {(branch.phone || branch.location) && (
                 <div className="mt-4 flex flex-wrap gap-3">
                   {branch.phone && (
-                    <Button variant="glass" size="sm" leftIcon={Phone} href={telUrl(branch.phone)}>
-                      Call branch
-                    </Button>
+                    <Button variant="glass" size="sm" leftIcon={Phone} href={telUrl(branch.phone)}>{t('Call branch')}</Button>
                   )}
                   {branch.location && (
-                    <Button variant="glass" size="sm" leftIcon={Navigation} href={directionsUrl(branch.location)} target="_blank" rel="noreferrer">
-                      Directions
-                    </Button>
+                    <Button variant="glass" size="sm" leftIcon={Navigation} href={directionsUrl(branch.location)} target="_blank" rel="noreferrer">{t('Directions')}</Button>
                   )}
                 </div>
               )}
@@ -209,7 +206,7 @@ export default function OrderDetailPage() {
                     <OrderItemImage productId={item.productId} className="size-14 shrink-0 rounded-sm" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[16px] font-semibold text-ink">{item.name}</span>
-                      <span className="block text-label font-normal text-muted">Qty {item.qty}</span>
+                      <span className="block text-label font-normal text-muted">{t('Qty {qty}', { qty: item.qty })}</span>
                     </span>
                     <span className="tabular text-[15px] font-bold text-ink">{item.price == null ? '' : formatSAR(item.price * item.qty)}</span>
                   </Link>
@@ -218,29 +215,27 @@ export default function OrderDetailPage() {
             </ul>
             <div className="my-3.5 h-px bg-divider" />
             <div className="flex flex-col gap-2.5">
-              <SummaryRow label="Total" value={order.total == null ? '—' : formatSAR(order.total)} />
+              <SummaryRow label={t('Total')} value={order.total == null ? '—' : formatSAR(order.total)} />
             </div>
           </Card>
 
           <Card className="p-4">
             <dl className="flex flex-col gap-3">
               {[
-                pickup ? [PICKUP.collectFrom, branch?.name ?? PENDING_BRANCH.title] : ['Deliver to', formatAddress(order.address)],
-                ['Phone', formatPhone(order.deliveryPhone)],
-                ...(order.payment ? [['Payment', paymentLabel(order.payment)]] : []),
+                pickup ? [PICKUP.collectFrom, branch?.name ?? PENDING_BRANCH.title] : [t('Deliver to'), formatAddress(order.address)],
+                [t('Phone'), formatPhone(order.deliveryPhone)],
+                ...(order.payment ? [[t('Payment'), paymentLabel(order.payment)]] : []),
               ].map(([label, value]) => (
                 <div key={label} className="flex items-start justify-between gap-6">
                   <dt className="shrink-0 text-body text-muted">{label}</dt>
-                  <dd className="text-right text-[15px] font-semibold leading-[21px] text-ink">{value}</dd>
+                  <dd className="text-end text-[15px] font-semibold leading-[21px] text-ink">{value}</dd>
                 </div>
               ))}
             </dl>
           </Card>
 
           {order.canCancel && (
-            <Button variant="secondary" block onClick={() => setConfirmCancel(true)}>
-              Cancel order
-            </Button>
+            <Button variant="secondary" block onClick={() => setConfirmCancel(true)}>{t('Cancel order')}</Button>
           )}
         </div>
       </div>
@@ -251,10 +246,10 @@ export default function OrderDetailPage() {
         onConfirm={doCancel}
         loading={cancelling}
         icon={PackageX}
-        title="Cancel this order?"
-        message={`You can cancel until the branch starts preparing it. ${cancelRefundText(order)}`}
-        confirmLabel="Cancel order"
-        cancelLabel="Keep order"
+        title={t('Cancel this order?')}
+        message={`${t('You can cancel until the branch starts preparing it.')} ${cancelRefundText(order)}`}
+        confirmLabel={t('Cancel order')}
+        cancelLabel={t('Keep order')}
       />
     </div>
   );

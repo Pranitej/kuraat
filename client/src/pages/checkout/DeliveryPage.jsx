@@ -16,12 +16,13 @@ import { PICKUP, deliveryAddress } from '@/domain';
 import { offeredMethod } from '@/services/orderService.js';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
+import { t } from '@/i18n';
 
 /** 13 · Delivery details (and, for branch pickup, Pickup details) */
 export default function DeliveryPage() {
   const checkout = useCheckout();
   const pickup = checkout.fulfilment === 'pickup';
-  useDocumentTitle(pickup ? 'Pickup details' : 'Delivery details');
+  useDocumentTitle(pickup ? t('Pickup details') : t('Delivery details'));
   const navigate = useNavigate();
   const isDesktop = useIsDesktop();
   const { user } = useAuth();
@@ -49,7 +50,7 @@ export default function DeliveryPage() {
   };
 
   const next = () => {
-    const errs = { address: pickup || selected ? '' : 'Choose a delivery address' };
+    const errs = { address: pickup || selected ? '' : t('Choose a delivery address') };
     setErrors(errs);
     if (errs.address) return;
     if (!pickup) checkout.patch({ addressId: selected.id });
@@ -57,20 +58,18 @@ export default function DeliveryPage() {
   };
 
   const summary = pickup ? (
-    delivery?.totals ? <OrderSummary totals={delivery.totals} title="Order summary" /> : <Skeleton className="h-[180px] rounded-xl" />
+    delivery?.totals ? <OrderSummary totals={delivery.totals} title={t('Order summary')} /> : <Skeleton className="h-[180px] rounded-xl" />
   ) : (
-    <OrderSummary totals={totals} title="Order summary" />
+    <OrderSummary totals={totals} title={t('Order summary')} />
   );
 
   const cta = (
-    <Button block rightIcon={ChevronRight} onClick={next}>
-      Continue to payment
-    </Button>
+    <Button block rightIcon={ChevronRight} onClick={next}>{t('Continue to payment')}</Button>
   );
 
   return (
     <CheckoutLayout
-      header={<ScreenHeader title={pickup ? 'Pickup details' : 'Delivery details'} backFallback={ROUTES.cart} />}
+      header={<ScreenHeader title={pickup ? t('Pickup details') : t('Delivery details')} backFallback={ROUTES.cart} />}
       steps={<CheckoutSteps current={1} />}
       aside={
         <div className="flex flex-col gap-4">
@@ -106,13 +105,11 @@ export default function DeliveryPage() {
       ) : (
         <>
       <div className="mt-6 flex items-center justify-between">
-        <h2 className="text-h3 text-ink">Deliver to</h2>
-        <Link to={ROUTES.addresses} className="text-[15px] font-bold text-maroon hover:underline">
-          Manage
-        </Link>
+        <h2 className="text-h3 text-ink">{t('Deliver to')}</h2>
+        <Link to={ROUTES.addresses} className="text-[15px] font-bold text-maroon hover:underline">{t('Manage')}</Link>
       </div>
 
-      <div role="radiogroup" aria-label="Delivery address" className="mt-3 flex flex-col gap-3">
+      <div role="radiogroup" aria-label={t('Delivery address')} className="mt-3 flex flex-col gap-3">
         {addresses.map((a) => (
           <AddressOption key={a.id} address={a} checked={a.id === selected?.id} onSelect={select} />
         ))}
@@ -124,11 +121,11 @@ export default function DeliveryPage() {
       {/* The order always carries the account's number (it cannot be edited here): RSOF finds the customer's orders by it. */}
       <PhoneField
         className="mt-6"
-        label="Phone number for this delivery"
+        label={t('Phone number for this delivery')}
         value={user?.phone || ''}
         onChange={() => {}}
         disabled
-        helper="Your account's mobile number. The courier will call it on arrival."
+        helper={t('Your account\'s mobile number. The courier will call it on arrival.')}
       />
 
       {delivery?.branch && (

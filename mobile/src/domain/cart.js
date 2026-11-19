@@ -3,6 +3,7 @@
  * it has not seen yet and word its warnings.
  */
 import { formatSAR } from './format.js';
+import { t } from '@/i18n';
 
 const BLOCKING = ['unavailable', 'out_of_stock'];
 
@@ -10,13 +11,13 @@ const BLOCKING = ['unavailable', 'out_of_stock'];
 export function lineWarning(line) {
   switch (line.warning) {
     case 'unavailable':
-      return 'No longer available. Remove it to continue.';
+      return t('No longer available. Remove it to continue.');
     case 'out_of_stock':
-      return 'Out of stock. Remove it to continue.';
+      return t('Out of stock. Remove it to continue.');
     case 'qty_reduced':
-      return `Only ${line.maxQuantity} left, so we changed the quantity.`;
+      return t('Only {maxQuantity} left, so we changed the quantity.', { maxQuantity: line.maxQuantity });
     case 'price_changed':
-      return `Price changed to ${formatSAR(line.product.price)}.`;
+      return t('Price changed to {amount}.', { amount: formatSAR(line.product.price) });
     default:
       return null;
   }
@@ -27,8 +28,8 @@ export function lineWarning(line) {
  * and null when that check is off (then nothing is claimed — stock is confirmed at order time).
  */
 export function quoteStockLabel(inStock) {
-  if (inStock === true) return 'In stock';
-  if (inStock === false) return 'Limited stock';
+  if (inStock === true) return t('In stock');
+  if (inStock === false) return t('Limited stock');
   return null;
 }
 

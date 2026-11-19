@@ -3,8 +3,10 @@ import { Button, Logo, Modal } from '@/components/ui';
 import { welcomeHero } from '@/assets/images.js';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
+import LanguageToggle from '@/components/layout/LanguageToggle.jsx';
+import { t, localized } from '@/i18n';
 
-const LEGAL = {
+const LEGAL = localized({
   terms: {
     title: 'Terms of use',
     body: [
@@ -21,42 +23,31 @@ const LEGAL = {
       'You can update or delete your account details at any time from your profile.',
     ],
   },
-};
+});
 
 /** 02 · Welcome */
 export default function WelcomePage() {
-  useDocumentTitle('Welcome');
+  useDocumentTitle(t('Welcome'));
   const [legal, setLegal] = useState(null);
   const doc = legal ? LEGAL[legal] : null;
 
   return (
-    <div className="min-h-dvh bg-cream lg:grid lg:grid-cols-2">
+    <div className="relative min-h-dvh bg-cream lg:grid lg:grid-cols-2">
+      <LanguageToggle className="absolute end-4 top-4 z-20 shadow-float" />
       <div className="relative h-[52dvh] min-h-[300px] max-h-[470px] overflow-hidden lg:sticky lg:top-0 lg:h-dvh lg:max-h-none">
-        <img src={welcomeHero} alt="kuraat signature maroon truffle box" className="size-full animate-fade-in object-cover object-[50%_40%]" />
+        <img src={welcomeHero} alt={t('kuraat signature maroon truffle box')} className="size-full animate-fade-in object-cover object-[50%_40%]" />
       </div>
 
       <main className="relative -mt-7 rounded-t-sheet bg-cream lg:mt-0 lg:flex lg:items-center lg:rounded-none">
         <div className="mx-auto flex max-w-column animate-fade-up flex-col items-center px-6 pb-10 pt-9 text-center lg:max-w-form lg:px-0">
           <Logo className="w-[132px] lg:w-[160px]" />
-          <h1 className="mt-5 text-title text-ink lg:text-[34px] lg:leading-10">Welcome to kuraat</h1>
-          <p className="mt-2 max-w-[330px] text-body text-muted">Fresh truffles, cakes and pastries, delivered from the branch nearest you.</p>
+          <h1 className="mt-5 text-title text-ink lg:text-[34px] lg:leading-10">{t('Welcome to kuraat')}</h1>
+          <p className="mt-2 max-w-[330px] text-body text-muted">{t('Fresh truffles, cakes and pastries, delivered from the branch nearest you.')}</p>
           <div className="mt-8 flex w-full flex-col gap-3">
-            <Button to={ROUTES.signUp} block>
-              Create an account
-            </Button>
-            <Button to={ROUTES.signIn} variant="secondary" block>
-              Sign in
-            </Button>
+            <Button to={ROUTES.signUp} block>{t('Create an account')}</Button>
+            <Button to={ROUTES.signIn} variant="secondary" block>{t('Sign in')}</Button>
           </div>
-          <p className="mt-7 text-label font-normal text-muted">
-            By continuing you agree to our{' '}
-            <button type="button" onClick={() => setLegal('terms')} className="font-bold text-maroon hover:underline">
-              Terms
-            </button>{' '}
-            and{' '}
-            <button type="button" onClick={() => setLegal('privacy')} className="font-bold text-maroon hover:underline">
-              Privacy Policy
-            </button>
+          <p className="mt-7 text-label font-normal text-muted">{t('By continuing you agree to our')}{' '}<button type="button" onClick={() => setLegal('terms')} className="font-bold text-maroon hover:underline">{t('Terms')}</button>{' '}{t('and')}{' '}<button type="button" onClick={() => setLegal('privacy')} className="font-bold text-maroon hover:underline">{t('Privacy Policy')}</button>
           </p>
         </div>
       </main>
@@ -72,9 +63,7 @@ export default function WelcomePage() {
                 <p key={p}>{p}</p>
               ))}
             </div>
-            <Button block className="mt-6" onClick={() => setLegal(null)} data-autofocus>
-              Got it
-            </Button>
+            <Button block className="mt-6" onClick={() => setLegal(null)} data-autofocus>{t('Got it')}</Button>
           </div>
         )}
       </Modal>

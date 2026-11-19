@@ -1,12 +1,13 @@
 /** Formatting helpers (pure — shared with the future React Native app). */
 import { formatInternationalPhone, isInternationalPhone } from './phone.js';
+import { t } from '@/i18n';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** "SAR 185" (cards/detail) or "SAR 185.00" (checkout, receipts). */
 export function formatSAR(amount, { decimals = 2 } = {}) {
   const value = Number(amount || 0);
-  return `SAR ${value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+  return t('SAR {amount}', { amount: value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) });
 }
 
 /** Local 9-digit Saudi mobile ("501234821") → "50 123 4821". */
@@ -92,7 +93,7 @@ export function uses24HourClock() {
 }
 
 const hour12 = (h) => (h % 12 === 0 ? 12 : h % 12);
-const meridiem = (h) => (h >= 12 ? 'PM' : 'AM');
+const meridiem = (h) => t(h >= 12 ? 'PM' : 'AM');
 
 /** A clock time in the device's format: "19:19" (24-hour) or "7:19 PM" (12-hour). Every time on screen uses this. */
 export function formatTime(value) {
@@ -110,13 +111,13 @@ export function formatHour(hour) {
 /** "15 Nov 2026" */
 export function formatDate(value) {
   const d = toDate(value);
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  return `${d.getDate()} ${t(MONTHS[d.getMonth()])} ${d.getFullYear()}`;
 }
 
 /** "8 Nov" */
 export function formatDayMonth(value) {
   const d = toDate(value);
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  return `${d.getDate()} ${t(MONTHS[d.getMonth()])}`;
 }
 
 /** "15 Nov 2026, 12:21" */
@@ -126,8 +127,8 @@ export function formatDateTime(value) {
 
 /** Orders list: "Today, 12:21" for today, otherwise "8 Nov 2026". */
 export function formatOrderDate(value, now = new Date()) {
-  if (isSameDay(value, now)) return `Today, ${formatTime(value)}`;
-  if (isYesterday(value, now)) return `Yesterday, ${formatTime(value)}`;
+  if (isSameDay(value, now)) return t('Today, {time}', { time: formatTime(value) });
+  if (isYesterday(value, now)) return t('Yesterday, {time}', { time: formatTime(value) });
   return formatDate(value);
 }
 
@@ -139,7 +140,7 @@ export function formatOrderDate(value, now = new Date()) {
  */
 export function formatWindow(start, end, now = new Date(), { long = true } = {}) {
   const tomorrow = new Date(toDate(now).getTime() + DAY_MS);
-  const day = isSameDay(start, now) ? 'Today' : isSameDay(start, tomorrow) ? 'Tomorrow' : formatDayMonth(start);
+  const day = isSameDay(start, now) ? t('Today') : isSameDay(start, tomorrow) ? t('Tomorrow') : formatDayMonth(start);
   const s = toDate(start);
   const e = toDate(end);
   if (uses24HourClock()) return `${day}, ${formatTime(s)} – ${formatTime(e)}`;
@@ -151,8 +152,8 @@ export function formatWindow(start, end, now = new Date(), { long = true } = {})
 
 export function formatDistance(km) {
   if (km == null) return '';
-  if (km < 100) return `${km.toFixed(1)} km`;
-  return `${Math.round(km).toLocaleString('en-US')} km`;
+  if (km < 100) return t('{distance} km', { distance: km.toFixed(1) });
+  return t('{distance} km', { distance: Math.round(km).toLocaleString('en-US') });
 }
 
 export function pluralize(count, singular, plural = `${singular}s`) {

@@ -1,5 +1,6 @@
 import { Check, Minus, Plus } from 'lucide-react';
 import { cn } from '@/lib/cn.js';
+import { t } from '@/i18n';
 
 /** Segmented control (Gender, Password | WhatsApp code). */
 export function SegmentedControl({ options, value, onChange, label, className, size = 'lg' }) {
@@ -75,7 +76,7 @@ export function Tag({ tone = 'light', icon: Icon, children, className }) {
 }
 
 /** − n + stepper on a sand pill. */
-export function QuantityStepper({ value, onChange, min = 1, max = 20, size = 'md', onMinReached, label = 'Quantity', className }) {
+export function QuantityStepper({ value, onChange, min = 1, max = 20, size = 'md', onMinReached, label = t('Quantity'), className }) {
   const btn = size === 'lg' ? 'size-[38px]' : 'size-8';
   const icon = size === 'lg' ? 20 : 17;
   const dec = () => (value <= min ? onMinReached?.() : onChange(value - 1));
@@ -85,7 +86,7 @@ export function QuantityStepper({ value, onChange, min = 1, max = 20, size = 'md
         type="button"
         onClick={dec}
         disabled={value <= min && !onMinReached}
-        aria-label="Decrease quantity"
+        aria-label={t('Decrease quantity')}
         className={cn(btn, 'grid place-items-center rounded-full bg-white text-maroon transition active:scale-90 disabled:opacity-50')}
       >
         <Minus size={icon} strokeWidth={2} />
@@ -97,7 +98,7 @@ export function QuantityStepper({ value, onChange, min = 1, max = 20, size = 'md
         type="button"
         onClick={() => onChange(Math.min(max, value + 1))}
         disabled={value >= max}
-        aria-label="Increase quantity"
+        aria-label={t('Increase quantity')}
         className={cn(btn, 'grid place-items-center rounded-full bg-white text-maroon transition active:scale-90 disabled:opacity-50')}
       >
         <Plus size={icon} strokeWidth={2} />

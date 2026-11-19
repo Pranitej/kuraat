@@ -10,10 +10,11 @@ import { useBranches } from '@/context/BranchContext.jsx';
 import { cityFilters, mapPins, withDistances } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
+import { t } from '@/i18n';
 
 /** 25 · Our branches */
 export default function BranchesPage() {
-  useDocumentTitle('Our branches');
+  useDocumentTitle(t('Our branches'));
   const { defaultAddress } = useAddresses();
   const { allBranches: branches } = useBranches(); // the directory lists every branch, hubs and master
   const [params, setParams] = useSearchParams();
@@ -62,7 +63,7 @@ export default function BranchesPage() {
   return (
     <div className="pb-10">
       <div className="mx-auto max-w-column lg:max-w-app lg:px-8">
-        <ScreenHeader title="Our branches" backFallback={ROUTES.home} />
+        <ScreenHeader title={t('Our branches')} backFallback={ROUTES.home} />
       </div>
       <div className="mx-auto max-w-column px-5 lg:grid lg:max-w-app lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start lg:gap-10 lg:px-8">
         <div className="lg:sticky lg:top-[100px]">
@@ -72,18 +73,18 @@ export default function BranchesPage() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by city or area"
-              aria-label="Search branches by city or area"
+              placeholder={t('Search by city or area')}
+              aria-label={t('Search branches by city or area')}
               className="h-full min-w-0 flex-1 bg-transparent text-body text-ink outline-none placeholder:text-placeholder [&::-webkit-search-cancel-button]:hidden"
             />
-            {query && <IconButton icon={X} label="Clear search" variant="plain" size="sm" iconSize={18} onClick={() => setQuery('')} />}
+            {query && <IconButton icon={X} label={t('Clear search')} variant="plain" size="sm" iconSize={18} onClick={() => setQuery('')} />}
           </div>
 
           {filters.length > 0 && (
             <ChipRow className="mt-3.5">
               {filters.map((c) => (
                 <Chip key={c} active={city === c} onClick={() => setCity(c)}>
-                  {c}
+                  {c === 'All' ? t('All') : c}
                 </Chip>
               ))}
             </ChipRow>
@@ -97,9 +98,7 @@ export default function BranchesPage() {
             onSelect={focusBranch}
             you={{ x: 39, y: 66 }}
           />
-          <p className="mt-2 hidden text-label font-normal text-muted lg:block">
-            Distances are from your default address{defaultAddress ? ` in ${defaultAddress.district || defaultAddress.city}` : ''}. Select a pin to find the branch.
-          </p>
+          <p className="mt-2 hidden text-label font-normal text-muted lg:block">{defaultAddress ? t('Distances are from your default address in {area}. Select a pin to find the branch.', { area: defaultAddress.district || defaultAddress.city }) : t('Distances are from your default address. Select a pin to find the branch.')}</p>
         </div>
 
         <div className="mt-3.5 flex flex-col gap-3 lg:mt-0">
@@ -119,9 +118,9 @@ export default function BranchesPage() {
             <EmptyState
               compact
               icon={MapPinOff}
-              title="No branches found"
-              message={`We do not have a branch matching “${query || city}” yet.`}
-              actionLabel="Show all branches"
+              title={t('No branches found')}
+              message={t('We do not have a branch matching “{place}” yet.', { place: query || city })}
+              actionLabel={t('Show all branches')}
               onAction={() => {
                 setQuery('');
                 setCity('All');

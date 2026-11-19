@@ -9,10 +9,11 @@ import { useToast } from '@/context/ToastContext.jsx';
 import { formatPhone } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
+import { t } from '@/i18n';
 
 /** 17 · Profile */
 export default function ProfilePage() {
-  useDocumentTitle('Profile');
+  useDocumentTitle(t('Profile'));
   const navigate = useNavigate();
   const toast = useToast();
   const { user, signOut } = useAuth();
@@ -21,16 +22,16 @@ export default function ProfilePage() {
   const [leaving, setLeaving] = useState(false);
 
   const items = [
-    { to: ROUTES.account, icon: User, title: 'Account', subtitle: 'Name, phone number, gender' },
-    { to: ROUTES.password, icon: KeyRound, title: 'Password', subtitle: 'Set or change your password' },
-    { to: ROUTES.orders, icon: ReceiptText, title: 'Orders', subtitle: 'View your previous orders' },
-    { to: ROUTES.addresses, icon: MapPin, title: 'Saved addresses', subtitle: `${addresses.length} saved ${addresses.length === 1 ? 'address' : 'addresses'}` },
+    { to: ROUTES.account, icon: User, title: t('Account'), subtitle: t('Name, phone number, gender') },
+    { to: ROUTES.password, icon: KeyRound, title: t('Password'), subtitle: t('Set or change your password') },
+    { to: ROUTES.orders, icon: ReceiptText, title: t('Orders'), subtitle: t('View your previous orders') },
+    { to: ROUTES.addresses, icon: MapPin, title: t('Saved addresses'), subtitle: `${addresses.length} saved ${addresses.length === 1 ? 'address' : 'addresses'}` },
   ];
 
   const logOut = async () => {
     setLeaving(true);
     await signOut();
-    toast.show('You have been logged out', { tone: 'info' });
+    toast.show(t('You have been logged out'), { tone: 'info' });
     navigate(ROUTES.welcome, { replace: true });
   };
 
@@ -40,7 +41,7 @@ export default function ProfilePage() {
         <div className="mx-auto max-w-column px-5 pb-14 pt-4 lg:max-w-none lg:px-8 lg:pb-16 lg:pt-6">
           <div className="grid grid-cols-[44px_1fr_44px] items-center">
             <BackButton variant="glass" fallback={ROUTES.home} />
-            <h1 className="text-center text-heading">Profile</h1>
+            <h1 className="text-center text-heading">{t('Profile')}</h1>
           </div>
           <div className="mt-6 flex items-center gap-4 lg:mt-8">
             <Avatar name={user?.name} src={user?.avatar} size={76} tone="cream" className="text-[27px]" />
@@ -54,7 +55,7 @@ export default function ProfilePage() {
 
       <div className="relative -mt-7 rounded-t-sheet bg-cream lg:mx-auto lg:mt-6 lg:max-w-[720px] lg:rounded-none">
         <div className="mx-auto max-w-column px-5 pt-7 lg:max-w-none lg:px-0 lg:pt-0">
-          <nav aria-label="Profile" className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4">
+          <nav aria-label={t('Profile')} className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4">
             {items.map((item) => (
               <Link
                 key={item.to}
@@ -70,9 +71,7 @@ export default function ProfilePage() {
               </Link>
             ))}
           </nav>
-          <Button variant="secondary" block leftIcon={LogOut} className="mt-5 lg:mt-8 lg:w-auto lg:min-w-[240px]" onClick={() => setConfirm(true)}>
-            Log out
-          </Button>
+          <Button variant="secondary" block leftIcon={LogOut} className="mt-5 lg:mt-8 lg:w-auto lg:min-w-[240px]" onClick={() => setConfirm(true)}>{t('Log out')}</Button>
         </div>
       </div>
 
@@ -82,10 +81,10 @@ export default function ProfilePage() {
         onConfirm={logOut}
         loading={leaving}
         icon={LogOut}
-        title="Log out of kuraat?"
-        message="Your cart and saved addresses will be here when you sign back in."
-        confirmLabel="Log out"
-        cancelLabel="Stay signed in"
+        title={t('Log out of kuraat?')}
+        message={t('Your cart and saved addresses will be here when you sign back in.')}
+        confirmLabel={t('Log out')}
+        cancelLabel={t('Stay signed in')}
       />
     </div>
   );

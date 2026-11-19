@@ -2,8 +2,9 @@ import { ChevronLeft } from 'lucide-react';
 import IconButton from '@/components/ui/IconButton.jsx';
 import { cn } from '@/lib/cn.js';
 import { useGoBack, useScrollY } from '@/hooks';
+import { t } from '@/i18n';
 
-export function BackButton({ fallback = '/home', variant = 'surface', onClick, label = 'Back', className }) {
+export function BackButton({ fallback = '/home', variant = 'surface', onClick, label = t('Back'), className }) {
   const goBack = useGoBack(fallback);
   return <IconButton icon={ChevronLeft} label={label} variant={variant} iconSize={22} strokeWidth={2} onClick={onClick || goBack} className={className} />;
 }

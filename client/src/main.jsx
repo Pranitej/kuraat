@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import AppProviders from '@/context/AppProviders.jsx';
 import AppRoutes from '@/routes/AppRoutes.jsx';
+import { I18nProvider, LocalizedTree } from '@/context/I18nContext.jsx';
 import { local } from '@/lib/storage.js';
 import './index.css';
 
@@ -12,10 +13,14 @@ local.remove('session');
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
-      <AppProviders>
-        <AppRoutes />
-      </AppProviders>
-    </BrowserRouter>
+    <I18nProvider>
+      <BrowserRouter>
+        <AppProviders>
+          <LocalizedTree>
+            <AppRoutes />
+          </LocalizedTree>
+        </AppProviders>
+      </BrowserRouter>
+    </I18nProvider>
   </StrictMode>,
 );

@@ -1,14 +1,15 @@
+import { localized, t } from '@/i18n';
 /**
  * Catalogue helpers for the server's products (server/README.md → Shop). Pure: search, category
  * chips and sorting run on the list the app already loaded.
  */
 
-export const SORT_OPTIONS = [
+export const SORT_OPTIONS = localized([
   { id: 'recommended', label: 'Recommended' },
   { id: 'price-asc', label: 'Price: low to high' },
   { id: 'price-desc', label: 'Price: high to low' },
   { id: 'name', label: 'Name: A to Z' },
-];
+]);
 
 /** "Gift Boxes & Hampers" → "gift-boxes-hampers" (used in the ?category= URL). */
 export function slugify(name = '') {
@@ -21,7 +22,7 @@ export function slugify(name = '') {
 
 /** Chips for the Home screen: All, then the server's categories in their order. */
 export function categoryChips(categories = []) {
-  return [{ id: 'all', label: 'All' }, ...categories.map((c) => ({ id: slugify(c.name), label: c.name }))];
+  return [{ id: 'all', label: t('All') }, ...categories.map((c) => ({ id: slugify(c.name), label: c.name }))];
 }
 
 /**

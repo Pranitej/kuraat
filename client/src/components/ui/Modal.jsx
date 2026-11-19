@@ -6,6 +6,7 @@ import { useLockBodyScroll } from '@/hooks';
 import Button from './Button.jsx';
 import IconButton from './IconButton.jsx';
 import { IconTile } from './Surface.jsx';
+import { t } from '@/i18n';
 
 function useDialogBehaviour(open, onClose, dismissible) {
   const panelRef = useRef(null);
@@ -92,7 +93,7 @@ export function Sheet({ open, onClose, title, children, footer }) {
           <h2 id={titleId} className="text-heading text-ink">
             {title}
           </h2>
-          <IconButton icon={X} label="Close" size="md" onClick={onClose} />
+          <IconButton icon={X} label={t('Close')} size="md" onClick={onClose} />
         </div>
         <div className="overflow-y-auto px-5 pb-4">{children}</div>
         {footer && <div className="border-t border-line-subtle bg-white px-5 pb-safe pt-4 md:rounded-b-sheet md:pb-5">{footer}</div>}
@@ -103,7 +104,7 @@ export function Sheet({ open, onClose, title, children, footer }) {
 }
 
 /** Confirmation dialog built from the popup pattern. */
-export function ConfirmDialog({ open, onClose, onConfirm, icon, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', loading }) {
+export function ConfirmDialog({ open, onClose, onConfirm, icon, title, message, confirmLabel = t('Confirm'), cancelLabel = t('Cancel'), loading }) {
   const titleId = useId();
   return (
     <Modal open={open} onClose={loading ? undefined : onClose} labelledBy={titleId} dismissible={!loading}>

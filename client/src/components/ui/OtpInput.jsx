@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/cn.js';
+import { t } from '@/i18n';
 
 /** 6-cell one-time code input with auto-advance, backspace and paste support. */
 export default function OtpInput({ value, onChange, length = 6, error, disabled, autoFocus = true, onComplete }) {
@@ -58,7 +59,7 @@ export default function OtpInput({ value, onChange, length = 6, error, disabled,
   };
 
   return (
-    <div className="grid grid-cols-6 gap-2.5" role="group" aria-label="Verification code">
+    <div className="grid grid-cols-6 gap-2.5" role="group" aria-label={t('Verification code')}>
       {digits.map((d, i) => (
         <input
           key={i}
@@ -69,7 +70,7 @@ export default function OtpInput({ value, onChange, length = 6, error, disabled,
           maxLength={length}
           value={d}
           disabled={disabled}
-          aria-label={`Digit ${i + 1}`}
+          aria-label={t('Digit {n}', { n: i + 1 })}
           aria-invalid={Boolean(error) || undefined}
           onChange={(e) => handleChange(i, e)}
           onKeyDown={(e) => handleKeyDown(i, e)}

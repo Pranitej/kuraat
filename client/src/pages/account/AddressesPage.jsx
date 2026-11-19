@@ -9,10 +9,11 @@ import { useToast } from '@/context/ToastContext.jsx';
 import { formatAddress } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
+import { t } from '@/i18n';
 
 /** 23 · Saved addresses */
 export default function AddressesPage() {
-  useDocumentTitle('Saved addresses');
+  useDocumentTitle(t('Saved addresses'));
   const toast = useToast();
   const { user } = useAuth();
   const { addresses, remove, loaded } = useAddresses();
@@ -35,7 +36,7 @@ export default function AddressesPage() {
   return (
     <div className="pb-6">
       <div className="mx-auto max-w-column lg:max-w-[960px] lg:px-8">
-        <ScreenHeader title="Saved addresses" backFallback={ROUTES.profile} />
+        <ScreenHeader title={t('Saved addresses')} backFallback={ROUTES.profile} />
         <div className="px-5 lg:px-0">
           {!loaded ? (
             <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-5" aria-busy="true">
@@ -46,8 +47,8 @@ export default function AddressesPage() {
           ) : !addresses.length ? (
             <EmptyState
               icon={MapPin}
-              title="No saved addresses"
-              message="Add an address and we will deliver from the kuraat branch nearest to it."
+              title={t('No saved addresses')}
+              message={t('Add an address and we will deliver from the kuraat branch nearest to it.')}
             />
           ) : (
             <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-5">
@@ -56,19 +57,15 @@ export default function AddressesPage() {
                   <div className="flex items-center gap-3">
                     <IconTile icon={a.type === 'office' ? Store : MapPin} size={40} iconSize={19} />
                     <h2 className="min-w-0 flex-1 truncate text-[17px] font-bold leading-6 text-ink">{a.label}</h2>
-                    {a.isDefault && <Tag tone="dark">Default</Tag>}
+                    {a.isDefault && <Tag tone="dark">{t('Default')}</Tag>}
                   </div>
                   <p className="mt-3 text-body text-copy">{formatAddress(a)}</p>
                   <p className="mt-0.5 text-label font-normal text-muted">
                     {a.contactName || user?.name}
                   </p>
                   <div className="mt-4 grid grid-cols-2 gap-3">
-                    <Button variant="secondary" size="md" leftIcon={Pencil} to={ROUTES.addressEdit(a.id)}>
-                      Edit
-                    </Button>
-                    <Button variant="secondary" size="md" leftIcon={Trash2} onClick={() => setPendingDelete(a)}>
-                      Delete
-                    </Button>
+                    <Button variant="secondary" size="md" leftIcon={Pencil} to={ROUTES.addressEdit(a.id)}>{t('Edit')}</Button>
+                    <Button variant="secondary" size="md" leftIcon={Trash2} onClick={() => setPendingDelete(a)}>{t('Delete')}</Button>
                   </div>
                 </Card>
               ))}
@@ -76,9 +73,7 @@ export default function AddressesPage() {
           )}
 
           <BottomBar>
-            <Button block leftIcon={Plus} to={ROUTES.addressNew} className="lg:w-auto lg:min-w-[280px]">
-              Add new address
-            </Button>
+            <Button block leftIcon={Plus} to={ROUTES.addressNew} className="lg:w-auto lg:min-w-[280px]">{t('Add new address')}</Button>
           </BottomBar>
         </div>
       </div>
@@ -89,16 +84,16 @@ export default function AddressesPage() {
         onConfirm={confirmDelete}
         loading={deleting}
         icon={Trash2}
-        title={`Delete ${pendingDelete?.label || 'this'} address?`}
+        title={pendingDelete?.label ? t('Delete {label} address?', { label: pendingDelete.label }) : t('Delete this address?')}
         message={
           pendingDelete?.isDefault && addresses.length > 1
-            ? `This is your default address. ${addresses.find((x) => x.id !== pendingDelete.id)?.label} will become your default.`
+            ? t('This is your default address. {label} will become your default.', { label: addresses.find((x) => x.id !== pendingDelete.id)?.label })
             : pendingDelete
               ? formatAddress(pendingDelete)
               : ''
         }
-        confirmLabel="Delete address"
-        cancelLabel="Keep address"
+        confirmLabel={t('Delete address')}
+        cancelLabel={t('Keep address')}
       />
     </div>
   );

@@ -13,10 +13,11 @@ import { DeliverToBar, DeliverToSheet, useDeliveryAddress } from '@/components/s
 import { areaLabel, categoryFilter, filterProducts, withDistances } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
+import { t } from '@/i18n';
 
 /** 07/08 · Home */
 export default function HomePage() {
-  useDocumentTitle('Home');
+  useDocumentTitle(t('Home'));
   const { user } = useAuth();
   const { count } = useCart();
   const { address, addresses, loaded: addressesLoaded, choose } = useDeliveryAddress();
@@ -92,12 +93,10 @@ export default function HomePage() {
                   scrollToSweets();
                 }}
                 className="text-[15px] font-bold text-maroon hover:underline"
-              >
-                See all
-              </button>
+              >{t('See all')}</button>
             }
           >
-            <span id="sweets-title">Our sweets</span>
+            <span id="sweets-title">{t('Our sweets')}</span>
           </SectionTitle>
 
           <div className="mt-4 flex items-center gap-4">
@@ -116,19 +115,18 @@ export default function HomePage() {
               type="button"
               onClick={() => setFiltersOpen(true)}
               className="hidden shrink-0 items-center gap-2 rounded-pill border border-line bg-white px-4 py-2 text-small font-semibold text-maroon hover:border-maroon/40 lg:inline-flex"
-            >
-              Sort: {sort === 'recommended' ? 'Recommended' : sort === 'price-asc' ? 'Price ↑' : sort === 'price-desc' ? 'Price ↓' : 'A–Z'}
+            >{t('Sort:')}{' '}{sort === 'recommended' ? t('Recommended') : sort === 'price-asc' ? t('Price ↑') : sort === 'price-desc' ? t('Price ↓') : 'A–Z'}
             </button>
           </div>
 
           {query && (
             <p className="mt-4 text-small text-muted" aria-live="polite">
-              {products.length} {products.length === 1 ? 'result' : 'results'} for “<span className="font-semibold text-ink">{query}</span>”
+              {products.length === 1 ? t('1 result for “{query}”', { query }) : t('{count} results for “{query}”', { count: products.length, query })}
             </p>
           )}
 
           {loading ? (
-            <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 lg:mt-6 lg:gap-6" aria-busy="true" aria-label="Loading sweets">
+            <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 lg:mt-6 lg:gap-6" aria-busy="true" aria-label={t('Loading sweets')}>
               {[0, 1, 2, 3].map((i) => (
                 <ProductCardSkeleton key={i} />
               ))}
@@ -137,9 +135,9 @@ export default function HomePage() {
             <EmptyState
               compact
               icon={CloudOff}
-              title="We can't reach the store right now"
-              message={catalog.error?.code === 'network' ? catalog.error.message : 'Please try again in a moment.'}
-              actionLabel="Try again"
+              title={t('We can\'t reach the store right now')}
+              message={catalog.error?.code === 'network' ? catalog.error.message : t('Please try again in a moment.')}
+              actionLabel={t('Try again')}
               onAction={catalog.refresh}
             />
           ) : products.length ? (
@@ -152,9 +150,9 @@ export default function HomePage() {
             <EmptyState
               compact
               icon={SearchX}
-              title="No sweets found"
-              message={query ? `Nothing matches “${query}”. Try another name or category.` : 'Nothing in this category right now.'}
-              actionLabel="Show all sweets"
+              title={t('No sweets found')}
+              message={query ? t('Nothing matches “{query}”. Try another name or category.', { query }) : t('Nothing in this category right now.')}
+              actionLabel={t('Show all sweets')}
               onAction={() => setFilters({ category: 'all', q: '', sort: 'recommended' })}
             />
           )}
@@ -163,12 +161,11 @@ export default function HomePage() {
         <section className="pt-8 lg:pt-14" aria-labelledby="branches-title">
           <SectionTitle
             action={
-              <Link to={ROUTES.branches} className="inline-flex items-center gap-1 text-[15px] font-bold text-maroon hover:underline">
-                View all <ChevronRight size={18} strokeWidth={2} />
+              <Link to={ROUTES.branches} className="inline-flex items-center gap-1 text-[15px] font-bold text-maroon hover:underline">{t('View all')}{' '}<ChevronRight size={18} strokeWidth={2} />
               </Link>
             }
           >
-            <span id="branches-title">Our branches</span>
+            <span id="branches-title">{t('Our branches')}</span>
           </SectionTitle>
           <div className="no-scrollbar -mx-5 mt-4 flex gap-3 overflow-x-auto px-5 pb-1 lg:mx-0 lg:grid lg:grid-cols-3 lg:gap-6 lg:overflow-visible lg:px-0">
             {branches.map((b) => (

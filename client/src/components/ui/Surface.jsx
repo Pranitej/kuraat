@@ -44,7 +44,7 @@ export function SummaryRow({ label, value, strong, className }) {
   return (
     <div className={cn('flex items-baseline justify-between gap-4', className)}>
       <span className={strong ? 'text-[16px] font-bold leading-6 text-ink' : 'text-body text-muted'}>{label}</span>
-      <span className={cn('tabular text-right', strong ? 'text-[16px] font-bold text-ink' : 'text-[15px] font-semibold text-ink')}>{value}</span>
+      <span className={cn('tabular text-end', strong ? 'text-[16px] font-bold text-ink' : 'text-[15px] font-semibold text-ink')}>{value}</span>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { useToast } from '@/context/ToastContext.jsx';
 import { formatAddress, formatPhone, validateEmail, validateName } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
+import { t } from '@/i18n';
 
 /** Resize a chosen photo to a small square JPEG data URL (keeps demo storage light). */
 function resizeImage(file, size = 256) {
@@ -37,7 +38,7 @@ function resizeImage(file, size = 256) {
 
 /** 18 · Account */
 export default function AccountPage() {
-  useDocumentTitle('Account');
+  useDocumentTitle(t('Account'));
   const navigate = useNavigate();
   const toast = useToast();
   const { user, updateProfile, requestOtp } = useAuth();
@@ -62,17 +63,17 @@ export default function AccountPage() {
     e.target.value = '';
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      toast.show('Choose an image file', { tone: 'error' });
+      toast.show(t('Choose an image file'), { tone: 'error' });
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
-      toast.show('Choose a photo smaller than 8 MB', { tone: 'error' });
+      toast.show(t('Choose a photo smaller than 8 MB'), { tone: 'error' });
       return;
     }
     try {
       set('avatar')(await resizeImage(file));
     } catch {
-      toast.show('We could not read that photo', { tone: 'error' });
+      toast.show(t('We could not read that photo'), { tone: 'error' });
     }
   };
 
@@ -81,13 +82,13 @@ export default function AccountPage() {
     setErrors(errs);
     if (Object.values(errs).some(Boolean)) return;
     if (!dirty) {
-      toast.show('Your details are up to date', { tone: 'info' });
+      toast.show(t('Your details are up to date'), { tone: 'info' });
       return;
     }
     setSaving(true);
     try {
       await updateProfile({ name: form.name, email: form.email, gender: form.gender, avatar: form.avatar });
-      toast.show('Your changes have been saved');
+      toast.show(t('Your changes have been saved'));
     } catch (err) {
       setErrors({ [err.field || 'form']: err.message });
     } finally {
@@ -113,7 +114,7 @@ export default function AccountPage() {
   return (
     <div className="pb-6">
       <div className="mx-auto max-w-column lg:max-w-[640px]">
-        <ScreenHeader title="Account" backFallback={ROUTES.profile} />
+        <ScreenHeader title={t('Account')} backFallback={ROUTES.profile} />
         <div className="px-5 lg:px-0">
           <div className="flex justify-center">
             <div className="relative">
@@ -121,8 +122,8 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                aria-label="Change profile photo"
-                className="absolute -bottom-0.5 -right-0.5 grid size-9 place-items-center rounded-full border border-line-subtle bg-white text-maroon shadow-float transition hover:bg-cream"
+                aria-label={t('Change profile photo')}
+                className="absolute -bottom-0.5 -end-0.5 grid size-9 place-items-center rounded-full border border-line-subtle bg-white text-maroon shadow-float transition hover:bg-cream"
               >
                 <Pencil size={16} strokeWidth={1.9} />
               </button>
@@ -131,46 +132,44 @@ export default function AccountPage() {
           </div>
           {form.avatar && (
             <p className="mt-2 text-center">
-              <button type="button" onClick={() => set('avatar')(null)} className="text-label text-maroon hover:underline">
-                Remove photo
-              </button>
+              <button type="button" onClick={() => set('avatar')(null)} className="text-label text-maroon hover:underline">{t('Remove photo')}</button>
             </p>
           )}
 
           <div className="mt-5 flex flex-col gap-5">
-            <TextField label="Full name" icon={User} value={form.name} onChange={(e) => set('name')(e.target.value)} autoComplete="name" error={errors.name} />
+            <TextField label={t('Full name')} icon={User} value={form.name} onChange={(e) => set('name')(e.target.value)} autoComplete="name" error={errors.name} />
 
             {/* The number is fixed when the account is created: orders are found by it. */}
             <PhoneField
               id="account-phone"
-              label="Mobile number (WhatsApp)"
+              label={t('Mobile number (WhatsApp)')}
               value={user.phone}
               onChange={() => {}}
               disabled
-              helper="Your mobile number cannot be changed."
-              trailing={<Tag icon={Check}>Verified</Tag>}
+              helper={t('Your mobile number cannot be changed.')}
+              trailing={<Tag icon={Check}>{t('Verified')}</Tag>}
             />
 
             <TextField
-              label="Email (optional)"
+              label={t('Email (optional)')}
               icon={Mail}
               type="email"
               value={form.email}
               onChange={(e) => set('email')(e.target.value)}
-              placeholder="name@example.com"
+              placeholder={t('name@example.com')}
               autoComplete="email"
               error={errors.email}
             />
 
-            <FieldWrapper id="account-gender" label="Gender">
-              <SegmentedControl label="Gender" options={GENDERS} value={form.gender} onChange={set('gender')} />
+            <FieldWrapper id="account-gender" label={t('Gender')}>
+              <SegmentedControl label={t('Gender')} options={GENDERS} value={form.gender} onChange={set('gender')} />
             </FieldWrapper>
 
             <Link to={ROUTES.addresses} className="flex items-center gap-3.5 rounded-xl border border-line-subtle bg-white p-4 transition hover:border-line">
               <IconTile icon={MapPin} />
               <span className="min-w-0 flex-1">
-                <span className="block text-label font-normal text-muted">Default address</span>
-                <span className="block text-[15px] font-bold leading-[21px] text-ink">{defaultAddress ? formatAddress(defaultAddress) : 'Add a delivery address'}</span>
+                <span className="block text-label font-normal text-muted">{t('Default address')}</span>
+                <span className="block text-[15px] font-bold leading-[21px] text-ink">{defaultAddress ? formatAddress(defaultAddress) : t('Add a delivery address')}</span>
               </span>
               <ChevronRight size={20} strokeWidth={1.8} className="shrink-0 text-ink" aria-hidden />
             </Link>
@@ -180,14 +179,11 @@ export default function AccountPage() {
               onClick={() => setConfirmDelete(true)}
               className="mx-auto inline-flex items-center gap-2 text-[15px] font-semibold text-maroon hover:underline"
             >
-              <Trash2 size={18} strokeWidth={1.8} /> Delete account
-            </button>
+              <Trash2 size={18} strokeWidth={1.8} />{' '}{t('Delete account')}</button>
           </div>
 
           <BottomBar>
-            <Button block loading={saving} onClick={save}>
-              Save changes
-            </Button>
+            <Button block loading={saving} onClick={save}>{t('Save changes')}</Button>
           </BottomBar>
         </div>
       </div>
@@ -198,10 +194,10 @@ export default function AccountPage() {
         onConfirm={startDelete}
         loading={sendingDeleteCode}
         icon={Trash2}
-        title="Delete your account?"
-        message={`This removes your profile, saved addresses and cards. Past orders stay with the branch for its records. We will send a 6-digit code on WhatsApp to ${formatPhone(user.phone)} to confirm.`}
-        confirmLabel="Send code"
-        cancelLabel="Keep my account"
+        title={t('Delete your account?')}
+        message={t('This removes your profile, saved addresses and cards. Past orders stay with the branch for its records. We will send a 6-digit code on WhatsApp to {phone} to confirm.', { phone: formatPhone(user.phone) })}
+        confirmLabel={t('Send code')}
+        cancelLabel={t('Keep my account')}
       />
     </div>
   );

@@ -8,12 +8,13 @@
 import { onlyDigits, toWirePhone } from '@/domain';
 import { session } from '../lib/storage.js';
 import { ApiError, apiRequest, clearTokens, getTokens, setTokens } from './api.js';
+import { t } from '@/i18n';
 
 const OTP_KEY = 'otp';
 export const OTP_LENGTH = 6;
 export const OTP_RESEND_SECONDS = 60;
 
-const expired = () => new ApiError('Your verification session expired. Please start again.', { code: 'expired' });
+const expired = () => new ApiError(t('Your verification session expired. Please start again.'), { code: 'expired' });
 
 function signedIn({ user, tokens }) {
   setTokens(tokens);
@@ -52,7 +53,7 @@ export async function signOut() {
 export async function deleteAccount() {
   const pending = getPendingOtp();
   if (pending?.purpose !== 'delete-account' || !pending.verificationToken) {
-    throw new ApiError('Confirm with the WhatsApp code we sent you first.', { code: 'expired' });
+    throw new ApiError(t('Confirm with the WhatsApp code we sent you first.'), { code: 'expired' });
   }
   await apiRequest('/me', { method: 'DELETE', body: { verificationToken: pending.verificationToken } });
   endLocalSession();
@@ -132,7 +133,7 @@ export async function signInWithPassword(phone, password) {
 /** "Set a password instead" during sign-up (PDF screen 05): creates the account with a password. */
 export async function completeSignupWithPassword(password) {
   const pending = getPendingOtp();
-  if (pending?.purpose !== 'signup') throw new ApiError('Your sign-up session expired. Please start again.', { code: 'expired' });
+  if (pending?.purpose !== 'signup') throw new ApiError(t('Your sign-up session expired. Please start again.'), { code: 'expired' });
   const user = signedIn(await apiRequest('/auth/signup/password', { method: 'POST', body: { challengeId: pending.challengeId, password } }));
   clearPendingOtp();
   return user;
@@ -142,7 +143,7 @@ export async function completeSignupWithPassword(password) {
 export async function resetPasswordWithOtp(newPassword) {
   const pending = getPendingOtp();
   if (pending?.purpose !== 'reset' || !pending.verificationToken) {
-    throw new ApiError('Verify your number with a WhatsApp code first.', { code: 'expired' });
+    throw new ApiError(t('Verify your number with a WhatsApp code first.'), { code: 'expired' });
   }
   const user = signedIn(
     await apiRequest('/auth/password/reset', { method: 'POST', body: { verificationToken: pending.verificationToken, newPassword } }),

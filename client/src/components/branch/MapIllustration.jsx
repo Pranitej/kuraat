@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn.js';
+import { t } from '@/i18n';
 
 /**
  * Stylised map (PDF screens 24 & 25): sand blocks, cream roads, maroon pins, orange "you" dot.
@@ -43,7 +44,7 @@ export default function MapIllustration({ pins = [], selectedId, onSelect, you, 
             key={pin.id}
             type={onSelect ? 'button' : undefined}
             onClick={onSelect ? () => onSelect(pin.id) : undefined}
-            aria-label={onSelect ? `Show ${pin.label}` : undefined}
+            aria-label={onSelect ? t('Show {label}', { label: pin.label }) : undefined}
             aria-pressed={onSelect ? selected : undefined}
             className={cn('absolute -translate-x-1/2 -translate-y-full transition-transform duration-200', selected ? 'z-10 scale-125' : 'hover:scale-110')}
             style={{ left: `${pin.x}%`, top: `${pin.y}%` }}

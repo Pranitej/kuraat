@@ -9,10 +9,11 @@ import { GENDERS } from '@/config/options.js';
 import { LOCATION_FAILED, LOCATION_OUTSIDE, isInSaudi, parseAddressText, validateAddressLine, validateMobile, validateName } from '@/domain';
 import { getBrowserPosition } from '@/lib/geolocation.js';
 import { useDocumentTitle } from '@/hooks';
+import { t } from '@/i18n';
 
 /** 03 · Sign up */
 export default function SignUpPage() {
-  useDocumentTitle('Create your account');
+  useDocumentTitle(t('Create your account'));
   const navigate = useNavigate();
   const { requestOtp, getPendingOtp } = useAuth();
   // "Edit number" on the OTP screen comes back here with the form intact
@@ -34,7 +35,7 @@ export default function SignUpPage() {
     const position = await getBrowserPosition({ precise: true });
     setLocating(false);
     if (!position || !isInSaudi(position)) {
-      setErrors((e) => ({ ...e, address: position ? LOCATION_OUTSIDE : LOCATION_FAILED }));
+      setErrors((e) => ({ ...e, address: t(position ? LOCATION_OUTSIDE : LOCATION_FAILED) }));
       return;
     }
     setLocated({ location: position });
@@ -60,7 +61,7 @@ export default function SignUpPage() {
     const next = {
       name: validateName(name),
       phone: validateMobile(phone),
-      gender: gender ? '' : 'Choose an option',
+      gender: gender ? '' : t('Choose an option'),
       address: validateAddressLine(addressText),
     };
     setErrors(next);
@@ -82,14 +83,14 @@ export default function SignUpPage() {
   };
 
   return (
-    <AuthLayout title="Create your account" subtitle="Join kuraat in under a minute" backFallback={ROUTES.welcome}>
+    <AuthLayout title={t('Create your account')} subtitle={t('Join kuraat in under a minute')} backFallback={ROUTES.welcome}>
       <form noValidate onSubmit={submit} className="flex flex-col gap-5">
         <TextField
-          label="Full name"
+          label={t('Full name')}
           icon={User}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Your full name"
+          placeholder={t('Your full name')}
           autoComplete="name"
           error={errors.name}
         />
@@ -99,14 +100,12 @@ export default function SignUpPage() {
           error={errors.phone}
           helper={
             <span className="flex items-center gap-2">
-              <WhatsAppIcon size={16} className="text-muted" />
-              We will send a 6-digit code on WhatsApp
-            </span>
+              <WhatsAppIcon size={16} className="text-muted" />{t('We will send a 6-digit code on WhatsApp')}</span>
           }
         />
-        <FieldWrapper id="gender" label="Gender" error={errors.gender}>
+        <FieldWrapper id="gender" label={t('Gender')} error={errors.gender}>
           <SegmentedControl
-            label="Gender"
+            label={t('Gender')}
             options={GENDERS}
             value={gender}
             onChange={(v) => {
@@ -117,11 +116,11 @@ export default function SignUpPage() {
         </FieldWrapper>
         <div>
           <TextField
-            label="Delivery address"
+            label={t('Delivery address')}
             icon={MapPin}
             value={addressText}
             onChange={(e) => setAddressText(e.target.value)}
-            placeholder="Building, street, district"
+            placeholder={t('Building, street, district')}
             autoComplete="street-address"
             error={errors.address}
           />
@@ -132,21 +131,15 @@ export default function SignUpPage() {
             className="mt-3 inline-flex items-center gap-2 text-[15px] font-semibold text-maroon hover:underline disabled:opacity-70"
           >
             {locating ? <Spinner size={18} /> : <LocateFixed size={18} strokeWidth={1.8} />}
-            {locating ? 'Finding your location…' : located ? 'Location saved · tap to update' : 'Use my current location'}
+            {locating ? t('Finding your location…') : located ? t('Location saved · tap to update') : t('Use my current location')}
           </button>
-          {located && <p className="mt-1.5 text-label font-normal text-muted">{addressText.trim() ? 'Location saved.' : 'Location saved. Now type your building, street and district.'}</p>}
+          {located && <p className="mt-1.5 text-label font-normal text-muted">{addressText.trim() ? t('Location saved.') : t('Location saved. Now type your building, street and district.')}</p>}
         </div>
 
         {errors.form && <p className="text-label text-hotpink">{errors.form}</p>}
 
-        <Button type="submit" block loading={submitting} leftIcon={WhatsAppIcon} className="mt-2">
-          Continue with WhatsApp
-        </Button>
-        <p className="text-center text-body text-muted">
-          Already have an account?{' '}
-          <Link to={ROUTES.signIn} className="font-bold text-maroon hover:underline">
-            Sign in
-          </Link>
+        <Button type="submit" block loading={submitting} leftIcon={WhatsAppIcon} className="mt-2">{t('Continue with WhatsApp')}</Button>
+        <p className="text-center text-body text-muted">{t('Already have an account?')}{' '}<Link to={ROUTES.signIn} className="font-bold text-maroon hover:underline">{t('Sign in')}</Link>
         </p>
       </form>
     </AuthLayout>

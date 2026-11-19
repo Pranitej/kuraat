@@ -43,9 +43,9 @@ export function ToastProvider({ children }) {
               key={toast.id}
               role="status"
               className={cn(
-                'pointer-events-auto flex max-w-[440px] animate-toast-in items-center gap-3 rounded-pill py-2.5 pl-4 text-small font-semibold text-white shadow-dialog',
+                'pointer-events-auto flex max-w-[440px] animate-toast-in items-center gap-3 rounded-pill py-2.5 ps-4 text-small font-semibold text-white shadow-dialog',
                 toast.tone === 'error' ? 'bg-hotpink' : 'bg-ink',
-                toast.action ? 'pr-2' : 'pr-5',
+                toast.action ? 'pe-2' : 'pe-5',
               )}
             >
               <Icon size={18} strokeWidth={2} className={toast.tone === 'error' ? 'text-white' : 'text-pink'} aria-hidden />

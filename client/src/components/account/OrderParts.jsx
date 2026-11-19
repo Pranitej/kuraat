@@ -7,12 +7,13 @@ import { useProductImage } from '@/hooks/useProductImage.js';
 import { CARD_PAYMENT, PENDING_BRANCH, PICKUP, awaitingPayment, formatOrderDate, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
+import { t } from '@/i18n';
 
 /**
  * Refresh button for order status (design 2026-11-18 §5.4): spins while the server re-reads RSOF;
  * a failure keeps what is on screen and says why in a toast.
  */
-export function RefreshButton({ onRefresh, label = 'Refresh status' }) {
+export function RefreshButton({ onRefresh, label = t('Refresh status') }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const run = async () => {
@@ -45,9 +46,9 @@ export function StatusTag({ status, className }) {
 
 /** "Will be delivered from" / "Delivered from" / "Ordered from" (cancelled); pickup: "Pick up from" / "Picked up from". */
 export function branchLabel(status, order) {
-  if (status.cancelled) return 'Ordered from';
+  if (status.cancelled) return t('Ordered from');
   if (isPickup(order)) return status.ongoing ? PICKUP.pickupFrom : PICKUP.pickedUpFrom;
-  return status.ongoing ? 'Will be delivered from' : 'Delivered from';
+  return status.ongoing ? t('Will be delivered from') : t('Delivered from');
 }
 
 /**
@@ -80,7 +81,7 @@ export function OrderCard({ order, now }) {
   const count = orderItemCount(order);
   return (
     <Card className="p-4">
-      <Link to={ROUTES.order(order.id)} className="block" aria-label={`Order ${order.number}, ${status.label}, ${formatSAR(order.total)}`}>
+      <Link to={ROUTES.order(order.id)} className="block" aria-label={t('Order {number}, {status}, {total}', { number: order.number, status: status.label, total: formatSAR(order.total) })}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[17px] font-bold leading-6 text-ink">#{order.number}</p>
@@ -90,9 +91,9 @@ export function OrderCard({ order, now }) {
         </div>
         <div className="mt-3 flex items-end justify-between gap-3">
           <Thumbnails items={order.items} />
-          <div className="text-right">
+          <div className="text-end">
             <p className="text-small text-muted">
-              {count} {count === 1 ? 'item' : 'items'}
+              {count} {count === 1 ? t('item') : t('items')}
             </p>
             <p className="tabular text-[18px] font-bold leading-6 text-ink">{formatSAR(order.total)}</p>
             {/* A card order not paid yet: the order page has the Pay button. */}
@@ -135,7 +136,7 @@ export function OrderTimeline({ steps }) {
         const reached = step.state !== 'todo';
         return (
           <li key={step.id} className="relative flex gap-4 pb-5 last:pb-0">
-            {!last && <span aria-hidden className={cn('absolute left-[10px] top-6 h-[calc(100%-20px)] w-0.5 rounded-pill', lineClass(steps[i + 1]))} />}
+            {!last && <span aria-hidden className={cn('absolute start-[10px] top-6 h-[calc(100%-20px)] w-0.5 rounded-pill', lineClass(steps[i + 1]))} />}
             <span
               aria-hidden
               className={cn(
@@ -154,7 +155,7 @@ export function OrderTimeline({ steps }) {
               <p className={cn('text-[16px] font-bold leading-[22px]', step.state === 'cancelled' ? 'text-hotpink' : reached ? 'text-ink' : 'text-muted')}>
                 {step.title}
                 <span className="sr-only">
-                  {step.state === 'done' ? ' — completed' : step.state === 'current' ? ' — in progress' : step.state === 'cancelled' ? '' : ' — upcoming'}
+                  {step.state === 'done' ? t(' — completed') : step.state === 'current' ? t(' — in progress') : step.state === 'cancelled' ? '' : t(' — upcoming')}
                 </span>
               </p>
               <p className="text-label font-normal text-muted">{step.time}</p>

@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useId, useState } from 'react';
 import { ChevronDown, Eye, EyeOff, Lock } from 'lucide-react';
 import { cn } from '@/lib/cn.js';
 import { COUNTRIES, countryOf, formatNationalInput, phonePlaceholder, splitPhone, toApiPhone } from '@/domain';
+import { t } from '@/i18n';
 
 /** Label + control + helper/error (PDF: label 13/600 maroon, 8 pt gap). */
 export function FieldWrapper({ id, label, error, helper, className, children, labelAction }) {
@@ -80,8 +81,8 @@ export const PasswordField = forwardRef(function PasswordField({ showIcon = true
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
-          className="-mr-1 grid size-9 shrink-0 place-items-center rounded-full text-maroon transition hover:bg-maroon/[0.06]"
-          aria-label={visible ? 'Hide password' : 'Show password'}
+          className="-me-1 grid size-9 shrink-0 place-items-center rounded-full text-maroon transition hover:bg-maroon/[0.06]"
+          aria-label={visible ? t('Hide password') : t('Show password')}
           aria-pressed={visible}
         >
           {visible ? <EyeOff size={20} strokeWidth={1.8} /> : <Eye size={20} strokeWidth={1.8} />}
@@ -98,7 +99,7 @@ export const PasswordField = forwardRef(function PasswordField({ showIcon = true
  * "+" and the full number, so forms and requests need no changes. `trailing` sits at the end of the number box.
  */
 export const PhoneField = forwardRef(function PhoneField(
-  { label = 'Mobile number', value, onChange, error, helper, className, id: idProp, autoFocus, disabled, placeholder, trailing, ...rest },
+  { label = t('Mobile number'), value, onChange, error, helper, className, id: idProp, autoFocus, disabled, placeholder, trailing, ...rest },
   ref,
 ) {
   const autoId = useId();
@@ -140,7 +141,7 @@ export const PhoneField = forwardRef(function PhoneField(
           <ChevronDown size={18} strokeWidth={1.8} className="shrink-0 text-ink" aria-hidden />
           {/* A native select keeps it keyboard and screen-reader friendly, and every phone has a good picker for it. */}
           <select
-            aria-label="Country code"
+            aria-label={t('Country code')}
             disabled={disabled}
             value={iso}
             onChange={(e) => pickCountry(e.target.value)}
@@ -187,11 +188,11 @@ export const SelectField = forwardRef(function SelectField(
   return (
     <FieldWrapper id={id} label={label} error={error} helper={helper} className={className}>
       <div className={inputShell({ error, padded: false, className: 'relative' })}>
-        {Icon && <Icon size={20} strokeWidth={1.8} className="pointer-events-none absolute left-4 text-maroon" aria-hidden />}
+        {Icon && <Icon size={20} strokeWidth={1.8} className="pointer-events-none absolute start-4 text-maroon" aria-hidden />}
         <select
           ref={ref}
           id={id}
-          className={cn('h-full w-full cursor-pointer appearance-none bg-transparent pr-10 text-input text-ink outline-none', Icon ? 'pl-12' : 'pl-4')}
+          className={cn('h-full w-full cursor-pointer appearance-none bg-transparent pe-10 text-input text-ink outline-none', Icon ? 'ps-12' : 'ps-4')}
           {...rest}
         >
           {options.map((o) => (
@@ -200,7 +201,7 @@ export const SelectField = forwardRef(function SelectField(
             </option>
           ))}
         </select>
-        <ChevronDown size={18} strokeWidth={1.8} className="pointer-events-none absolute right-4 text-ink" aria-hidden />
+        <ChevronDown size={18} strokeWidth={1.8} className="pointer-events-none absolute end-4 text-ink" aria-hidden />
       </div>
     </FieldWrapper>
   );

@@ -8,10 +8,11 @@ import { useToast } from '@/context/ToastContext.jsx';
 import { ROUTES } from '@/config/routes.js';
 import { evaluatePassword, firstName } from '@/domain';
 import { useDocumentTitle } from '@/hooks';
+import { t } from '@/i18n';
 
 /** 05 · Set your password — sign-up without OTP ("Set a password instead") or reset after OTP. */
 export default function SetPasswordPage() {
-  useDocumentTitle('Set your password');
+  useDocumentTitle(t('Set your password'));
   const navigate = useNavigate();
   const toast = useToast();
   const { getPendingOtp, completeSignupWithPassword, resetPasswordWithOtp, user } = useAuth();
@@ -30,11 +31,11 @@ export default function SetPasswordPage() {
     e.preventDefault();
     const next = {
       password: !password
-        ? 'Create a password'
+        ? t('Create a password')
         : evaluation.acceptable
           ? ''
-          : 'Use at least 8 characters with upper and lower case letters and a number',
-      confirm: !confirm ? 'Confirm your password' : confirm !== password ? 'Passwords do not match' : '',
+          : t('Use at least 8 characters with upper and lower case letters and a number'),
+      confirm: !confirm ? t('Confirm your password') : confirm !== password ? t('Passwords do not match') : '',
     };
     setErrors(next);
     if (next.password || next.confirm) return;
@@ -42,7 +43,7 @@ export default function SetPasswordPage() {
     try {
       const signedIn = mode === 'signup' ? await completeSignupWithPassword(password) : await resetPasswordWithOtp(password);
       reloadCart();
-      toast.show(mode === 'signup' ? `Welcome to kuraat, ${firstName(signedIn.name)}` : 'Your password has been reset');
+      toast.show(mode === 'signup' ? t('Welcome to kuraat, {name}', { name: firstName(signedIn.name) }) : t('Your password has been reset'));
       navigate(ROUTES.home, { replace: true });
     } catch (err) {
       setErrors({ form: err.message });
@@ -51,15 +52,15 @@ export default function SetPasswordPage() {
   };
 
   return (
-    <AuthLayout title="Set your password" subtitle="Used when WhatsApp codes do not arrive" backFallback={ROUTES.verify}>
+    <AuthLayout title={t('Set your password')} subtitle={t('Used when WhatsApp codes do not arrive')} backFallback={ROUTES.verify}>
       <form noValidate onSubmit={submit} className="flex flex-col">
         <div>
           <PasswordField
-            label="New password"
+            label={t('New password')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
-            placeholder="Create a password"
+            placeholder={t('Create a password')}
             autoFocus
             error={errors.password}
           />
@@ -67,19 +68,19 @@ export default function SetPasswordPage() {
         </div>
         <PasswordField
           className="mt-5"
-          label="Confirm password"
+          label={t('Confirm password')}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           autoComplete="new-password"
-          placeholder="Repeat your password"
+          placeholder={t('Repeat your password')}
           error={errors.confirm}
         />
         <PasswordRules evaluation={evaluation} className="mt-5" />
         {errors.form && <p className="mt-4 text-label text-hotpink">{errors.form}</p>}
         <Button type="submit" block loading={saving} className="mt-8">
-          {mode === 'signup' ? 'Create account' : 'Save password'}
+          {mode === 'signup' ? t('Create account') : t('Save password')}
         </Button>
-        <p className="mt-4 text-center text-body text-muted">Your password lets you sign in without a WhatsApp code.</p>
+        <p className="mt-4 text-center text-body text-muted">{t('Your password lets you sign in without a WhatsApp code.')}</p>
       </form>
     </AuthLayout>
   );

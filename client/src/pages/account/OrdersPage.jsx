@@ -7,18 +7,17 @@ import { useOrders } from '@/context/OrderContext.jsx';
 import { ORDER_FILTERS, filterOrders } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
+import { t } from '@/i18n';
 
 /** Status dropdown styled like a chip; a native select so phones get their own picker. */
 function StatusSelect({ value, onChange }) {
   return (
-    <label className="flex items-center gap-2.5 text-label text-muted">
-      Show
-      <span className="relative">
+    <label className="flex items-center gap-2.5 text-label text-muted">{t('Show')}<span className="relative">
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          aria-label="Show orders"
-          className="h-10 appearance-none rounded-pill border border-line bg-white pl-4 pr-10 text-[15px] font-semibold text-maroon outline-none transition focus:border-maroon focus:shadow-ring"
+          aria-label={t('Show orders')}
+          className="h-10 appearance-none rounded-pill border border-line bg-white ps-4 pe-10 text-[15px] font-semibold text-maroon outline-none transition focus:border-maroon focus:shadow-ring"
         >
           {ORDER_FILTERS.map((f) => (
             <option key={f.id} value={f.id}>
@@ -26,7 +25,7 @@ function StatusSelect({ value, onChange }) {
             </option>
           ))}
         </select>
-        <ChevronDown size={18} strokeWidth={2} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-maroon" aria-hidden />
+        <ChevronDown size={18} strokeWidth={2} className="pointer-events-none absolute end-3.5 top-1/2 -translate-y-1/2 text-maroon" aria-hidden />
       </span>
     </label>
   );
@@ -34,7 +33,7 @@ function StatusSelect({ value, onChange }) {
 
 /** 20 · My orders  ·  21 · My orders (empty) */
 export default function OrdersPage() {
-  useDocumentTitle('My orders');
+  useDocumentTitle(t('My orders'));
   const { orders, now, loaded, error, refresh } = useOrders();
   const [filter, setFilter] = useState('all');
 
@@ -49,27 +48,27 @@ export default function OrdersPage() {
     <div className="pb-10">
       <div className="mx-auto max-w-column lg:max-w-[720px]">
         <ScreenHeader
-          title="My orders"
+          title={t('My orders')}
           backFallback={ROUTES.profile}
-          right={loaded ? <RefreshButton label="Refresh orders" onRefresh={() => refresh({ force: true })} /> : null}
+          right={loaded ? <RefreshButton label={t('Refresh orders')} onRefresh={() => refresh({ force: true })} /> : null}
         />
         <div className="px-5 lg:px-0">
           {loadFailed ? (
             <EmptyState
               className="pt-8"
               icon={CloudOff}
-              title="We can't load your orders"
-              message={error?.message || 'Please try again in a moment.'}
-              actionLabel="Try again"
+              title={t('We can\'t load your orders')}
+              message={error?.message || t('Please try again in a moment.')}
+              actionLabel={t('Try again')}
               onAction={() => refresh()}
             />
           ) : showEmpty ? (
             <EmptyState
               className="pt-8"
               icon={Package}
-              title="No orders yet"
-              message="When you place an order it will appear here, together with the branch it was delivered from."
-              actionLabel="Start shopping"
+              title={t('No orders yet')}
+              message={t('When you place an order it will appear here, together with the branch it was delivered from.')}
+              actionLabel={t('Start shopping')}
               actionTo={ROUTES.home}
             />
           ) : (
@@ -84,9 +83,9 @@ export default function OrdersPage() {
                 <EmptyState
                   compact
                   icon={Package}
-                  title="No orders here"
-                  message="Orders with this status will show here."
-                  actionLabel="Show all orders"
+                  title={t('No orders here')}
+                  message={t('Orders with this status will show here.')}
+                  actionLabel={t('Show all orders')}
                   onAction={() => setFilter('all')}
                 />
               )}

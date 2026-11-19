@@ -303,15 +303,14 @@ describe('15 · Complete your payment (online payment on the secure payment page
     expect(calls.filter((c) => c.path.includes('/pay'))).toHaveLength(0);
   });
 
-  test('RSOF gave no page with the order: one tap on Pay gets it, a second opens it', async () => {
+  test('RSOF gave no page with the order: ONE tap on Pay gets the page and opens it', async () => {
     setMockParams({ orderId: 'o1' });
     const { calls } = await renderScreen(<PaymentSuccessScreen />, {
       server: (c) => (c.path === '/orders/o1/pay' ? { body: { link: PAGE, expiresAt: null } } : server({ ...ONLINE, payment: { ...ONLINE.payment, link: null } })(c)),
     });
     await fireEvent.press(await screen.findByRole('button', { name: 'Pay SAR 185.00' }));
-    await waitFor(() => expect(calls.filter((c) => c.path === '/orders/o1/pay')).toHaveLength(1));
-    await fireEvent.press(await screen.findByRole('button', { name: 'Pay SAR 185.00' }));
     await waitFor(() => expect(mockOpenBrowser).toHaveBeenCalledWith(PAGE, expect.any(Object)));
+    expect(calls.filter((c) => c.path === '/orders/o1/pay')).toHaveLength(1);
   });
 
   test('RSOF cannot give a page: the kuraat server message shows with Try again', async () => {

@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { OrderItemImage, OrderTimeline, RefreshButton, StatusTag, branchLabel, type StatusView, type TimelineRow } from '@/components/account/OrderParts';
+import { PaymentDueCard } from '@/components/checkout/PaymentDueCard';
 import { Screen, ScreenHeader } from '@/components/layout';
 import { ChevronDown, ChevronUp, Navigation, PackageSearch, PackageX, Phone, Store } from '@/components/icons';
 import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Text, WhatsAppIcon } from '@/components/ui';
@@ -131,6 +132,8 @@ export default function OrderDetailScreen() {
         <View style={styles.statusRow}>
           <StatusTag status={status} />
         </View>
+        {/* RSOF says this order is not paid yet (or the attempt failed / ran out): the customer can pay right here. */}
+        {order.canPay ? <PaymentDueCard order={order} onOrderPage /> : null}
         <Card style={styles.pad}>
           <OrderTimeline steps={steps} />
           {status.id === 'out_for_delivery' ? <DeliveryCodeNote order={order} onResend={resendCode} /> : null}

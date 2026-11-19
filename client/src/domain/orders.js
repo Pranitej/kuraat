@@ -135,6 +135,7 @@ export const CARD_PAYMENT = localized({
   waitingBody: (total) => t('Your order is placed. Pay {total} on the secure payment page to confirm it.', { total }),
   pay: (total) => t('Pay {total}', { total }),
   returnHint: 'After paying, check your payment status on the Orders page.',
+  refreshHint: 'After paying, your payment status updates on this page. Tap refresh if it does not change.',
   tryAgain: 'Try again',
   viewOrders: 'View my orders',
 });

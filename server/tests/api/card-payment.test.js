@@ -208,6 +208,43 @@ describe('who can ask for a page', () => {
   });
 });
 
+describe("Pay now on the order details (decided from RSOF's own payment status)", () => {
+  const setPayment = (word) => {
+    t.mockRof.store.data.orders[0].paymentStatus = word;
+    seconds(60);
+  };
+
+  test('RSOF says the payment is not done: canPay is true and the first step says "Order placed", not "Order confirmed"', async () => {
+    await start();
+    const order = await placeTestOrder(t, me);
+    for (const word of ['LinkSent', 'Pending', 'Failed', 'Expired']) {
+      setPayment(word);
+      const detail = (await api('get', `/orders/${order.id}?refresh=true`)).body;
+      expect(detail.canPay, word).toBe(true);
+      expect(detail.steps[0].title, word).toBe('Order placed');
+    }
+    expect((await api('get', '/orders')).body[0].canPay).toBe(true); // the list says the same
+  });
+
+  test('paid, refunded, no status from RSOF, cancelled or not an online payment: no Pay now and the normal step name', async () => {
+    await start();
+    const order = await placeTestOrder(t, me);
+    for (const word of ['Paid', 'Refunded', null]) {
+      setPayment(word);
+      const detail = (await api('get', `/orders/${order.id}?refresh=true`)).body;
+      expect(detail.canPay, String(word)).toBe(false);
+      expect(detail.steps[0].title, String(word)).toBe('Order confirmed');
+    }
+    setPayment('LinkSent');
+    expect((await api('post', `/orders/${order.id}/cancel`)).status).toBe(200);
+    expect((await api('get', `/orders/${order.id}?refresh=true`)).body.canPay).toBe(false);
+    const cash = await placeTestOrder(t, me, { payment: { method: 'cod' } });
+    t.mockRof.store.data.orders[1].paymentStatus = 'LinkSent';
+    seconds(60);
+    expect((await api('get', `/orders/${cash.id}?refresh=true`)).body.canPay).toBe(false);
+  });
+});
+
 describe('cancelling an online-payment order', () => {
   test('the payment record is voided, RSOF is not asked about the payment, and the message promises only "the store handles your refund"', async () => {
     await start();

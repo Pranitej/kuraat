@@ -4,6 +4,7 @@ import { ChevronDown, Navigation, PackageSearch, PackageX, Phone, Store } from '
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, WhatsAppIcon } from '@/components/ui';
 import { OrderItemImage, OrderTimeline, RefreshButton, StatusTag, branchLabel } from '@/components/account/OrderParts.jsx';
+import PaymentDueCard from '@/components/checkout/PaymentDueCard.jsx';
 import { useOrder, useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
 import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderHistoryView, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
@@ -108,6 +109,8 @@ export default function OrderDetailPage() {
       <div className="mx-auto max-w-column px-5 lg:grid lg:max-w-[1080px] lg:grid-cols-2 lg:items-start lg:gap-8 lg:px-8">
         <div className="flex flex-col gap-3 lg:gap-5">
           <StatusTag status={status} className="self-start sm:hidden" />
+          {/* RSOF says this order is not paid yet (or the attempt failed / ran out): the customer can pay right here. */}
+          {order.canPay && <PaymentDueCard order={order} onOrderPage />}
           <Card className="p-4">
             <OrderTimeline steps={steps} />
             {status.id === 'out_for_delivery' && <DeliveryCodeNote order={order} onResend={resendCode} />}

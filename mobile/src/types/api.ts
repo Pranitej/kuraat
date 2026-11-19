@@ -151,6 +151,8 @@ export type Order = {
   total: number;
   /** RSOF's own payment status, shown on the order details (null until a payment exists). */
   paymentStatus?: { code: string; label: string } | null;
+  /** RSOF says the payment is open (not paid / failed / expired): show Pay now on the order details. */
+  canPay?: boolean;
   payment: {
     method: PaymentMethod;
     /** How the customer pays, never whether they paid (server/README.md → Online payment). Older server replies have none. */

@@ -10,30 +10,31 @@ import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
 
 /**
- * "Complete your payment" after an online-payment order is placed. Deliberately simple: Pay opens RSOF's secure
- * payment page in the in-app sheet, and that is all — whether the customer paid is RSOF's business, so nothing is
- * checked or shown here; the text tells them to look at the Orders page. The page comes with the order; when RSOF
- * gave none, one tap gets it.
+ * "Complete your payment" for an online-payment order that is not paid (right after ordering, and on the order
+ * details while RSOF says the payment is open). Deliberately simple: Pay opens RSOF's secure payment page in the
+ * in-app sheet, and that is all — whether the customer paid is RSOF's business, so nothing is checked or shown here.
+ * `onOrderPage`: the hint says the status updates on this screen (otherwise it points to the Orders page).
+ * The page comes with a new order; otherwise ONE tap gets it from the kuraat server and opens it.
  */
-export function PaymentDueCard({ order, style }: { order: Order; style?: StyleProp<ViewStyle> }) {
+export function PaymentDueCard({ order, onOrderPage = false, style }: { order: Order; onOrderPage?: boolean; style?: StyleProp<ViewStyle> }) {
   const [link, setLink] = useState<string | null>(order.payment?.link ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const total = formatSAR(order.total);
 
-  const run = async (work: () => Promise<void>) => {
+  const pay = async () => {
     setBusy(true);
     setError('');
     try {
-      await work();
+      const page = link ?? ((await payOrder(order.id)) as { link: string }).link;
+      setLink(page);
+      await openPaymentPage(page);
     } catch (e) {
       setError((e as Error).message || t("We couldn't open the payment page. Please try again."));
     } finally {
       setBusy(false);
     }
   };
-  const getPage = () => run(async () => setLink(((await payOrder(order.id)) as { link: string }).link));
-  const open = () => run(() => openPaymentPage(link as string));
 
   return (
     <Card style={[styles.card, style]}>
@@ -49,11 +50,11 @@ export function PaymentDueCard({ order, style }: { order: Order; style?: StylePr
           <Text style={styles.alertText}>{error}</Text>
         </View>
       ) : null}
-      <Button block leftIcon={Lock} loading={busy} onPress={link ? open : getPage} style={styles.pay}>
+      <Button block leftIcon={Lock} loading={busy} onPress={pay} style={styles.pay}>
         {!link && error ? CARD_PAYMENT.tryAgain : CARD_PAYMENT.pay(total)}
       </Button>
       <Text variant="small" color="muted" style={styles.hint}>
-        {CARD_PAYMENT.returnHint}
+        {onOrderPage ? CARD_PAYMENT.refreshHint : CARD_PAYMENT.returnHint}
       </Text>
     </Card>
   );

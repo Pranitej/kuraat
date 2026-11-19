@@ -203,6 +203,47 @@ describe('22 · Order tracking — pickup', () => {
   });
 });
 
+describe('22 · Pay now on the order details (RSOF says the payment is open)', () => {
+  const UNPAID = {
+    ...ONGOING,
+    status: { id: 'confirmed', label: 'Location received', step: 0, cancelled: false },
+    steps: base.steps.map((s, i) => (i === 0 ? { ...s, title: 'Order placed', state: 'current' } : { ...s, state: 'todo' })),
+    payment: { method: 'card', status: 'online', brand: null, last4: null, transactionId: null, paidAt: null, link: null },
+    paymentStatus: { code: 'LinkSent', label: 'Payment pending' },
+    canPay: true,
+  };
+
+  test('shows "Complete your payment" with Pay; one tap opens the payment page; the first step says Order placed', async () => {
+    setMockParams({ orderId: 'o1' });
+    const opened: string[] = [];
+    jest.doMock('expo-web-browser', () => ({ openBrowserAsync: async (url: string) => opened.push(url) }));
+    const { calls } = await renderScreen(<OrderDetailScreen />, {
+      server: (c) =>
+        c.path === '/orders/o1/pay'
+          ? { body: { link: 'https://rofuat.rsof.com.sa/en/pay/T9', expiresAt: null } }
+          : c.path === '/orders/o1'
+            ? { body: UNPAID }
+            : undefined,
+    });
+    expect(await screen.findAllByText('Complete your payment')).toBeTruthy();
+    expect(screen.getByText('Order placed')).toBeTruthy();
+    expect(screen.queryByText('Order confirmed')).toBeNull();
+    expect(screen.getByText('After paying, your payment status updates on this page. Tap refresh if it does not change.')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay SAR 185.00' }));
+    await waitFor(() => expect(calls.filter((c) => c.path === '/orders/o1/pay')).toHaveLength(1));
+  });
+
+  test('when RSOF says paid (canPay false) there is no Pay button and no payment card', async () => {
+    setMockParams({ orderId: 'o1' });
+    await renderScreen(<OrderDetailScreen />, {
+      server: (c) => (c.path === '/orders/o1' ? { body: { ...UNPAID, canPay: false, paymentStatus: { code: 'Paid', label: 'Paid' } } } : undefined),
+    });
+    expect(await screen.findByText('Payment status')).toBeTruthy();
+    expect(screen.queryByText('Complete your payment')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Pay SAR/ })).toBeNull();
+  });
+});
+
 describe('22 · Order tracking', () => {
   test('ROF has not assigned a branch yet: the branch card says so, with no Call or Directions', async () => {
     setMockParams({ orderId: 'o1' });

@@ -10,38 +10,52 @@ const WINDOW_NAME = 'kuraat-payment';
 const WINDOW_FEATURES = 'popup=yes,width=480,height=760,menubar=no,toolbar=no,location=yes,status=no,resizable=yes,scrollbars=yes';
 
 /**
- * "Complete your payment" after an online-payment order is placed. Deliberately simple: Pay opens RSOF's secure
- * payment page, and that is all — whether the customer paid is RSOF's business, so nothing is checked or shown here;
- * the text tells them to look at the Orders page. `link` comes with the order; when RSOF gave none, one tap gets it.
+ * "Complete your payment" for an online-payment order that is not paid (right after ordering, and on the order
+ * details while RSOF says the payment is open). Deliberately simple: Pay opens RSOF's secure payment page, and that is
+ * all — whether the customer paid is RSOF's business, so nothing is checked or shown here.
+ * `onOrderPage`: the hint says the status updates on this page (otherwise it points to the Orders page).
+ * The page comes with a new order; otherwise one tap gets it from the kuraat server and opens it at once — the popup
+ * is opened by the tap itself (so no browser blocks it) and pointed at the page when it arrives.
  */
-export default function PaymentDueCard({ order, className }) {
+export default function PaymentDueCard({ order, onOrderPage = false, className }) {
   const [link, setLink] = useState(order.payment?.link ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const total = formatSAR(order.total);
 
-  const getPage = async () => {
+  const openWindow = (url) => {
+    const win = window.open(url, WINDOW_NAME, WINDOW_FEATURES);
+    if (win) {
+      try {
+        win.opener = null; // the payment page must not reach back into this page
+      } catch {
+        /* already cross-origin: nothing to do */
+      }
+      win.focus?.();
+    }
+    return win;
+  };
+
+  // A page we already hold: a real link, so a blocked popup still opens in a new tab.
+  const openKnown = (event) => {
+    if (openWindow(link)) event.preventDefault();
+  };
+
+  // No page yet: open the window now (a tap is allowed to), then send it to the page once the kuraat server has it.
+  const getAndOpen = async () => {
     setBusy(true);
     setError('');
+    const win = openWindow('');
     try {
-      setLink((await payOrder(order.id)).link);
+      const page = (await payOrder(order.id)).link;
+      if (win) win.location.href = page;
+      else setLink(page); // popup blocked: show the real link, one more tap opens it in a new tab
     } catch (e) {
+      win?.close();
       setError(e.message);
     } finally {
       setBusy(false);
     }
-  };
-
-  const open = (event) => {
-    const win = window.open(link, WINDOW_NAME, WINDOW_FEATURES);
-    if (!win) return; // popup blocked: the link opens in a new tab
-    event.preventDefault();
-    try {
-      win.opener = null; // the payment page must not reach back into this page
-    } catch {
-      /* already cross-origin: nothing to do */
-    }
-    win.focus?.();
   };
 
   return (
@@ -56,15 +70,15 @@ export default function PaymentDueCard({ order, className }) {
           </p>
         )}
         {link ? (
-          <Button block className="mt-4" leftIcon={Lock} href={link} target="_blank" rel="noopener noreferrer" onClick={open}>
+          <Button block className="mt-4" leftIcon={Lock} href={link} target="_blank" rel="noopener noreferrer" onClick={openKnown}>
             {CARD_PAYMENT.pay(total)}
           </Button>
         ) : (
-          <Button block className="mt-4" leftIcon={Lock} loading={busy} onClick={getPage}>
+          <Button block className="mt-4" leftIcon={Lock} loading={busy} onClick={getAndOpen}>
             {error ? CARD_PAYMENT.tryAgain : CARD_PAYMENT.pay(total)}
           </Button>
         )}
-        <p className="mt-3 text-small text-muted">{CARD_PAYMENT.returnHint}</p>
+        <p className="mt-3 text-small text-muted">{onOrderPage ? CARD_PAYMENT.refreshHint : CARD_PAYMENT.returnHint}</p>
       </section>
     </Card>
   );

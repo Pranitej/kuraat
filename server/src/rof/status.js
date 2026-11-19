@@ -118,6 +118,13 @@ export function paymentStatusInfo(value) {
   return { code, label: words.charAt(0).toUpperCase() + words.slice(1) };
 }
 
+/**
+ * Can the customer still pay? Only RSOF knows, so it is decided from RSOF's own payment status: not paid yet, or the
+ * earlier attempt failed or ran out. (Paid / refunded / cancelled / unknown / none → no Pay button.)
+ */
+const PAYABLE_LABELS = new Set(['Payment pending', 'Payment failed', 'Payment expired']);
+export const isPaymentOpen = (info) => Boolean(info && PAYABLE_LABELS.has(info.label));
+
 /** 0–3, 'cancelled', or null for a status we do not know (e.g. transfer statuses 20–27). */
 export const stepOf = (value, fulfilment = 'delivery') => statusInfo(value, fulfilment)?.step ?? null;
 

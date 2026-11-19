@@ -3,7 +3,7 @@
  * folded into the four tracking steps of the design (+ a cancelled state).
  */
 import { roundedDistance } from '../../lib/geo.js';
-import { FALLBACK_BY_STEP, canCancel, canResendCode, paymentStatusInfo, statusInfo, stepOf, stepTimes } from '../../rof/status.js';
+import { FALLBACK_BY_STEP, canCancel, canResendCode, isPaymentOpen, paymentStatusInfo, statusInfo, stepOf, stepTimes } from '../../rof/status.js';
 
 const DELIVERY_STEPS = [
   ['confirmed', 'Order confirmed'],
@@ -169,6 +169,7 @@ export function presentRofOrder(order, { branch = null, link = null, payment = n
     payment: null,
     // RSOF's own payment status (e.g. Paid / Payment pending / Payment failed), shown as is: RSOF handles the payment.
     paymentStatus: paymentStatusInfo(order.paymentStatus),
+    canPay: false, // set below for an order placed in our app
     branch: branch ?? (order.branchId ? { id: order.branchId, name: order.branchName } : null),
     distanceKm: null,
     address: order.fulfilment === 'pickup' ? null : { line: order.address, district: null, city, postcode: null, location: null },
@@ -181,9 +182,15 @@ export function presentRofOrder(order, { branch = null, link = null, payment = n
   };
   if (!link) return view;
   const saved = link.lines || [];
+  // Pay now: an online-payment order of ours that RSOF says is not paid (yet). Until it is paid the order is only
+  // "placed" — the tracker must not say "Order confirmed" for an order nobody has paid.
+  const canPay = !cancelled && payment?.method === 'card' && payment.status !== 'voided' && isPaymentOpen(view.paymentStatus);
+  const trackerSteps = canPay ? view.steps.map((s, i) => (i === 0 ? { ...s, title: 'Order placed' } : s)) : view.steps;
   return {
     ...view,
     id: link.id,
+    canPay,
+    steps: trackerSteps,
     items: view.items.map((i) => ({ ...i, image: rebase(saved.find((l) => l.productId === i.productId)?.image, media) })),
     payment: paymentView(payment),
     address: link.address ?? view.address,

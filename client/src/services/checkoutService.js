@@ -16,16 +16,17 @@ export async function getQuote({ fulfilment = 'delivery', addressId, productIds,
 }
 
 /**
- * Which payment methods work right now: card is paid on RSOF's payment page and is off while that is not working
- * (cash on delivery and pay at the branch always work). A failed check counts as "card off".
- * @returns {Promise<{ card: boolean }>}
+ * What the customer can pay with. card: online payment on RSOF's page works right now. cash: cash on delivery and pay
+ * at the branch are offered at all (the kuraat server's CASH_PAYMENTS_ENABLED; an older server sends no `cash` and
+ * still offers them). A failed check offers nothing: the order could not be placed anyway.
+ * @returns {Promise<{ card: boolean, cash: boolean }>}
  */
 export async function getPaymentOptions() {
   try {
     const options = await apiRequest('/checkout/payment-options');
-    return { card: options?.card === true };
+    return { card: options?.card === true, cash: options?.cash !== false };
   } catch {
-    return { card: false };
+    return { card: false, cash: false };
   }
 }
 

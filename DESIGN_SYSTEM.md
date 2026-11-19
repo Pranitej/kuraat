@@ -318,7 +318,7 @@ Same screen after "Read more" and scrolling: compact sticky header (back · prod
    now **"Pay online"** and no longer expands to card fields (no card number, expiry, CVV or "Save this card" in the app).
    Subtitle "Choose how to pay on a secure payment page". RSOF's page decides which payment options exist (Mada, Visa,
    Apple Pay …), so the apps never name any of them; when selected, a muted line explains the payment window.
-   The bottom bar reads "🔒 Continue to payment · SAR …" (the order is placed first, then paid). While online payment is
+   The bottom bar reads "🔒 Continue to payment · SAR …" (the order is placed first, then paid). Cash on delivery and pay at the branch are hidden while the kuraat server's `CASH_PAYMENTS_ENABLED` is false (since 19 Nov 2026: online payment only); if online payment is off as well, a notice says payment is not available and nothing can be pressed. While online payment is
    not working (the kuraat server's `GET /checkout/payment-options` says `card: false`) the online-payment radio is greyed out
    (50 % opacity, subtitle "Online payment is not available right now") and cash on delivery / pay at branch is chosen.
    Do not re-add the card form when "matching the PDF".

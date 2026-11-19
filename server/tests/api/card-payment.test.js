@@ -36,7 +36,7 @@ const payment = () => t.db('payments').first();
 describe('paying online on the RSOF page', () => {
   test('the new order comes with the payment page; RSOF is asked exactly once for it', async () => {
     await start();
-    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: true }); // the cached "is it on?" check: 1 call
+    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: true, cash: true }); // the cached "is it on?" check: 1 call
     const before = linkCalls();
     const order = await placeTestOrder(t, me);
     expect(order.payment).toMatchObject({ method: 'card', status: 'online', link: expect.stringMatching(/^http:\/\/127\.0\.0\.1:\d+\/en\/pay\/\w+$/), linkExpiresAt: expect.any(String) });
@@ -76,7 +76,7 @@ describe('paying online on the RSOF page', () => {
 
   test('RSOF has no page right after the order is placed: the order is still placed (201), link null; Pay works later', async () => {
     await start();
-    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: true });
+    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: true, cash: true });
     await fault({ paymentOutcome: 'NotReady' });
     const order = await placeTestOrder(t, me);
     expect(order.payment).toMatchObject({ status: 'online', link: null, linkExpiresAt: null });
@@ -127,7 +127,7 @@ describe('when RSOF cannot give a page', () => {
 describe('online payment switched off', () => {
   test('no payment API key: shown as unavailable and refused before anything is created; cash still works', async () => {
     await start({ cardPayments: false });
-    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: false });
+    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: false, cash: true });
     await api('put', '/cart', { items: [{ productId: PRODUCT_IDS.classic, qty: 1 }] });
     const home = (await api('get', '/addresses')).body.find((a) => a.isDefault);
     const res = await api('post', '/orders', { addressId: home.id, payment: CARD, idempotencyKey: randomUUID() });
@@ -141,19 +141,19 @@ describe('online payment switched off', () => {
   test('RSOF not ready / API not live: off, checked at most once a minute, back on by itself, and the check creates nothing', async () => {
     await start();
     await fault({ paymentLinkHttp: 404 });
-    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: false });
+    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: false, cash: true });
     await fault({ paymentLinkHttp: null });
     const calls = linkCalls();
     seconds(30);
-    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: false }); // remembered
+    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: false, cash: true }); // remembered
     expect(linkCalls()).toBe(calls);
     seconds(31);
-    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: true });
+    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: true, cash: true });
     expect(t.mockRof.store.data.paymentLinks ?? {}).toEqual({});
     expect(t.mockRof.store.data.orders).toHaveLength(0);
     await fault({ paymentOutcome: 'NotReady' }); // e.g. the payment gateway token is not entered in RSOF yet
     seconds(5 * 60 + 1);
-    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: false });
+    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: false, cash: true });
   });
 
   test('a page request that fails during the day switches it off for new orders until RSOF answers again', async () => {
@@ -162,12 +162,51 @@ describe('online payment switched off', () => {
     seconds(10);
     await fault({ paymentLinkHttp: 500 });
     expect((await api('post', `/orders/${order.id}/pay`)).status).toBe(503);
-    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: false });
+    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: false, cash: true });
   });
 
   test('payment options need a signed-in customer', async () => {
     await start();
     expect((await request(t.app).get('/api/v1/checkout/payment-options')).status).toBe(401);
+  });
+});
+
+describe('cash payments switched off (CASH_PAYMENTS_ENABLED=false)', () => {
+  const noCash = { configOverrides: { cashPayments: false } };
+  const home = async () => (await api('get', '/addresses')).body.find((a) => a.isDefault);
+  const order = async (body) => {
+    await api('put', '/cart', { items: [{ productId: PRODUCT_IDS.classic, qty: 1 }] });
+    return api('post', '/orders', { idempotencyKey: randomUUID(), ...body });
+  };
+
+  test('the apps are told: online payment on, cash off', async () => {
+    await start(noCash);
+    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: true, cash: false });
+    await start();
+    expect((await api('get', '/checkout/payment-options')).body).toEqual({ card: true, cash: true });
+  });
+
+  test('cash on delivery and pay at the branch are refused before anything is created; paying online works', async () => {
+    await start(noCash);
+    const addressId = (await home()).id;
+    const cod = await order({ addressId, payment: { method: 'cod' } });
+    expect(cod.status).toBe(400);
+    expect(cod.body).toMatchObject({ code: 'invalid', field: 'payment.method', message: "Cash payment isn't available right now. Please pay online." });
+    const branch = await order({ fulfilment: 'pickup', payment: { method: 'branch' } });
+    expect(branch).toMatchObject({ status: 400, body: { code: 'invalid', field: 'payment.method' } });
+    expect(t.mockRof.store.data.orders).toHaveLength(0);
+    expect(await t.db('payments')).toHaveLength(0);
+    expect((await order({ addressId, payment: { method: 'card' } })).status).toBe(201);
+    expect((await order({ fulfilment: 'pickup', payment: { method: 'card' } })).status).toBe(201);
+  });
+
+  test('online payment off too: the message no longer points to cash that does not exist', async () => {
+    await start({ ...noCash, cardPayments: false });
+    const res = await order({ addressId: (await home()).id, payment: { method: 'card' } });
+    expect(res.status).toBe(503);
+    expect(res.body.message).toBe("Online payment isn't available right now. Please try again in a few minutes.");
+    expect(res.body.message).not.toMatch(/cash/i);
+    expect(t.mockRof.store.data.orders).toHaveLength(0);
   });
 });
 

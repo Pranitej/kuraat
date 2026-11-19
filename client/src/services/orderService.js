@@ -50,12 +50,13 @@ export const PAYMENT_METHODS = ['card', 'cod', 'branch'];
 export const methodsFor = (fulfilment) => (fulfilment === 'pickup' ? ['card', 'branch'] : ['card', 'cod']);
 
 /**
- * The remembered method if this way of getting the order still offers it, else card. While card payment is not
- * available (`cardAvailable: false`, from the server's payment options) the other method of this way is chosen.
+ * The remembered method if this way of getting the order still offers it, else the first one on offer. Which are on
+ * offer comes from the server's payment options: online payment (`cardAvailable`, works right now) and the two cash
+ * ways (`cashAvailable`, switched on at all). With nothing on offer the answer is "card" (shown greyed out).
  */
-export function offeredMethod(method, fulfilment, { cardAvailable = true } = {}) {
-  const offered = methodsFor(fulfilment).filter((m) => cardAvailable || m !== 'card');
-  return offered.includes(method) ? method : offered[0];
+export function offeredMethod(method, fulfilment, { cardAvailable = true, cashAvailable = true } = {}) {
+  const offered = methodsFor(fulfilment).filter((m) => (m === 'card' ? cardAvailable : cashAvailable));
+  return offered.includes(method) ? method : (offered[0] ?? 'card');
 }
 
 /** The payment part of the order request. A card is paid on RSOF's secure payment page afterwards: no card details are sent. */

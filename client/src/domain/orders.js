@@ -141,6 +141,7 @@ export const CARD_PAYMENT = localized({
   title: 'Pay online',
   subtitle: 'Choose how to pay on a secure payment page',
   unavailable: 'Online payment is not available right now',
+  noneAvailable: 'Payment is not available right now. Please try again in a few minutes.',
   waitingTitle: 'Complete your payment',
   waitingBody: (total) => t('Your order is placed. Pay {total} on the secure payment page to confirm it.', { total }),
   pay: (total) => t('Pay {total}', { total }),

@@ -261,6 +261,7 @@ export default {
   'Partly paid': 'مدفوع جزئيًا',
   'Partly refunded': 'تم استرداد جزء من المبلغ',
   'After paying, your payment status updates on this page. Tap refresh if it does not change.': 'بعد الدفع تتحدث حالة الدفع في هذه الصفحة. اضغط تحديث إذا لم تتغير.',
+  'Payment is not available right now. Please try again in a few minutes.': 'الدفع غير متاح الآن. يرجى المحاولة بعد بضع دقائق.',
   'Pay online': 'الدفع إلكترونيًا',
   'Choose how to pay on a secure payment page': 'اختر طريقة الدفع في صفحة دفع آمنة',
   'Online payment is not available right now': 'الدفع الإلكتروني غير متاح حاليًا',

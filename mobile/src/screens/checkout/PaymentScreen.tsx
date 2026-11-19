@@ -47,7 +47,7 @@ export default function PaymentScreen() {
   const { placeOrder } = useOrders();
   const checkout = useCheckout();
   const pickup = checkout.fulfilment === 'pickup';
-  const METHODS = pickup ? pickupMethods() : deliveryMethods();
+  const allMethods = pickup ? pickupMethods() : deliveryMethods();
   const address = pickup ? null : addresses.find((a) => a.id === checkout.addressId) || defaultAddress;
   const productIds = useMemo(() => cart.items.map((i) => i.productId), [cart.items]);
   const { quote: delivery, error: quoteError, retry: retryQuote } = useDeliveryQuote({
@@ -62,22 +62,27 @@ export default function PaymentScreen() {
     ensureIdempotencyKey();
   }, [ensureIdempotencyKey]);
 
-  // The remembered method if this way of getting the order still offers it (a draft may even say "upi").
-  const [method, setMethod] = useState<PaymentMethod>(() => offeredMethod(checkout.paymentMethod, checkout.fulfilment) as PaymentMethod);
+  // Starts on online payment: the cash ways are shown only once the kuraat server says they are offered.
+  const [method, setMethod] = useState<PaymentMethod>(() => offeredMethod(checkout.paymentMethod, checkout.fulfilment, { cashAvailable: false }) as PaymentMethod);
   const [errors, setErrors] = useState<Errors>({});
   const [processing, setProcessing] = useState(false);
   // Blocks a second tap before the first one has re-rendered the button (review focus 2).
   const paying = useRef(false);
-  // Card works only while RSOF's payment page does (null = still asking the kuraat server).
-  const [cardAvailable, setCardAvailable] = useState<boolean | null>(null);
+  // What can be paid with right now (null = still asking the kuraat server): online payment works / cash is offered.
+  const [options, setOptions] = useState<{ card: boolean; cash: boolean } | null>(null);
+  const cardAvailable = options ? options.card : null;
+  const cashAvailable = Boolean(options?.cash);
+  const METHODS = allMethods.filter((m) => m.id === 'card' || cashAvailable);
   const fulfilment = checkout.fulfilment;
+  const remembered = useRef(checkout.paymentMethod); // the method remembered when the screen opened
 
   useEffect(() => {
     let alive = true;
-    getPaymentOptions().then(({ card }) => {
+    getPaymentOptions().then((answer: { card: boolean; cash: boolean }) => {
       if (!alive) return;
-      setCardAvailable(card);
-      if (!card) setMethod((m) => offeredMethod(m, fulfilment, { cardAvailable: false }) as PaymentMethod);
+      setOptions(answer);
+      // the remembered method comes back if it is on offer (cash only when the server offers it)
+      setMethod(offeredMethod(remembered.current, fulfilment, { cardAvailable: answer.card, cashAvailable: answer.cash }) as PaymentMethod);
     });
     return () => {
       alive = false;
@@ -98,9 +103,11 @@ export default function PaymentScreen() {
   };
 
   const cardOff = method === 'card' && cardAvailable !== true;
+  const cashOff = method !== 'card' && !cashAvailable;
+  const nothingToPayWith = Boolean(options) && !options?.card && !options?.cash;
 
   const pay = async () => {
-    if (paying.current || (!pickup && !address) || !totals || cardOff) return;
+    if (paying.current || (!pickup && !address) || !totals || cardOff || cashOff) return;
     paying.current = true;
     setProcessing(true);
     setErrors({});
@@ -121,8 +128,8 @@ export default function PaymentScreen() {
       if (e.code === 'idempotency_conflict') checkout.renewIdempotencyKey();
       // Card stopped working between opening this screen and paying: grey it out and offer the other way.
       if (e.code === 'payment_unavailable' && method === 'card') {
-        setCardAvailable(false);
-        choose(offeredMethod('card', checkout.fulfilment, { cardAvailable: false }) as PaymentMethod);
+        setOptions((o) => ({ card: false, cash: Boolean(o?.cash) }));
+        choose(offeredMethod('card', checkout.fulfilment, { cardAvailable: false, cashAvailable }) as PaymentMethod);
       }
       paying.current = false;
       setProcessing(false);
@@ -153,7 +160,7 @@ export default function PaymentScreen() {
               </Text>
             </View>
           ) : null}
-          <Button block leftIcon={later ? undefined : Lock} loading={processing} disabled={!totals || cardOff} onPress={pay}>
+          <Button block leftIcon={later ? undefined : Lock} loading={processing} disabled={!totals || cardOff || cashOff} onPress={pay}>
             {payLabel}
           </Button>
         </BottomBar>
@@ -176,6 +183,13 @@ export default function PaymentScreen() {
             <Text style={styles.formErrorText}>{quoteError.message}</Text>
           </View>
           <Button variant="secondary" size="sm" onPress={retryQuote}>{t('Try again')}</Button>
+        </View>
+      ) : null}
+
+      {nothingToPayWith ? (
+        <View style={styles.formError} accessibilityRole="alert">
+          <TriangleAlert size={20} color={colors.hotpink} strokeWidth={1.8} />
+          <Text style={styles.formErrorText}>{CARD_PAYMENT.noneAvailable}</Text>
         </View>
       ) : null}
 

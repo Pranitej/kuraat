@@ -108,6 +108,12 @@ describe('production guards (nothing fake goes live by accident)', () => {
     expect(() => loadConfig({ ...prod, OTP_ALLOW_TEST_IN_PRODUCTION: 'true' })).not.toThrow();
   });
 
+  test('cash payments are OFF unless switched on (CASH_PAYMENTS_ENABLED)', () => {
+    expect(loadConfig(valid).cashPayments).toBe(false);
+    expect(loadConfig({ ...valid, CASH_PAYMENTS_ENABLED: 'true' }).cashPayments).toBe(true);
+    expect(loadConfig({ ...valid, CASH_PAYMENTS_ENABLED: 'false' }).cashPayments).toBe(false);
+  });
+
   test('the payment-link API key is optional; without it card payments are off', () => {
     expect(loadConfig(valid).rof.apiKey).toBeNull();
     expect(loadConfig({ ...valid, ROF_API_KEY: '  rofi_1234abcd_secret  ' }).rof.apiKey).toBe('rofi_1234abcd_secret');

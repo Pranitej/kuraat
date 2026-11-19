@@ -43,7 +43,8 @@ export function checkoutRoutes(ctx) {
   // payment-link API answers (cash on delivery and pay at the branch always work). The apps grey card out when false.
   router.get('/payment-options', async (req, res) => {
     res.set('Cache-Control', 'no-store');
-    res.json({ card: Boolean(await ctx.payments?.available()) });
+    // card: online payment works right now; cash: cash on delivery / pay at the branch are offered at all.
+    res.json({ card: Boolean(await ctx.payments?.available()), cash: Boolean(ctx.config.cashPayments) });
   });
 
   router.post('/quote', validate({ body: quoteSchema }), async (req, res) => {

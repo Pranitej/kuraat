@@ -92,12 +92,29 @@ describe('delivery or pickup (design 2026-11-18 §5.3)', () => {
   });
 
   test('payment options: card only when the server says so; a failed check counts as card off', async () => {
-    stubFetch(() => ({ body: { card: true } }));
-    expect(await getPaymentOptions()).toEqual({ card: true });
+    stubFetch(() => ({ body: { card: true, cash: false } }));
+    expect(await getPaymentOptions()).toEqual({ card: true, cash: false });
+    stubFetch(() => ({ body: { card: true, cash: true } }));
+    expect(await getPaymentOptions()).toEqual({ card: true, cash: true });
+    stubFetch(() => ({ body: { card: true } })); // an older kuraat server sends no "cash": it still offers it
+    expect(await getPaymentOptions()).toEqual({ card: true, cash: true });
     stubFetch(() => ({ body: {} }));
-    expect(await getPaymentOptions()).toEqual({ card: false });
-    stubFetch(() => ({ status: 503, body: { message: 'down', code: 'x', field: null } }));
-    expect(await getPaymentOptions()).toEqual({ card: false });
+    expect(await getPaymentOptions()).toEqual({ card: false, cash: true });
+    stubFetch(() => ({ status: 503, body: { message: 'down', code: 'x', field: null } })); // nothing can be placed anyway
+    expect(await getPaymentOptions()).toEqual({ card: false, cash: false });
+  });
+
+  test('cash switched off: only online payment is on offer, for delivery and for pickup', () => {
+    for (const fulfilment of ['delivery', 'pickup']) {
+      expect(offeredMethod('cod', fulfilment, { cashAvailable: false })).toBe('card');
+      expect(offeredMethod('branch', fulfilment, { cashAvailable: false })).toBe('card');
+      expect(offeredMethod('card', fulfilment, { cashAvailable: false })).toBe('card');
+    }
+    // nothing on offer at all: "card" (the screen shows it greyed out and says payment is not available)
+    expect(offeredMethod('cod', 'delivery', { cardAvailable: false, cashAvailable: false })).toBe('card');
+    // online payment off but cash on: cash is chosen
+    expect(offeredMethod('card', 'delivery', { cardAvailable: false })).toBe('cod');
+    expect(offeredMethod('card', 'pickup', { cardAvailable: false })).toBe('branch');
   });
 
   test('a remembered method that the other way does not offer falls back to card', () => {

@@ -45,6 +45,9 @@ const schema = z.object({
   WHATSAPP_TEMPLATE_LANGUAGE: z.preprocess(blankToUndefined, z.string().trim().min(2).default('en')),
   WHATSAPP_TIMEOUT_MS: integer(10000),
   ORDER_POLL_INTERVAL_MS: integer(60000),
+  // Cash payments (cash on delivery for deliveries, pay at the branch for pickups). OFF for now (19 Nov 2026): the
+  // customer can only pay online. Set to true to bring both back, no code change.
+  CASH_PAYMENTS_ENABLED: flag(false),
   PASSWORD_HASH_COST: z.preprocess(blankToUndefined, z.coerce.number().int().min(4).max(15).default(12)),
   AUTH_RATE_LIMIT_PER_MINUTE: integer(20),
   OTP_ALLOW_TEST_IN_PRODUCTION: flag(false),
@@ -111,6 +114,7 @@ export function loadConfig(env = process.env) {
       language: e.WHATSAPP_TEMPLATE_LANGUAGE,
       timeoutMs: e.WHATSAPP_TIMEOUT_MS,
     },
+    cashPayments: e.CASH_PAYMENTS_ENABLED,
     pollIntervalMs: e.ORDER_POLL_INTERVAL_MS,
     passwordHashCost: e.PASSWORD_HASH_COST,
     authRateLimitPerMinute: e.AUTH_RATE_LIMIT_PER_MINUTE,

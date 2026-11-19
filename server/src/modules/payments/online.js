@@ -11,7 +11,12 @@ import { conflict, notFound, unavailable } from '../../http/errors.js';
 import { toPaymentLink, toRofPhone } from '../../rof/adapter.js';
 import { isRofError } from '../../rof/errors.js';
 
-export const CARD_UNAVAILABLE = "Online payment isn't available right now. Choose cash on delivery or pay at the branch.";
+/** What the customer is told when online payment is off: another way only if cash payments are on. */
+export const cardUnavailableMessage = (cashEnabled) =>
+  cashEnabled
+    ? "Online payment isn't available right now. Choose cash on delivery or pay at the branch."
+    : "Online payment isn't available right now. Please try again in a few minutes.";
+export const CASH_UNAVAILABLE = "Cash payment isn't available right now. Please pay online.";
 const PAGE_UNAVAILABLE = "We couldn't open the payment page. Please try again in a moment.";
 const NOT_READY = "Online payment isn't ready for this order yet. Please try again in a few minutes.";
 // Already paid, cancelled or not matching: RSOF knows which, and the Orders page shows it.
@@ -49,7 +54,7 @@ export function createOnlinePayments(ctx) {
 
   /** One RSOF call: the payment page of this order → { link, expiresAt }; an AppError with a customer-friendly message otherwise. */
   async function link(order) {
-    if (!client) throw unavailable('payment_unavailable', CARD_UNAVAILABLE);
+    if (!client) throw unavailable('payment_unavailable', cardUnavailableMessage(ctx.config.cashPayments));
     const number = `KR-${order.rof_order_number}`;
     // RSOF matches the link to the order by its number AND the phone the order was created with: the account's
     // number, saved on our order row when it was placed.

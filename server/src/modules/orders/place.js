@@ -20,7 +20,7 @@ import { loadCart, priceForUser, saveCart } from '../cart/routes.js';
 import { deliveryCandidates } from '../checkout/branchChoice.js';
 import { estimates } from '../checkout/window.js';
 import { notify } from '../notifications/service.js';
-import { CARD_UNAVAILABLE } from '../payments/online.js';
+import { CASH_UNAVAILABLE, cardUnavailableMessage } from '../payments/online.js';
 
 const UNCONFIRMED = "We couldn't confirm your order with the store. Please contact us before trying again — you won't be charged twice.";
 
@@ -119,8 +119,10 @@ export async function placeOrder(ctx, userId, input) {
   const method = input.payment.method;
   if (!['card', 'cod', 'branch'].includes(method)) throw badRequest('invalid', 'Choose card or cash on delivery.', 'payment.method');
   const card = method === 'card';
+  // Cash payments (cash on delivery / pay at the branch) can be switched off (CASH_PAYMENTS_ENABLED): refused before anything is created.
+  if (!card && !ctx.config.cashPayments) throw badRequest('invalid', CASH_UNAVAILABLE, 'payment.method');
   // The check is cached (RSOF is asked at most once a minute), so this costs nothing on most orders.
-  if (card && !(await ctx.payments?.available())) throw unavailable('payment_unavailable', CARD_UNAVAILABLE);
+  if (card && !(await ctx.payments?.available())) throw unavailable('payment_unavailable', cardUnavailableMessage(ctx.config.cashPayments));
   const amount = priced.totals.total;
   const paymentId = await upsertPayment(ctx, userId, key, { method, status: card ? 'pending' : 'authorized', amount, brand: null, last4: null, transaction_id: null });
 

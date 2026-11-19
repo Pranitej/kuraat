@@ -63,10 +63,11 @@ const ORDER = {
 
 const PAGE = 'https://rofuat.rsof.com.sa/en/pay/T1';
 let cardOn = true;
+let cashOn: boolean | undefined; // undefined = an older kuraat server that sends no "cash" (still offers it)
 
 function shop(onOrder: (c: FetchCall) => { status?: number; body?: unknown } | undefined) {
   return (c: FetchCall) => {
-    if (c.path === '/checkout/payment-options') return { body: { card: cardOn } };
+    if (c.path === '/checkout/payment-options') return { body: cashOn === undefined ? { card: cardOn } : { card: cardOn, cash: cashOn } };
     if (c.path === '/cart' && c.method === 'GET') return { body: CART };
     if (c.path === '/addresses') return { body: [ADDRESS] };
     if (c.path === '/orders' && c.method === 'POST') return onOrder(c);
@@ -82,6 +83,7 @@ beforeEach(() => {
   mockOpenBrowser.mockReset();
   mockOpenBrowser.mockResolvedValue({ type: 'dismiss' });
   cardOn = true;
+  cashOn = undefined;
   resetRouterMock();
   session.clearAll();
   session.write('checkout', {
@@ -196,6 +198,39 @@ describe('14 · Payment', () => {
     ]);
     expect(screen.queryByText(/UPI/)).toBeNull();
     expect(screen.getByRole('radio', { name: /Pay online/ }).props.accessibilityState).toMatchObject({ checked: true });
+  });
+});
+
+describe('14 · Payment — cash switched off (CASH_PAYMENTS_ENABLED=false on the kuraat server)', () => {
+  test('delivery: only "Pay online" is shown — no cash on delivery — and placing sends the online method', async () => {
+    cashOn = false;
+    const { calls } = await renderScreen(<PaymentScreen />, { server: shop(() => ({ status: 201, body: ORDER })) });
+    await screen.findByText('Payment method');
+    await waitFor(() => expect(screen.getByRole('button', { name: CONTINUE })).toBeEnabled());
+    expect(screen.getAllByRole('radio')).toHaveLength(1);
+    expect(screen.getByRole('radio', { name: /Pay online/ }).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.queryByRole('radio', { name: /Cash on delivery/ })).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: CONTINUE }));
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/checkout/success/o1'));
+    expect(calls.find((c) => c.path === '/orders' && c.method === 'POST')?.body).toMatchObject({ payment: { method: 'card' } });
+  });
+
+  test('an old draft that remembered cash on delivery still starts on online payment', async () => {
+    cashOn = false;
+    session.write('checkout', { addressId: 'a1', paymentMethod: 'cod', idempotencyKey: null, lastOrderId: null });
+    await renderScreen(<PaymentScreen />, { server: shop(() => ({ status: 201, body: ORDER })) });
+    await screen.findByText('Payment method');
+    await waitFor(() => expect(screen.getByRole('button', { name: CONTINUE })).toBeEnabled());
+    expect(screen.getByRole('radio', { name: /Pay online/ }).props.accessibilityState).toMatchObject({ checked: true });
+  });
+
+  test('online payment off as well: a clear message and nothing to press', async () => {
+    cashOn = false;
+    cardOn = false;
+    await renderScreen(<PaymentScreen />, { server: shop(() => ({ status: 201, body: ORDER })) });
+    expect(await screen.findByText('Payment is not available right now. Please try again in a few minutes.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: CONTINUE })).toBeDisabled();
+    expect(screen.queryByRole('radio', { name: /Cash on delivery/ })).toBeNull();
   });
 });
 

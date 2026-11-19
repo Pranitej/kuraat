@@ -60,7 +60,7 @@ export function createMockRof({ store, now = () => new Date(), tokenSecret = 'mo
   // Shapes from the lead's note; NOT verified on UAT yet (the endpoint answered 404 there on 19 Nov 2026).
   // faults.paymentOutcome: 'NotReady' | 'Error' | … → that outcome; faults.paymentLinkHttp: an HTTP status to answer with.
   app.post('/api/v1/orders/payment-link', (req, res) => {
-    if (req.get('x-api-key') !== db.paymentApiKey) return res.status(401).json(fail('Invalid API key'));
+    if (req.get('x-api-key') !== db.apiKey) return res.status(401).json(fail('Invalid API key'));
     db.paymentLinkCalls = (db.paymentLinkCalls || 0) + 1;
     if (app.locals.faults.paymentLinkHttp) return res.status(app.locals.faults.paymentLinkHttp).json(fail('Payment service error'));
     const answer = (outcome, message, extra = {}) =>

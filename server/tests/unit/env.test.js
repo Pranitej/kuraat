@@ -109,8 +109,8 @@ describe('production guards (nothing fake goes live by accident)', () => {
   });
 
   test('the payment-link API key is optional; without it card payments are off', () => {
-    expect(loadConfig(valid).rof.paymentApiKey).toBeNull();
-    expect(loadConfig({ ...valid, ROF_PAYMENT_API_KEY: '  rofi_1234abcd_secret  ' }).rof.paymentApiKey).toBe('rofi_1234abcd_secret');
+    expect(loadConfig(valid).rof.apiKey).toBeNull();
+    expect(loadConfig({ ...valid, ROF_API_KEY: '  rofi_1234abcd_secret  ' }).rof.apiKey).toBe('rofi_1234abcd_secret');
   });
 
   test('outside production neither guard applies', () => {

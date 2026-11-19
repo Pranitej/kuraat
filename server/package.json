@@ -8,7 +8,7 @@
     "node": ">=22.9"
   },
   "scripts": {
-    "dev": "node --watch --env-file-if-exists=.env src/index.js",
+    "dev": "node --watch --watch-path=./src --watch-path=./.env --env-file-if-exists=.env src/index.js",
     "start": "node --env-file-if-exists=.env src/index.js",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.js",
     "rof:check": "node --env-file-if-exists=.env scripts/rof-check.js",

@@ -326,7 +326,7 @@ export function createSeed() {
     tenantId: TENANT_ID,
     credentials: DEFAULT_CREDENTIALS,
     /** The X-Api-Key of the payment-link API (scope payments.link). */
-    paymentApiKey: PAYMENT_API_KEY,
+    apiKey: PAYMENT_API_KEY,
     categories: CATEGORIES,
     products: PRODUCTS,
     branches: BRANCHES,

@@ -2,7 +2,7 @@
  * Dependency container passed to routes and services. Tests build it with the test database, the
  * RSOF stand-in (tests/support/rof-double), a settable clock and a captured logger; production builds it in src/index.js.
  * ROF-backed services exist only when a ROF client is given. paymentLinks: RSOF's payment-link client (only when
- * ROF_PAYMENT_API_KEY is set); without it card orders are refused.
+ * ROF_API_KEY is set); without it card orders are refused.
  */
 import { createBranchService } from './modules/branches/service.js';
 import { createCatalogService } from './modules/catalog/service.js';

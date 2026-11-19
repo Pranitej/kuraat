@@ -29,9 +29,10 @@ const schema = z.object({
   ROF_PASSWORD: text(),
   ROF_INVENTORY_CHECK: flag(false),
   ROF_TIMEOUT_MS: integer(10000),
-  // Card payments: RSOF's payment-link API key (scope payments.link). Without it card orders are refused before
-  // anything is created; cash on delivery and pay at branch still work.
-  ROF_PAYMENT_API_KEY: optionalText(),
+  // RSOF's API key, sent as the X-Api-Key header on RSOF's key-based endpoints (/api/v1/...). Today it is used for
+  // the payment-link call (the key needs the payments.link scope). Without it online payment is off: orders are
+  // refused before anything is created; cash on delivery and pay at branch still work.
+  ROF_API_KEY: optionalText(),
   OTP_MODE: z.preprocess(blankToUndefined, z.enum(['test', 'whatsapp']).default('test')),
   OTP_TEST_CODE: z.preprocess(blankToUndefined, z.string().regex(/^\d{6}$/, 'must be 6 digits').default('123456')),
   // WhatsApp login codes (OTP_MODE=whatsapp): RSOF's messaging API. User, password, sender and template are
@@ -98,7 +99,7 @@ export function loadConfig(env = process.env) {
       password: e.ROF_PASSWORD,
       inventoryCheck: e.ROF_INVENTORY_CHECK,
       timeoutMs: e.ROF_TIMEOUT_MS,
-      paymentApiKey: e.ROF_PAYMENT_API_KEY ?? null,
+      apiKey: e.ROF_API_KEY ?? null,
     },
     otp: { mode: e.OTP_MODE, testCode: e.OTP_TEST_CODE },
     whatsapp: {

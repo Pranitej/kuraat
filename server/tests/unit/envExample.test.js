@@ -23,7 +23,7 @@ describe('server/.env.example', () => {
   });
 
   test('holds no real secret: every credential field is empty or an obvious example', () => {
-    const secretFields = ['ROF_EMAIL', 'ROF_PASSWORD', 'ROF_PAYMENT_API_KEY', 'WHATSAPP_API_USER', 'WHATSAPP_API_PASSWORD', 'WHATSAPP_SENDER', 'WHATSAPP_TEMPLATE_NAME'];
+    const secretFields = ['ROF_EMAIL', 'ROF_PASSWORD', 'ROF_API_KEY', 'WHATSAPP_API_USER', 'WHATSAPP_API_PASSWORD', 'WHATSAPP_SENDER', 'WHATSAPP_TEMPLATE_NAME'];
     for (const name of secretFields) {
       const value = lines.find((l) => l.startsWith(`${name}=`))?.slice(name.length + 1);
       expect(value, name).toBe('');

@@ -40,7 +40,7 @@ export function createPaymentLinkClient({ baseUrl, apiKey, timeoutMs = 10000 }) 
       }
       // A refused key (or one without the payments.link scope) is a set-up problem, not the customer's.
       if (res.status === 401 || res.status === 403) {
-        throw new RofError('auth', `ROF refused the payment API key (HTTP ${res.status}) — check ROF_PAYMENT_API_KEY and its payments.link scope`, {
+        throw new RofError('auth', `ROF refused the payment API key (HTTP ${res.status}) — check ROF_API_KEY and its payments.link scope`, {
           status: res.status,
           path: PAYMENT_LINK_PATH,
         });

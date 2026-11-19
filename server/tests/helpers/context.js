@@ -34,7 +34,7 @@ export async function truncateAll(db) {
 
 /**
  * rofData: the stand-in's starting state (default: its seed with an empty order book).
- * cardPayments: false = no payment API key (card orders are refused), as when ROF_PAYMENT_API_KEY is not set.
+ * cardPayments: false = no payment API key (card orders are refused), as when ROF_API_KEY is not set.
  */
 export async function createTestContext({ configOverrides = {}, withRof = false, rofTimeoutMs = 2000, rofData, cardPayments = true } = {}) {
   const base = loadConfig(process.env);
@@ -52,8 +52,8 @@ export async function createTestContext({ configOverrides = {}, withRof = false,
     config = { ...config, rof: { ...config.rof, baseUrl: rofServer.baseUrl, mediaBaseUrl: rofServer.baseUrl, email, password, timeoutMs: rofTimeoutMs } };
     rof = createRofClient({ ...config.rof, now: () => clock.now().getTime() });
     if (cardPayments) {
-      const apiKey = mockRof.store.data.paymentApiKey;
-      config = { ...config, rof: { ...config.rof, paymentApiKey: apiKey } };
+      const apiKey = mockRof.store.data.apiKey;
+      config = { ...config, rof: { ...config.rof, apiKey: apiKey } };
       paymentLinks = createPaymentLinkClient({ baseUrl: rofServer.baseUrl, apiKey, timeoutMs: rofTimeoutMs });
     }
   }

@@ -25,7 +25,7 @@ export default defineConfig({
       ROF_INVENTORY_CHECK: 'false',
       ROF_TIMEOUT_MS: '10000',
       // A real payment-link key in .env must never reach a test either (tests use the stand-in's own key).
-      ROF_PAYMENT_API_KEY: '',
+      ROF_API_KEY: '',
       // Login codes: always the fixed test code, never a real WhatsApp message, whatever the developer's .env says
       // (tests that need WhatsApp mode set it on the test config and use a stub client).
       OTP_MODE: 'test',

@@ -12,10 +12,11 @@ const config = loadConfig();
 const db = createDb(config.databaseUrl);
 const rof = createRofClient(config.rof);
 // Card payments go through RSOF's payment link; without the key only cash on delivery and pay at branch work.
-const paymentLinks = config.rof.paymentApiKey
-  ? createPaymentLinkClient({ baseUrl: config.rof.baseUrl, apiKey: config.rof.paymentApiKey, timeoutMs: config.rof.timeoutMs })
+const paymentLinks = config.rof.apiKey
+  ? createPaymentLinkClient({ baseUrl: config.rof.baseUrl, apiKey: config.rof.apiKey, timeoutMs: config.rof.timeoutMs })
   : null;
-if (!paymentLinks) console.warn('ROF_PAYMENT_API_KEY is not set: card payments are switched off (cash on delivery and pay at branch still work).');
+console.log(`[settings] ROF_API_KEY: ${config.rof.apiKey ? 'set' : 'not set'} · OTP_MODE: ${config.otp.mode} · NODE_ENV: ${config.nodeEnv}`);
+if (!paymentLinks) console.warn('ROF_API_KEY is not set: card payments are switched off (cash on delivery and pay at branch still work).');
 // Login codes go out on WhatsApp only in OTP_MODE=whatsapp (otherwise the test code is used and nothing is sent).
 const whatsapp = config.otp.mode === 'whatsapp' ? createWhatsAppClient(config.whatsapp) : null;
 const ctx = createContext({ config, db, rof, paymentLinks, whatsapp });

@@ -299,7 +299,7 @@ describe('order payload for POST /api/orders/manual (guide §7.1, spec §6.7 ste
 
   test('card: remarks say it is paid online through the payment link (the order exists before the payment)', () => {
     const payload = toRofOrderPayload({ user, address: { ...address, landmark: '' }, deliveryPhone: '501234821', items, payment: { method: 'card' }, total: 328 });
-    expect(payload.remarks).toBe('Card payment online: SAR 328.00 via payment link');
+    expect(payload.remarks).toBe('Online payment: SAR 328.00 via payment link');
   });
 
   test('a city we cannot place in a province sends no province', () => {
@@ -326,9 +326,9 @@ describe('pickup payload (design 2026-11-18 §5.3)', () => {
     });
   });
 
-  test('pickup paid by card says so; with no city nothing is guessed', () => {
+  test('pickup paid online says so; with no city nothing is guessed', () => {
     const payload = toRofOrderPayload({ user, address: null, deliveryPhone: '559876543', items, payment: { method: 'card' }, total: 313, fulfilment: 'pickup' });
-    expect(payload.remarks).toBe('Card payment online: SAR 313.00 via payment link');
+    expect(payload.remarks).toBe('Online payment: SAR 313.00 via payment link');
     expect(payload).not.toHaveProperty('city');
     expect(payload).not.toHaveProperty('province');
   });

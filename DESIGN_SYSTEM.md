@@ -314,12 +314,13 @@ Same screen after "Read more" and scrolling: compact sticky header (back · prod
 1. **Components:** stepper (✓ ✓ 3); "Payment method"; radio cards: **Credit / debit card** (Visa, Mastercard, Mada) expands to Card number (card icon + lock), Expiry (MM / YY), CVV, "Save this card for next time" toggle; **Cash on delivery** ("Pay when your order arrives"); bottom bar "Total · 3 items  SAR 328.00" + primary "🔒 Pay SAR 328.00".
 2. **Validation:** Luhn card number, future expiry, 3–4 digit CVV.
 3. **Interaction:** processing state (button spinner, inputs locked) → Payment successful; declined card shows an inline error.
-4. **Deliberate deviation (19 Nov 2026) — card is paid on RSOF's secure payment page:** the card radio no longer expands
-   to card fields (no card number, expiry, CVV or "Save this card" in the app). Subtitle "Mada, Visa, Mastercard · on a
-   secure payment page"; when selected, a muted line "After paying, come back here. We'll check your payment for you."
-   The bottom bar reads "🔒 Continue to payment · SAR …" (the order is placed first, then paid). While card payment is
-   not working (the kuraat server's `GET /checkout/payment-options` says `card: false`) the card radio is greyed out
-   (50 % opacity, subtitle "Card payment is not available right now") and cash on delivery / pay at branch is chosen.
+4. **Deliberate deviation (19 Nov 2026) — online payment on RSOF's secure payment page:** the "Credit / debit card" radio is
+   now **"Pay online"** and no longer expands to card fields (no card number, expiry, CVV or "Save this card" in the app).
+   Subtitle "Choose how to pay on a secure payment page". RSOF's page decides which payment options exist (Mada, Visa,
+   Apple Pay …), so the apps never name any of them; when selected, a muted line explains the payment window.
+   The bottom bar reads "🔒 Continue to payment · SAR …" (the order is placed first, then paid). While online payment is
+   not working (the kuraat server's `GET /checkout/payment-options` says `card: false`) the online-payment radio is greyed out
+   (50 % opacity, subtitle "Online payment is not available right now") and cash on delivery / pay at branch is chosen.
    Do not re-add the card form when "matching the PDF".
 
 ### 15 · Payment successful (page 17)

@@ -168,7 +168,7 @@ describe('paid later, and what the cancel dialog promises (review: Important 1)'
   });
 
   test('a card paid on the payment page is refunded; a card order not paid yet has nothing to refund', () => {
-    expect(cancelRefundText({ payment: { method: 'card', status: 'paid', brand: null, last4: null }, total: 313 })).toBe('Your SAR 313.00 card payment will be refunded.');
+    expect(cancelRefundText({ payment: { method: 'card', status: 'paid', brand: null, last4: null }, total: 313 })).toBe('Your SAR 313.00 online payment will be refunded.');
     expect(cancelRefundText({ payment: { method: 'card', status: 'pending', brand: null, last4: null }, total: 313 })).toBe('Nothing has been charged.');
   });
 });
@@ -186,11 +186,11 @@ describe('card payment on the secure payment page', () => {
   });
 
   test('labels say where the money stands', () => {
-    expect(paymentLabel(card('paid').payment)).toBe('Card · Paid');
-    expect(paymentLabel(card('pending').payment)).toBe('Card · Waiting for payment');
-    expect(paymentLabel(card('refund_pending').payment)).toBe('Card · Refund on its way');
-    expect(paymentLabel(card('cancelled').payment)).toBe('Card · Not paid');
-    expect(paymentLabel({ method: 'card' })).toBe('Card');
+    expect(paymentLabel(card('paid').payment)).toBe('Online · Paid');
+    expect(paymentLabel(card('pending').payment)).toBe('Online · Waiting for payment');
+    expect(paymentLabel(card('refund_pending').payment)).toBe('Online · Refund on its way');
+    expect(paymentLabel(card('cancelled').payment)).toBe('Online · Not paid');
+    expect(paymentLabel({ method: 'card' })).toBe('Online payment');
   });
 
   test('screen text', () => {

@@ -70,7 +70,7 @@ Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test
 | `AUTH_RATE_LIMIT_PER_MINUTE` | `20` | Per IP, for `/auth/*` |
 | `TRUST_PROXY` | unset | Set to `1` when running behind one reverse proxy / load balancer (so limits use the customer IP) |
 | `OTP_ALLOW_TEST_IN_PRODUCTION` | `false` | With `NODE_ENV=production` the server refuses `OTP_MODE=test` unless this is `true` — set it for UAT only |
-| `ROF_PAYMENT_API_KEY` | unset | RSOF API key with the `payments.link` scope, for card payments. Unset, or RSOF's payment-link API not answering (checked at most once a minute with a request that matches no order) → card is shown as unavailable and refused before anything is created; cash on delivery and pay at branch still work. Never commit it |
+| `ROF_PAYMENT_API_KEY` | unset | RSOF API key with the `payments.link` scope, for online payments (the "card" payment method id; RSOF's payment page decides which payment options exist). Unset, or RSOF's payment-link API not answering (checked at most once a minute with a request that matches no order) → card is shown as unavailable and refused before anything is created; cash on delivery and pay at branch still work. Never commit it |
 
 Business rules ROF does not hold (fees, promo codes, opening hours, delivery slots, max detour) are in
 [`src/config/business.js`](src/config/business.js).

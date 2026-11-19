@@ -153,7 +153,7 @@ function moneyRemark(payment, total) {
   if (!payment) return null;
   if (payment.method === 'cod') return `Collect SAR ${Number(total).toFixed(2)} (cash on delivery)`;
   // The order is created BEFORE the customer pays on RSOF's payment page (19 Nov 2026): RSOF holds the payment.
-  if (payment.method === 'card') return `Card payment online: SAR ${Number(total).toFixed(2)} via payment link`;
+  if (payment.method === 'card') return `Online payment: SAR ${Number(total).toFixed(2)} via payment link`;
   if (payment.method === 'branch') return `Collect SAR ${Number(total).toFixed(2)} (pay at branch)`;
   return null;
 }

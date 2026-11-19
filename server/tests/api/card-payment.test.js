@@ -237,7 +237,7 @@ describe('who can pay what', () => {
     t.clock.advance(60_000);
     await t.ctx.orders.refresh(await t.db('orders').first());
     expect((await payment()).status).toBe('refund_pending');
-    expect((await t.db('notifications').where({ type: 'cancelled' }).first()).body).toBe('Your order was cancelled. Your SAR 185.00 card payment will be refunded.');
+    expect((await t.db('notifications').where({ type: 'cancelled' }).first()).body).toBe('Your order was cancelled. Your SAR 185.00 online payment will be refunded.');
   });
 
   test('cancelled in RSOF and RSOF no longer says whether it was paid: the message does not claim nothing was charged', async () => {
@@ -248,7 +248,7 @@ describe('who can pay what', () => {
     t.clock.advance(60_000);
     await t.ctx.orders.refresh(await t.db('orders').first());
     expect((await payment()).status).toBe('voided');
-    expect((await t.db('notifications').where({ type: 'cancelled' }).first()).body).toBe('Your order was cancelled. If you already paid by card, your payment will be refunded.');
+    expect((await t.db('notifications').where({ type: 'cancelled' }).first()).body).toBe('Your order was cancelled. If you already paid online, your payment will be refunded.');
     expect(t.logs.some(([level, line]) => level === 'warn' && line.includes('could not confirm whether KR-20418 was paid'))).toBe(true);
   });
 

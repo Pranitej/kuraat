@@ -11,7 +11,7 @@ import { toPaymentLink, toRofPhone } from '../../rof/adapter.js';
 import { isRofError } from '../../rof/errors.js';
 import { notify } from '../notifications/service.js';
 
-export const CARD_UNAVAILABLE = "Card payment isn't available right now. Choose cash on delivery or pay at the branch.";
+export const CARD_UNAVAILABLE = "Online payment isn't available right now. Choose cash on delivery or pay at the branch.";
 const PAGE_UNAVAILABLE = "We couldn't open the payment page. Please try again in a moment.";
 const NOT_READY = "Online payment isn't ready for this order yet. Please try again in a few minutes.";
 const NOT_PAYABLE = "This order can't be paid online any more. Please contact us if you need help.";

@@ -11,7 +11,7 @@ import { placeOrder } from './place.js';
  * placed (19 Nov 2026), so no card details are sent. An older app build still sends them and has no "Pay now"
  * screen: its card order would never be paid, so it is refused (nothing created, the details never stored or logged).
  */
-const OLD_APP_CARD = 'Please update the app to pay by card, or choose another payment method.';
+const OLD_APP_CARD = 'Please update the app to pay online, or choose another payment method.';
 const paymentSchema = z.discriminatedUnion(
   'method',
   [

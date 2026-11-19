@@ -39,7 +39,7 @@ export const PICKUP = {
   phoneHelper: 'The mobile number of your account. We use it to reach you about your pickup.',
   likely: 'Likely pickup branch',
   payNow: 'Pay now',
-  payNowSub: 'Card · Mada, Visa, Mastercard on a secure payment page',
+  payNowSub: 'Pay online on a secure payment page',
   payAtBranch: 'Pay at branch',
   payAtBranchSub: 'Pay when you collect your order',
   payAtBranchHint: (total) => `Please pay ${total} at the pickup counter when you collect your order.`,
@@ -127,9 +127,9 @@ export const awaitingPayment = (order) => order?.payment?.method === 'card' && o
 
 /** Card payment on RSOF's secure payment page (19 Nov 2026), shared by the web and the app. */
 export const CARD_PAYMENT = {
-  title: 'Credit / debit card',
-  subtitle: 'Mada, Visa, Mastercard · on a secure payment page',
-  unavailable: 'Card payment is not available right now',
+  title: 'Pay online',
+  subtitle: 'Choose how to pay on a secure payment page',
+  unavailable: 'Online payment is not available right now',
   waitingTitle: 'Complete your payment',
   waitingBody: (total) => `Your order is placed. Pay ${total} on the secure payment page to confirm it.`,
   pay: (total) => `Pay ${total}`,
@@ -144,7 +144,7 @@ export const CARD_PAYMENT = {
   viewOrders: 'View my orders',
   waitingTag: 'Waiting for payment',
   paidTitle: 'Payment received',
-  paidBody: (total) => `${total} paid by card`,
+  paidBody: (total) => `${total} paid online`,
 };
 
 /** What the "cancel this order?" dialog says about the money. */
@@ -153,18 +153,18 @@ export function cancelRefundText(order) {
   if (!payment || paidLater(payment) || payment.status === 'pending') return 'Nothing has been charged.';
   // Older payments carry the card's last digits; payments on RSOF's page do not (RSOF keeps the card).
   if (payment.last4) return `We will refund ${formatSAR(order.total)} to ${paymentLabel(payment)}.`;
-  return `Your ${formatSAR(order.total)} card payment will be refunded.`;
+  return `Your ${formatSAR(order.total)} online payment will be refunded.`;
 }
 
 export function paymentLabel(payment) {
   if (!payment) return '';
   if (payment.method === 'card' && payment.last4) return `${payment.brand} •••• ${payment.last4}`;
   if (payment.method === 'card') {
-    if (payment.status === 'paid') return 'Card · Paid';
-    if (payment.status === 'pending') return `Card · ${CARD_PAYMENT.waitingTag}`;
-    if (payment.status === 'refund_pending') return 'Card · Refund on its way';
-    if (payment.status === 'cancelled') return 'Card · Not paid';
-    return 'Card';
+    if (payment.status === 'paid') return 'Online · Paid';
+    if (payment.status === 'pending') return `Online · ${CARD_PAYMENT.waitingTag}`;
+    if (payment.status === 'refund_pending') return 'Online · Refund on its way';
+    if (payment.status === 'cancelled') return 'Online · Not paid';
+    return 'Online payment';
   }
   if (payment.method === 'cod') return 'Cash on delivery';
   if (payment.method === 'branch') return 'Pay at branch';

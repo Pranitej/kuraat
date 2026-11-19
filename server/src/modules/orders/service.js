@@ -27,10 +27,10 @@ function cancellationBody(payment, paidCheck = null) {
   // Cash on delivery, pay-at-the-branch and an unpaid card order were never charged: nothing to refund.
   if (!payment || paidLater(payment)) return 'Your order was cancelled.';
   if (payment.status === 'pending') {
-    return paidCheck === 'unknown' ? 'Your order was cancelled. If you already paid by card, your payment will be refunded.' : 'Your order was cancelled.';
+    return paidCheck === 'unknown' ? 'Your order was cancelled. If you already paid online, your payment will be refunded.' : 'Your order was cancelled.';
   }
   // Paid on RSOF's payment page: RSOF / the store holds the money and returns it (who and how: open with the lead).
-  if (payment.paid_at) return `Your order was cancelled. Your ${sar(payment.amount)} card payment will be refunded.`;
+  if (payment.paid_at) return `Your order was cancelled. Your ${sar(payment.amount)} online payment will be refunded.`;
   // Older simulated card payments (before 19 Nov 2026); "your original payment method" covers old UPI test orders.
   const via = payment.method === 'card' && payment.last4 ? `${payment.brand} •••• ${payment.last4}` : 'your original payment method';
   return `Your order was cancelled. ${sar(payment.amount)} will be refunded to ${via}.`;

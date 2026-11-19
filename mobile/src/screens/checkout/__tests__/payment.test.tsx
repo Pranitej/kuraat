@@ -160,19 +160,19 @@ describe('14 · Payment', () => {
     cardOn = false;
     await renderScreen(<PaymentScreen />, { server: shop(() => ({ status: 201, body: ORDER })) });
     await screen.findByText('Payment method');
-    const card = await screen.findByRole('radio', { name: 'Credit / debit card, Card payment is not available right now' });
+    const card = await screen.findByRole('radio', { name: 'Pay online, Online payment is not available right now' });
     expect(card.props.accessibilityState).toMatchObject({ disabled: true });
     await waitFor(() => expect(screen.getByRole('radio', { name: /Cash on delivery/ }).props.accessibilityState).toMatchObject({ checked: true }));
   });
 
   test('card stops working while paying: the message shows and cash on delivery is offered instead', async () => {
     await renderScreen(<PaymentScreen />, {
-      server: shop(() => ({ status: 503, body: { code: 'payment_unavailable', message: "Card payment isn't available right now. Choose cash on delivery or pay at the branch." } })),
+      server: shop(() => ({ status: 503, body: { code: 'payment_unavailable', message: "Online payment isn't available right now. Choose cash on delivery or pay at the branch." } })),
     });
     await screen.findByText('Payment method');
     await waitFor(() => expect(screen.getByRole('button', { name: CONTINUE })).toBeEnabled());
     await fireEvent.press(screen.getByRole('button', { name: CONTINUE }));
-    expect((await screen.findAllByText("Card payment isn't available right now. Choose cash on delivery or pay at the branch.")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Online payment isn't available right now. Choose cash on delivery or pay at the branch.")).length).toBeGreaterThan(0);
     expect(screen.getByRole('radio', { name: /Cash on delivery/ }).props.accessibilityState).toMatchObject({ checked: true });
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
@@ -191,11 +191,11 @@ describe('14 · Payment', () => {
     await renderScreen(<PaymentScreen />, { server: shop(() => ({ status: 201, body: ORDER })) });
     await screen.findByText('Payment method');
     expect(screen.getAllByRole('radio').map((r) => r.props.accessibilityLabel)).toEqual([
-      'Credit / debit card, Mada, Visa, Mastercard · on a secure payment page',
+      'Pay online, Choose how to pay on a secure payment page',
       'Cash on delivery, Pay when your order arrives',
     ]);
     expect(screen.queryByText(/UPI/)).toBeNull();
-    expect(screen.getByRole('radio', { name: /Credit \/ debit card/ }).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByRole('radio', { name: /Pay online/ }).props.accessibilityState).toMatchObject({ checked: true });
   });
 });
 
@@ -214,7 +214,7 @@ describe('14 · Payment — branch pickup (design 2026-11-18 §5.3)', () => {
     await renderScreen(<PaymentScreen />, { server: pickupShop(() => ({ status: 201, body: PICKUP_ORDER })) });
     await screen.findByText('Payment method');
     expect(screen.getAllByRole('radio').map((r) => r.props.accessibilityLabel)).toEqual([
-      'Pay now, Card · Mada, Visa, Mastercard on a secure payment page',
+      'Pay now, Pay online on a secure payment page',
       'Pay at branch, Pay when you collect your order',
     ]);
     expect(screen.queryByRole('radio', { name: /Cash on delivery/ })).toBeNull();
@@ -270,7 +270,7 @@ describe('14 · Payment — branch pickup (design 2026-11-18 §5.3)', () => {
     session.write('checkout', { fulfilment: 'delivery', addressId: 'a1', paymentMethod: 'branch', idempotencyKey: null, lastOrderId: null });
     await renderScreen(<PaymentScreen />, { server: pickupShop(() => ({ status: 201, body: ORDER })) });
     await screen.findByText('Payment method');
-    expect(screen.getByRole('radio', { name: /Credit \/ debit card/ }).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByRole('radio', { name: /Pay online/ }).props.accessibilityState).toMatchObject({ checked: true });
   });
 });
 
@@ -359,8 +359,8 @@ describe('15 · Complete your payment (card paid on the secure payment page)', (
       },
     });
     expect(await screen.findByText('Payment successful')).toBeTruthy();
-    expect(screen.getByText('SAR 185.00 paid by card')).toBeTruthy();
-    expect(screen.getByText('Card · Paid')).toBeTruthy();
+    expect(screen.getByText('SAR 185.00 paid online')).toBeTruthy();
+    expect(screen.getByText('Online · Paid')).toBeTruthy();
     // A paid card order ends on the Orders page, where it can be tracked.
     expect(screen.getByRole('button', { name: 'View my orders' })).toBeTruthy();
   });

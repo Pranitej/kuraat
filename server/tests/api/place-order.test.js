@@ -88,7 +88,7 @@ describe('placing an order', () => {
       customerEmail: 'sara.m@example.com',
       address: 'Building 14, King Fahd Rd, Al Rakah, Al Khobar 34445',
       city: 'Al Khobar',
-      remarks: 'Landmark: Near Al Rakah Park · Card payment online: SAR 313.00 via payment link',
+      remarks: 'Landmark: Near Al Rakah Park · Online payment: SAR 313.00 via payment link',
       source: 'MobileApp',
       fulfillmentType: 'Delivery',
       orderType: 0,
@@ -161,7 +161,7 @@ describe('placing an order', () => {
     await api('put', '/cart', pdfCart);
     const res = await place({ payment: { method: 'card', card: { number: '4242 4242 4242 4242', expiry: '12/29', cvv: '123' }, saveCard: true } });
     expect(res.status).toBe(400);
-    expect(res.body).toMatchObject({ code: 'invalid', field: 'payment.method', message: 'Please update the app to pay by card, or choose another payment method.' });
+    expect(res.body).toMatchObject({ code: 'invalid', field: 'payment.method', message: 'Please update the app to pay online, or choose another payment method.' });
     expect(await payment()).toBeUndefined();
     expect(rofOrders()).toHaveLength(0);
     expect((await api('get', '/cards')).body).toEqual([]);
@@ -362,7 +362,7 @@ describe('placing an order', () => {
       const res = await placePickup({ payment: card });
       expect(res.status).toBe(201);
       expect(res.body.payment).toMatchObject({ method: 'card', status: 'pending', link: expect.any(String) });
-      expect(rofOrders()[0].remarks).toBe('Card payment online: SAR 313.00 via payment link');
+      expect(rofOrders()[0].remarks).toBe('Online payment: SAR 313.00 via payment link');
     });
 
     test('with no saved location the default address gives the pin', async () => {

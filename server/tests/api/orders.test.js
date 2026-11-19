@@ -361,7 +361,7 @@ describe('cancel', () => {
     expect((await t.db('payments').first()).status).toBe('refund_pending');
     const note = await t.db('notifications').where({ type: 'cancelled' }).first();
     expect(note).toMatchObject({ title: `Order #${order.number} cancelled` });
-    expect(note.body).toBe('Your order was cancelled. Your SAR 185.00 card payment will be refunded.');
+    expect(note.body).toBe('Your order was cancelled. Your SAR 185.00 online payment will be refunded.');
   });
 
   test('an unpaid card order is voided: nothing was charged', async () => {
@@ -376,7 +376,7 @@ describe('cancel', () => {
     await payOnRsof(t, order.number); // the app never asked again after paying
     expect((await api('post', `/orders/${order.id}/cancel`)).status).toBe(200);
     expect(await t.db('payments').first()).toMatchObject({ status: 'refund_pending', paid_at: expect.any(Date) });
-    expect((await t.db('notifications').where({ type: 'cancelled' }).first()).body).toBe('Your order was cancelled. Your SAR 185.00 card payment will be refunded.');
+    expect((await t.db('notifications').where({ type: 'cancelled' }).first()).body).toBe('Your order was cancelled. Your SAR 185.00 online payment will be refunded.');
   });
 
   test('after Preparing → 409 cannot_cancel and nothing changes in ROF', async () => {

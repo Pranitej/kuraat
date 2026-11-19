@@ -99,6 +99,7 @@ const PAYMENT_LABELS = {
   pending: 'Payment pending',
   unpaid: 'Payment pending',
   awaitingpayment: 'Payment pending',
+  linksent: 'Payment pending', // seen on UAT 19 Nov 2026: the payment link was made, nothing paid yet
   failed: 'Payment failed',
   declined: 'Payment failed',
   cancelled: 'Payment cancelled',

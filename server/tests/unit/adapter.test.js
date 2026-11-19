@@ -214,7 +214,7 @@ describe('other mappings', () => {
     ).toEqual({ rofOrderId: 'o1', orderNumber: 20418, status: 'Preparing', rawStatus: 'Preparing', branchId: 'b1', branchName: 'Kuraat · X', createdAt: 't0' });
     expect(
       toTimeline([{ statusFrom: 'Created', statusTo: 'AssignedToBranch', statusToLabel: 'Assigned To Branch', createdOn: '2026-11-15T12:21:00Z' }]),
-    ).toEqual([{ status: 'AssignedToBranch', at: '2026-11-15T12:21:00Z' }]);
+    ).toEqual([{ status: 'AssignedToBranch', from: 'Created', at: '2026-11-15T12:21:00Z' }]);
   });
 
   test('toOrderSnapshot normalises a numeric status (UAT detail / partner API send codes)', () => {
@@ -229,14 +229,14 @@ describe('other mappings', () => {
       { statusTo: 12, createdOn: '2026-11-15T12:05:00Z', remarks: '' },
     ];
     expect(toTimeline(rows)).toEqual([
-      { status: 'Created', at: '2026-11-15T12:01:00Z' },
-      { status: 'Canceled', at: '2026-11-15T12:05:00Z' },
-      { status: 'Preparing', at: '2026-11-15T12:06:00Z', note: 'Staff started' },
+      { status: 'Created', from: null, at: '2026-11-15T12:01:00Z' },
+      { status: 'Canceled', from: null, at: '2026-11-15T12:05:00Z' },
+      { status: 'Preparing', from: null, at: '2026-11-15T12:06:00Z', note: 'Staff started' }, // kept in the adapter, never shown to customers
     ]);
   });
 
   test('toTimeline accepts numeric statusTo', () => {
-    expect(toTimeline([{ statusFrom: 0, statusTo: 5, createdOn: 't' }])).toEqual([{ status: 'Preparing', at: 't' }]);
+    expect(toTimeline([{ statusFrom: 0, statusTo: 5, createdOn: 't' }])).toEqual([{ status: 'Preparing', from: 'Created', at: 't' }]);
   });
 
   test('toCreatedOrder normalises a numeric status too', () => {

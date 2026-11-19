@@ -169,12 +169,14 @@ describe('placing an order', () => {
     expect((await place({ payment: { method: 'cod' } })).status).toBe(201);
   });
 
-  test('ROF refuses the order → 409 rof_rejected with the ROF message, payment voided', async () => {
+  test('ROF refuses the order → 409 rof_rejected with ONE fixed sentence (RSOF\'s own text may be internal; it goes to the log), payment voided', async () => {
     await api('put', '/cart', pdfCart);
-    await fault({ createOrderReject: 'Only 3 of "Truffle Box · Classic" available (requested 5)' });
+    await fault({ createOrderReject: 'Only 3 of "Truffle Box · Classic" available (requested 5) - internal ref ZX-9' });
     const res = await place();
     expect(res.status).toBe(409);
-    expect(res.body).toEqual({ message: 'Only 3 of "Truffle Box · Classic" available (requested 5)', code: 'rof_rejected', field: null });
+    expect(res.body).toEqual({ message: "The store couldn't accept this order. Please check your cart and try again.", code: 'rof_rejected', field: null });
+    expect(JSON.stringify(res.body)).not.toMatch(/ZX-9|Truffle/);
+    expect(t.logs.some(([level, line]) => level === 'warn' && line.includes('ZX-9'))).toBe(true);
     expect((await payment()).status).toBe('voided');
     expect(await t.db('orders')).toHaveLength(0);
   });

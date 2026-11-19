@@ -222,7 +222,7 @@ export const toOrderItems = (raw) => (raw.products || []).map((p) => ({ productI
 const timeValue = (at) => Date.parse(at) || 0;
 export const toTimeline = (rows = []) =>
   rows
-    .map((r) => ({ status: normalizeStatus(r.statusTo), at: r.createdOn, ...(r.remarks && String(r.remarks).trim() ? { note: String(r.remarks).trim() } : {}) }))
+    .map((r) => ({ status: normalizeStatus(r.statusTo), from: normalizeStatus(r.statusFrom), at: r.createdOn, ...(r.remarks && String(r.remarks).trim() ? { note: String(r.remarks).trim() } : {}) }))
     .sort((a, b) => timeValue(a.at) - timeValue(b.at));
 
 /** GET /api/orders/by-phone/{phone} (guide §8) → the RSOF order ids, newest first. The rest of that reply is too thin to show. */

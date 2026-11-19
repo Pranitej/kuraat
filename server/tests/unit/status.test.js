@@ -130,6 +130,7 @@ describe("paymentStatusInfo (RSOF's own payment status, shown as is)", () => {
     ['Pending', 'Payment pending'],
     ['Unpaid', 'Payment pending'],
     ['AwaitingPayment', 'Payment pending'],
+    ['LinkSent', 'Payment pending'],
     ['Failed', 'Payment failed'],
     ['Cancelled', 'Payment cancelled'],
     ['Refunded', 'Refunded'],

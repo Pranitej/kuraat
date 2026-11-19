@@ -59,6 +59,34 @@ describe('order detail and tracking', () => {
     expect((await api('get', '/orders?tab=ongoing')).body).toHaveLength(1);
   });
 
+  test('the history hides RSOF\'s internal notes and note-only rows (same status before and after), keeping the first row', async () => {
+    const order = await placeTestOrder(t, me);
+    const rofOrder = t.mockRof.store.data.orders[0];
+    const at = (n) => new Date(Date.parse(rofOrder.timeline[0].createdOn) + n * 1000).toISOString();
+    // Real RSOF rows seen on UAT: a repeated "location shared", and a payment-link log line that is not a status change.
+    rofOrder.timeline.push(
+      { statusFrom: 'SharedLocationManually', statusTo: 'SharedLocationManually', remarks: 'Location shared by customer', createdOn: at(5) },
+      { statusFrom: 'Created', statusTo: 'Created', remarks: 'Payment link for 110.00 SAR created, but the WhatsApp message was not sent: the company has no active WhatsApp number.', createdOn: at(9) },
+    );
+    minutes(1);
+    const res = await api('get', `/orders/${order.id}`);
+    const shown = res.body.history.map((h) => h.label);
+    expect(shown[0]).toBe('Order placed');
+    expect(shown.filter((l) => l === 'Order placed')).toHaveLength(1); // the payment-link line is not a second "Order placed"
+    expect(JSON.stringify(res.body)).not.toMatch(/WhatsApp|company has no|Payment link/i);
+  });
+
+  test('RSOF refusing to cancel or to resend the code gives fixed sentences, not RSOF\'s own text', async () => {
+    const order = await placeTestOrder(t, me);
+    await advance(t, order.number, 'Preparing');
+    const cancel = await api('post', `/orders/${order.id}/cancel`);
+    expect(cancel.status).toBe(409);
+    expect(cancel.body.message).toBe('This order can no longer be cancelled.');
+    const resend = await api('post', `/orders/${order.id}/resend-code`);
+    expect(resend.status).toBe(409);
+    expect(resend.body.message).toBe('The delivery code can be resent only while your order is out for delivery.');
+  });
+
   test('the history lists every status RSOF recorded, so the cancellation stays visible after RSOF reopens the order', async () => {
     const order = await placeTestOrder(t, me);
     minutes(1);
@@ -78,7 +106,9 @@ describe('order detail and tracking', () => {
     expect(times).toEqual([...times].sort()); // oldest first, whatever order RSOF used
     const labels = res.body.history.map((h) => h.label);
     expect(labels.slice(-2)).toEqual(['Cancelled', 'Preparing']);
-    expect(res.body.history.at(-1).note).toBe('Reopened'); // RSOF's own note for that change
+    // RSOF's own notes ("Reopened", staff names, system messages) never reach the customer
+    expect(res.body.history.every((h) => h.note === null)).toBe(true);
+    expect(JSON.stringify(res.body)).not.toMatch(/Reopened|staff/i);
     expect(labels[0]).toBe('Order placed');
     expect(res.body.history.find((h) => h.label === 'Cancelled')).toMatchObject({ id: 'Canceled', cancelled: true });
     expect(res.body.history.every((h) => typeof h.time === 'string')).toBe(true);

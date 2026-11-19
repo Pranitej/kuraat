@@ -318,7 +318,10 @@ export function createOrdersService(ctx) {
       try {
         await ctx.rof.cancelOrder(row.rof_order_id);
       } catch (error) {
-        if (isRofError(error, 'rejected')) throw conflict('cannot_cancel', error.message);
+        if (isRofError(error, 'rejected')) {
+          ctx.logger.warn(`[orders] RSOF refused to cancel KR-${row.rof_order_number}: ${error.message}`);
+          throw conflict('cannot_cancel', 'This order can no longer be cancelled.');
+        }
         throw error;
       }
       const now = ctx.clock.now();
@@ -361,7 +364,10 @@ export function createOrdersService(ctx) {
       try {
         await ctx.rof.resendDeliveryOtp(row.rof_order_id);
       } catch (error) {
-        if (isRofError(error, 'rejected')) throw conflict('cannot_resend', error.message);
+        if (isRofError(error, 'rejected')) {
+          ctx.logger.warn(`[orders] RSOF refused to resend the code of KR-${row.rof_order_number}: ${error.message}`);
+          throw conflict('cannot_resend', 'The delivery code can be resent only while your order is out for delivery.');
+        }
         throw error;
       }
       await ctx.db('orders').where({ id: row.id }).update({ code_resent_at: now, updated_at: now });

@@ -150,7 +150,9 @@ export async function placeOrder(ctx, userId, input) {
   } catch (error) {
     if (isRofError(error, 'rejected')) {
       await setPayment(ctx, paymentId, { status: 'voided', error_code: 'rof_rejected', error_message: error.message.slice(0, 300) });
-      throw conflict('rof_rejected', error.message);
+      // RSOF's own refusal text may be internal: the customer gets one fixed sentence, we log RSOF's.
+      ctx.logger.warn(`[orders] RSOF refused the order (payment ${paymentId}): ${error.message}`);
+      throw conflict('rof_rejected', "The store couldn't accept this order. Please check your cart and try again.");
     }
     await setPayment(ctx, paymentId, { status: 'needs_review', error_code: 'rof_unconfirmed', error_message: error.message.slice(0, 300) });
     ctx.logger.error(`[orders] ROF create unconfirmed for payment ${paymentId} (key ${key}): ${error.message} — reconcile manually`);

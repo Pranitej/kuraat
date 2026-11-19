@@ -154,11 +154,15 @@ export function presentRofOrder(order, { branch = null, link = null, payment = n
     fulfilment: order.fulfilment,
     status: presentStatus(row),
     steps: steps(row),
-    // Every status change RSOF recorded, oldest first (a cancelled order that RSOF later reopens keeps its "Cancelled").
+    // Every status CHANGE RSOF recorded, oldest first (a cancelled order that RSOF later reopens keeps its "Cancelled").
+    // RSOF's free-text notes are internal (staff user names, system messages such as "the company has no active WhatsApp
+    // number"): they never reach the customer, and a row that only carries a note (same status before and after, e.g. a
+    // payment-link log line) is not a step. The first row (the order being placed) always stays.
     history: order.timeline
+      .filter((r, i) => i === 0 || r.from == null || r.from !== r.status)
       .map((r) => ({ r, info: statusInfo(r.status, order.fulfilment) }))
       .filter(({ info }) => info)
-      .map(({ r, info }) => ({ id: info.name, label: info.label, group: info.group, cancelled: info.step === 'cancelled', time: iso(r.at), note: r.note ?? null })),
+      .map(({ r, info }) => ({ id: info.name, label: info.label, group: info.group, cancelled: info.step === 'cancelled', time: iso(r.at), note: null })),
     items: order.lines.map((l) => ({ productId: l.productId, name: l.name, qty: l.qty, price: l.price, image: null })),
     subtotal: order.total,
     total: order.total,

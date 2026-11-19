@@ -331,7 +331,7 @@ white card ("Complete your payment" h3, "Your order is placed. Pay SAR … on th
 sheet in the app —, muted "After paying, check your payment status on the Orders page.") and a secondary "View my orders"
 (the Orders page, re-read fresh from RSOF). Deliberately nothing else: no paid / failed status, no re-checking — RSOF handles the
 payment and shows its own status on the Orders page. If RSOF gave no page with the order, one tap on Pay gets it (a message and
-"Try again" when it cannot). The order detail screen and the order cards do not mention the payment state either.
+"Try again" when it cannot). The only place the payment state appears is the order details screen: one extra row "Payment status" with RSOF's own value (Paid / Payment pending / Payment failed …), shown only when RSOF has one; the order list cards show nothing about payment.
 
 ### 16 · Order confirmed + branch popup (page 18)
 1. **Underlying screen:** maroon header with pattern, 72 white circle + maroon check, "Order confirmed!" (`title` white), "Order #KR-20418 · Today, 12:21" (white 80 %). Sheet: sand "Estimated delivery / Today, 5:00 – 7:00 PM" card; "Your items" rows (56 thumbnail, name, "Qty n"); white "Delivering to" card; two buttons side-by-side: Secondary "Track order", Primary "Back to home".

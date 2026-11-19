@@ -89,6 +89,34 @@ export function statusInfo(value, fulfilment = 'delivery') {
   return { name, step, label, group };
 }
 
+/**
+ * RSOF's `paymentStatus` on an order (null until a payment exists) → { code, label } for the customer. RSOF owns this
+ * value, so nothing is computed from our side: a word we know gets a friendly label, any other word is shown as RSOF
+ * wrote it (split into words), and a blank or numeric value shows nothing rather than a wrong label.
+ */
+const PAYMENT_LABELS = {
+  paid: 'Paid',
+  pending: 'Payment pending',
+  unpaid: 'Payment pending',
+  awaitingpayment: 'Payment pending',
+  failed: 'Payment failed',
+  declined: 'Payment failed',
+  cancelled: 'Payment cancelled',
+  canceled: 'Payment cancelled',
+  expired: 'Payment expired',
+  refunded: 'Refunded',
+  partiallypaid: 'Partly paid',
+  partiallyrefunded: 'Partly refunded',
+};
+export function paymentStatusInfo(value) {
+  const code = value === null || value === undefined ? '' : String(value).trim();
+  if (!code || /^\d+$/.test(code)) return null;
+  const known = PAYMENT_LABELS[code.toLowerCase().replace(/[^a-z]/g, '')];
+  if (known) return { code, label: known };
+  const words = code.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim().toLowerCase();
+  return { code, label: words.charAt(0).toUpperCase() + words.slice(1) };
+}
+
 /** 0–3, 'cancelled', or null for a status we do not know (e.g. transfer statuses 20–27). */
 export const stepOf = (value, fulfilment = 'delivery') => statusInfo(value, fulfilment)?.step ?? null;
 

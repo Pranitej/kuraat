@@ -253,6 +253,7 @@ export function toOrderDetail(raw) {
     branchId: raw.assignedToBranch ?? null,
     branchName: raw.assignBranchName ?? null,
     createdAt: raw.createdOn ?? null,
+    paymentStatus: raw.paymentStatus ?? null, // RSOF's own word; null until a payment exists
     lines: (raw.products || []).map((p) => ({
       productId: p.productId,
       name: p.productName ?? '',

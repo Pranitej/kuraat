@@ -220,6 +220,8 @@ export default function OrderDetailPage() {
                 pickup ? [PICKUP.collectFrom, branch?.name ?? PENDING_BRANCH.title] : [t('Deliver to'), formatAddress(order.address)],
                 [t('Phone'), formatPhone(order.deliveryPhone)],
                 ...(order.payment ? [[t('Payment'), paymentLabel(order.payment)]] : []),
+                // RSOF's own payment status (Paid / Payment pending / Payment failed …), shown as it comes
+                ...(order.paymentStatus ? [[t('Payment status'), t(order.paymentStatus.label)]] : []),
               ].map(([label, value]) => (
                 <div key={label} className="flex items-start justify-between gap-6">
                   <dt className="shrink-0 text-body text-muted">{label}</dt>

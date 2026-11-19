@@ -153,6 +153,17 @@ describe('payment receipt fields', () => {
     expect(listed.payment).toMatchObject({ status: 'online', link: null });
   });
 
+  test('RSOF\'s own payment status is passed through on the order (detail and list); no status when RSOF has none', async () => {
+    const order = await placeTestOrder(t, me);
+    expect((await api('get', `/orders/${order.id}`)).body.paymentStatus).toBeNull(); // nothing paid yet: nothing shown
+    t.mockRof.store.data.orders[0].paymentStatus = 'Paid';
+    minutes(1);
+    expect((await api('get', `/orders/${order.id}`)).body.paymentStatus).toEqual({ code: 'Paid', label: 'Paid' });
+    t.mockRof.store.data.orders[0].paymentStatus = 'PartiallyPaid';
+    minutes(1);
+    expect((await api('get', '/orders')).body[0].paymentStatus).toEqual({ code: 'PartiallyPaid', label: 'Partly paid' });
+  });
+
   test('cash on delivery has no transaction id and no payment time', async () => {
     const order = await placeTestOrder(t, me, { payment: { method: 'cod' } });
     expect(order.payment).toMatchObject({ method: 'cod', transactionId: null, paidAt: null });

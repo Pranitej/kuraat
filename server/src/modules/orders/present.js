@@ -3,7 +3,7 @@
  * folded into the four tracking steps of the design (+ a cancelled state).
  */
 import { roundedDistance } from '../../lib/geo.js';
-import { FALLBACK_BY_STEP, canCancel, canResendCode, statusInfo, stepOf, stepTimes } from '../../rof/status.js';
+import { FALLBACK_BY_STEP, canCancel, canResendCode, paymentStatusInfo, statusInfo, stepOf, stepTimes } from '../../rof/status.js';
 
 const DELIVERY_STEPS = [
   ['confirmed', 'Order confirmed'],
@@ -110,6 +110,7 @@ export function presentOrder(row, { payment = null, branch = null, media = null 
     subtotal: row.subtotal,
     total: row.total,
     payment: paymentView(payment),
+    paymentStatus: null, // RSOF's payment status comes with the order read from RSOF (presentRofOrder)
     branch: branch ?? (row.branch_id ? { id: row.branch_id, name: row.branch_name } : null),
     // ROF picks the branch now (design 2026-11-18 §5.2): measure from the delivery address to it.
     distanceKm: row.distance_km ?? (branch?.location && row.address?.location ? roundedDistance(row.address.location, branch.location) : null),
@@ -162,6 +163,8 @@ export function presentRofOrder(order, { branch = null, link = null, payment = n
     subtotal: order.total,
     total: order.total,
     payment: null,
+    // RSOF's own payment status (e.g. Paid / Payment pending / Payment failed), shown as is: RSOF handles the payment.
+    paymentStatus: paymentStatusInfo(order.paymentStatus),
     branch: branch ?? (order.branchId ? { id: order.branchId, name: order.branchName } : null),
     distanceKm: null,
     address: order.fulfilment === 'pickup' ? null : { line: order.address, district: null, city, postcode: null, location: null },

@@ -149,6 +149,8 @@ export type Order = {
   items: { productId: string; name: string; qty: number; price: number; image: string | null }[];
   subtotal: number;
   total: number;
+  /** RSOF's own payment status, shown on the order details (null until a payment exists). */
+  paymentStatus?: { code: string; label: string } | null;
   payment: {
     method: PaymentMethod;
     /** How the customer pays, never whether they paid (server/README.md → Online payment). Older server replies have none. */

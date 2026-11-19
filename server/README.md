@@ -122,7 +122,7 @@ server only opens RSOF's payment page and never tracks, checks or shows whether 
    that online payment really works (key set, RSOF's payment gateway set up). Off → the apps grey it out.
 5. Cancelling an order: the payment record is voided and the message says "If you already paid online, the store will handle
    your refund." (RSOF decides about the money).
-`payment.status` in order replies: `online` · `later` (cash / at branch) · `cancelled`. An older app build that still sends
+`payment.status` in order replies: `online` · `later` (cash / at branch) · `cancelled` (how the customer pays — never whether they paid). Whether they paid is RSOF's own `paymentStatus`, passed through on the order as `paymentStatus: { code, label } | null` (e.g. `Paid` / `Payment pending` / `Payment failed`; null until RSOF has one) and shown on the order details only — it arrives with the order read we already make, so no extra RSOF call. An older app build that still sends
 card details is refused ("Please update the app"). UPI is not offered (Saudi Arabia).
 
 ## How the ROF connection is built (for whoever switches to UAT)

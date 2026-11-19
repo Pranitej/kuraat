@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { FALLBACK_BY_STEP, canCancel, canResendCode, isTerminal, normalizeStatus, statusInfo, stepOf, stepTimes } from '../../src/rof/status.js';
+import { FALLBACK_BY_STEP, canCancel, canResendCode, isTerminal, normalizeStatus, statusInfo, stepOf, stepTimes, paymentStatusInfo } from '../../src/rof/status.js';
 
 // Design 2026-11-18 §5.1 (ROF's status list, codes 0–19):
 // [code, ROF name, customer label, step (delivery), step (pickup), filter group]
@@ -120,5 +120,31 @@ describe('stepTimes', () => {
 
   test('cancelled time', () => {
     expect(stepTimes([{ status: 'Created', at: 't0' }, { status: 'Canceled', at: 't9' }])).toEqual({ 0: 't0', cancelled: 't9' });
+  });
+});
+
+describe("paymentStatusInfo (RSOF's own payment status, shown as is)", () => {
+  test.each([
+    ['Paid', 'Paid'],
+    ['paid', 'Paid'],
+    ['Pending', 'Payment pending'],
+    ['Unpaid', 'Payment pending'],
+    ['AwaitingPayment', 'Payment pending'],
+    ['Failed', 'Payment failed'],
+    ['Cancelled', 'Payment cancelled'],
+    ['Refunded', 'Refunded'],
+    ['PartiallyPaid', 'Partly paid'],
+    ['partially_paid', 'Partly paid'],
+  ])('%s -> %s', (value, label) => {
+    expect(paymentStatusInfo(value)).toEqual({ code: value, label });
+  });
+
+  test('a word we do not know is shown as RSOF wrote it, in words', () => {
+    expect(paymentStatusInfo('OnHold')).toEqual({ code: 'OnHold', label: 'On hold' });
+    expect(paymentStatusInfo('under_review')).toEqual({ code: 'under_review', label: 'Under review' });
+  });
+
+  test('blank, missing or numeric shows nothing rather than a wrong label', () => {
+    for (const value of [null, undefined, '', '  ', 2, '3']) expect(paymentStatusInfo(value)).toBeNull();
   });
 });

@@ -275,6 +275,8 @@ export default function OrderDetailScreen() {
               pickup ? [PICKUP.collectFrom, branch?.name ?? PENDING_BRANCH.title] : [t('Deliver to'), formatAddress(order.address)],
               [t('Phone'), formatPhone(order.deliveryPhone)],
               ...(order.payment ? [[t('Payment'), paymentLabel(order.payment)]] : []),
+              // RSOF's own payment status (Paid / Payment pending / Payment failed …), shown as it comes
+              ...(order.paymentStatus ? [[t('Payment status'), t(order.paymentStatus.label)]] : []),
             ] as [string, string][]
           ).map(([label, value]) => (
             <View key={label} style={styles.infoRow}>

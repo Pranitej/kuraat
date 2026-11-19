@@ -234,6 +234,7 @@ export function registerOrderRoutes(app, { store, now, ok, fail, availableToSell
         address: o.address,
         city: o.city,
         fulfillmentType: o.fulfillmentType === 'Pickup' ? 'Pickup' : null,
+        paymentStatus: o.paymentStatus ?? null,
         assignedToBranch: o.assignedToBranch,
         assignBranchName: branchName(o.assignedToBranch),
         technicianName: onRoad || o.status === 'Delivered' ? 'Mock Rider' : null,

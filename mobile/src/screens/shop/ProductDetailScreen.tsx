@@ -161,7 +161,7 @@ export default function ProductDetailScreen() {
 
   const deliveryMeta = delivery?.branch && delivery.window
     ? [
-        delivery.isNearest ? 'Closest to you' : `${delivery.distanceKm} km away`,
+        delivery.isNearest ? t('Closest to you') : t('{distance} km away', { distance: delivery.distanceKm }),
         quoteStockLabel(delivery.inStock),
         formatWindow(delivery.window.start, delivery.window.end, new Date(), { long: false }),
       ]

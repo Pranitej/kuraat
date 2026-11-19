@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Store, Truck } from '@/components/icons';
 import { Tag, Text } from '@/components/ui';
@@ -25,7 +26,7 @@ export function DeliveryFromCard({
   distanceKm,
   meta,
   icon = 'truck',
-  label = 'Will be delivered from',
+  label = t('Will be delivered from'),
   showDistance = false,
   onPress,
   style,

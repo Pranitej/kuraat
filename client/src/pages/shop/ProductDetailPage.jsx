@@ -90,7 +90,7 @@ export default function ProductDetailPage() {
   const openZoom = (i = active) => navigate(ROUTES.productPhotos(product.id, i));
 
   const deliveryMeta = delivery?.branch
-    ? [delivery.isNearest ? 'Closest to you' : `${delivery.distanceKm} km away`, quoteStockLabel(delivery.inStock), formatWindow(delivery.window.start, delivery.window.end, new Date(), { long: false })].filter(Boolean).join(' · ')
+    ? [delivery.isNearest ? t('Closest to you') : t('{distance} km away', { distance: delivery.distanceKm }), quoteStockLabel(delivery.inStock), formatWindow(delivery.window.start, delivery.window.end, new Date(), { long: false })].filter(Boolean).join(' · ')
     : null;
   const inCart = quantityOf(product.id);
 

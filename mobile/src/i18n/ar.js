@@ -558,6 +558,8 @@ export default {
   'Invalid month': 'شهر غير صحيح',
   'Card has expired': 'انتهت صلاحية البطاقة',
   // Phone app only (spoken labels, offline notices, country picker)
+  'Closest to you': 'الأقرب إليك',
+  '{distance} km away': 'على بعد {distance} كم',
   'Choose': 'اختر',
   'Choose another saved address': 'اختر عنوانًا محفوظًا آخر',
   'Checkout step {v1} of 3: {v2}': 'خطوة {v1} من 3: {v2}',

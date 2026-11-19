@@ -10,10 +10,10 @@ import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { Button, Dialog, Logo, Text, TextLink } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { colors, layout, radii } from '@/theme/theme';
-import { t } from '@/i18n';
+import { t, localized } from '@/i18n';
 
 /** Same copy as the web's Welcome page. */
-const LEGAL = {
+const LEGAL = localized({
   terms: {
     title: 'Terms of use',
     body: [
@@ -30,7 +30,7 @@ const LEGAL = {
       'You can update or delete your account details at any time from your profile.',
     ],
   },
-} as const;
+} as const);
 
 /** 02 · Welcome */
 export default function WelcomeScreen() {
@@ -79,7 +79,7 @@ export default function WelcomeScreen() {
               {doc.title}
             </Text>
             <View style={styles.legalBody}>
-              {doc.body.map((p) => (
+              {doc.body.map((p: string) => (
                 <Text key={p} color="copy">
                   {p}
                 </Text>

@@ -36,6 +36,9 @@ export const BRANCH_IDS = {
   warehouse: 'b7000000-0000-4000-8000-000000000007',
 };
 
+/** Test-only payment-link API key (RSOF keys look like rofi_<8 hex>_<secret>). */
+export const PAYMENT_API_KEY = 'rofi_0000test_paymentlinks';
+
 export const DEFAULT_CREDENTIALS = {
   email: 'kuraat-app@rsof.local',
   password: 'MockRof@2026',
@@ -322,6 +325,8 @@ export function createSeed() {
   return structuredClone({
     tenantId: TENANT_ID,
     credentials: DEFAULT_CREDENTIALS,
+    /** The X-Api-Key of the payment-link API (scope payments.link). */
+    paymentApiKey: PAYMENT_API_KEY,
     categories: CATEGORIES,
     products: PRODUCTS,
     branches: BRANCHES,

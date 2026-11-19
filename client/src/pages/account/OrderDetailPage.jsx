@@ -4,11 +4,13 @@ import { ChevronDown, Navigation, PackageSearch, PackageX, Phone, Store } from '
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, WhatsAppIcon } from '@/components/ui';
 import { OrderItemImage, OrderTimeline, RefreshButton, StatusTag, branchLabel } from '@/components/account/OrderParts.jsx';
+import PaymentDueCard from '@/components/checkout/PaymentDueCard.jsx';
 import { useOrder, useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
 import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderHistoryView, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useCountdown, useDocumentTitle } from '@/hooks';
+import { useOrderPayment } from '@/hooks/useOrderPayment.js';
 
 /** "Your delivery code is sent on WhatsApp" + Resend (only while RSOF says out for delivery). */
 function DeliveryCodeNote({ order, onResend }) {
@@ -58,6 +60,8 @@ export default function OrderDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   useDocumentTitle(order ? `Order #${order.number}` : 'Order');
+  // A card order not paid yet: the payment page, checked again when the customer comes back to the tab.
+  const payment = useOrderPayment(order, { onPaid: refresh });
 
   if (!order) {
     return (
@@ -107,6 +111,7 @@ export default function OrderDetailPage() {
       <div className="mx-auto max-w-column px-5 lg:grid lg:max-w-[1080px] lg:grid-cols-2 lg:items-start lg:gap-8 lg:px-8">
         <div className="flex flex-col gap-3 lg:gap-5">
           <StatusTag status={status} className="self-start sm:hidden" />
+          {payment.waiting && <PaymentDueCard order={order} payment={payment} />}
           <Card className="p-4">
             <OrderTimeline steps={steps} />
             {status.id === 'out_for_delivery' && <DeliveryCodeNote order={order} onResend={resendCode} />}

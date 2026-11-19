@@ -151,10 +151,16 @@ export type Order = {
   total: number;
   payment: {
     method: PaymentMethod;
+    /** Where the money stands (server/README.md → Card payments). Older server replies have none. */
+    status?: PaymentStatus;
+    /** Only older simulated card payments: RSOF's payment page keeps the card. */
     brand: string | null;
     last4: string | null;
     transactionId: string | null;
     paidAt: string | null;
+    /** RSOF's payment page: only in the reply that placed a card order (never stored). */
+    link?: string | null;
+    linkExpiresAt?: string | null;
   } | null;
   branch: (Partial<Omit<Branch, 'phone' | 'location'>> & { id: string; name: string; phone?: string; location?: LatLng }) | null;
   distanceKm: number | null;
@@ -171,6 +177,12 @@ export type Order = {
 
 /** Saudi Arabia: card (incl. Mada), cash on delivery, or (pickup) pay at the branch. */
 export type PaymentMethod = 'card' | 'cod' | 'branch';
+
+/** paid · pending (card, not paid yet) · later (cash / at branch) · refund_pending · refunded · cancelled */
+export type PaymentStatus = 'paid' | 'pending' | 'later' | 'refund_pending' | 'refunded' | 'cancelled';
+
+/** POST /orders/:id/pay */
+export type PayAnswer = { status: 'paid' } | { status: 'pending'; link: string; expiresAt: string | null; amount: number; currency: string };
 
 export type Fulfilment = 'delivery' | 'pickup';
 

@@ -4,29 +4,27 @@
  *      call is not idempotent, guide §7.1)
  *   2. re-price the cart from ROF; refuse if anything changed since the customer last saw it
  *   3. candidate hub branches by distance (and stock, if the inventory check is on)
- *   4. authorise the (simulated) payment
+ *   4. record the payment choice — card: "pending" (paid later on RSOF's payment page); cash / at branch: nothing to charge
  *   5. create the order in ROF — rejected → void payment; timeout → needs_review, NO retry
  *   6. save the ROF id/number at once
- *   7. assign the nearest candidate branch, falling back to the next (guide §7.2); none → cancel in ROF
- *   8. capture payment, notifications, saved card, empty cart
+ *   7. send the customer's pin (when there is one): RSOF assigns the branch
+ *   8. notifications, empty cart; card: ask RSOF for the payment link (19 Nov 2026) so the app can open it at once
  */
-import { AppError, badRequest, conflict, notFound, unavailable } from '../../http/errors.js';
+import { badRequest, conflict, notFound, unavailable } from '../../http/errors.js';
 import { newId } from '../../lib/ids.js';
 import { toCreatedOrder, toRofOrderPayload } from '../../rof/adapter.js';
 import { isRofError } from '../../rof/errors.js';
 import { listAddresses, toAddress } from '../addresses/routes.js';
 import { findUserById } from '../auth/service.js';
-import { saveCard } from '../cards/routes.js';
 import { loadCart, priceForUser, saveCart } from '../cart/routes.js';
 import { deliveryCandidates } from '../checkout/branchChoice.js';
 import { estimates } from '../checkout/window.js';
 import { notify } from '../notifications/service.js';
-import { authorizePayment } from '../payments/simulator.js';
+import { CARD_UNAVAILABLE } from '../payments/online.js';
 
 const UNCONFIRMED = "We couldn't confirm your order with the store. Please contact us before trying again — you won't be charged twice.";
 
 const sar = (n) => `SAR ${Number(n).toFixed(2)}`;
-const paymentLabel = (p) => (p.method === 'card' ? `${p.brand} •••• ${p.last4}` : 'cash on delivery');
 
 /** First problem in a priced cart, as a customer-facing message (null when the cart is fine). */
 function cartProblem(priced) {
@@ -43,10 +41,11 @@ function cartProblem(priced) {
 /** Re-raise the outcome of an earlier attempt with the same idempotency key. */
 async function replay(ctx, userId, existing) {
   if (existing.user_id !== userId) throw conflict('idempotency_conflict', 'This checkout session is not valid. Please start again.');
-  if (existing.status === 'captured' && existing.order_id) return { order: await orderFor(ctx, existing.order_id), created: false };
+  // An order exists for this key (paid, waiting for its card payment, or cancelled since): never a second one.
+  if (existing.order_id) return { order: await orderFor(ctx, existing.order_id), created: false };
   if (existing.status === 'needs_review') throw unavailable('order_unconfirmed', UNCONFIRMED);
-  if (existing.status === 'authorized') throw conflict('order_in_progress', 'Your order is being placed. Please wait a moment.');
-  return null; // failed / voided: this key may try again
+  if (existing.status === 'authorized' || existing.status === 'pending') throw conflict('order_in_progress', 'Your order is being placed. Please wait a moment.');
+  return null; // failed / voided before an order existed: this key may try again
 }
 
 const orderFor = async (ctx, orderId) => ctx.orders.present(await ctx.db('orders').where({ id: orderId }).first());
@@ -78,8 +77,8 @@ async function upsertPayment(ctx, userId, key, fields) {
 const setPayment = (ctx, id, fields) => ctx.db('payments').where({ id }).update({ ...fields, updated_at: ctx.clock.now() });
 
 /**
- * @param {{ fulfilment?: 'delivery'|'pickup', channel?: 'web'|'mobile', addressId?, payment: { method: 'card'|'cod'|'branch', card?, saveCard? }, idempotencyKey }} input
- * @returns {Promise<{ order: object, created: boolean }>}
+ * @param {{ fulfilment?: 'delivery'|'pickup', channel?: 'web'|'mobile', addressId?, payment: { method: 'card'|'cod'|'branch' }, idempotencyKey }} input
+ * @returns {Promise<{ order: object, created: boolean }>} a new card order's `payment` also carries `link`/`linkExpiresAt` (null when RSOF had none yet)
  */
 export async function placeOrder(ctx, userId, input) {
   const key = input.idempotencyKey;
@@ -113,30 +112,17 @@ export async function placeOrder(ctx, userId, input) {
     if (!candidates.length) throw conflict('no_branch', "We don't have a branch that delivers to this address yet.");
   }
 
-  // 4 — payment
+  // 4 — payment. Nothing is charged here. A card is paid on RSOF's payment page AFTER the order exists in RSOF
+  // (the link needs its order number), so a card order starts "pending". Cash on delivery and pay at the branch are
+  // paid later. When card payment is not working (no API key, RSOF's payment API down) a card order is refused now,
+  // before anything is created.
+  const method = input.payment.method;
+  if (!['card', 'cod', 'branch'].includes(method)) throw badRequest('invalid', 'Choose card or cash on delivery.', 'payment.method');
+  const card = method === 'card';
+  // The check is cached (RSOF is asked at most once a minute), so this costs nothing on most orders.
+  if (card && !(await ctx.payments?.available())) throw unavailable('payment_unavailable', CARD_UNAVAILABLE);
   const amount = priced.totals.total;
-  let paid;
-  try {
-    paid = authorizePayment({ ...input.payment, amount }, { now: ctx.clock.now() });
-  } catch (error) {
-    if (error instanceof AppError && error.code === 'card_declined') {
-      // Record the decline; if another attempt with this key is already running, leave its row alone.
-      await upsertPayment(ctx, userId, key, { method: input.payment.method, status: 'failed', amount, error_code: error.code, error_message: error.message }).catch(
-        (e) => {
-          if (e.code !== 'order_in_progress') throw e;
-        },
-      );
-    }
-    throw error;
-  }
-  const paymentId = await upsertPayment(ctx, userId, key, {
-    method: paid.method,
-    status: 'authorized',
-    amount,
-    brand: paid.brand,
-    last4: paid.last4,
-    transaction_id: paid.transactionId,
-  });
+  const paymentId = await upsertPayment(ctx, userId, key, { method, status: card ? 'pending' : 'authorized', amount, brand: null, last4: null, transaction_id: null });
 
   // 5 — create in ROF (exactly once for this payment)
   const user = await findUserById(ctx.db, userId);
@@ -153,7 +139,7 @@ export async function placeOrder(ctx, userId, input) {
           user,
           address,
           items,
-          payment: paid,
+          payment: { method },
           total: amount,
           fulfilment: pickup ? 'pickup' : 'delivery',
           city: pickupAddress?.city ?? null,
@@ -218,12 +204,12 @@ export async function placeOrder(ctx, userId, input) {
     ctx.logger[level](`[orders] could not send the pin for KR-${created.orderNumber} to ROF${kind}: ${error.message} — RSOF staff must assign a branch`);
   }
 
-  // 8 — done: payment captured, then read the order once so an instant auto-assignment shows.
+  // 8 — done, then read the order once so an instant auto-assignment shows. Cash / at branch: the order is
+  // placed ("captured" = nothing more to do now). Card: stays "pending" until RSOF says the order is paid.
   const doneAt = ctx.clock.now();
   await ctx.db.transaction(async (trx) => {
     await trx('orders').where({ id: orderId }).update({ location_shared: locationShared, updated_at: doneAt });
-    await trx('payments').where({ id: paymentId }).update({ status: 'captured', updated_at: doneAt });
-    if (paid.method === 'card' && input.payment.saveCard) await saveCard(trx, userId, { brand: paid.brand, last4: paid.last4, expiry: paid.expiry }, doneAt);
+    if (!card) await trx('payments').where({ id: paymentId }).update({ status: 'captured', updated_at: doneAt });
   });
   const synced = await ctx.orders.refresh(await ctx.db('orders').where({ id: orderId }).first(), { maxAgeMs: 0 }).catch((error) => {
     ctx.logger.warn(`[orders] could not re-read KR-${created.orderNumber} after placing it: ${error.message}`);
@@ -234,16 +220,23 @@ export async function placeOrder(ctx, userId, input) {
   const link = { kind: 'order', id: orderId };
   const branchName = synced?.branch_name;
   await ctx.db.transaction(async (trx) => {
-    if (paid.method === 'card') {
-      await notify(trx, userId, { type: 'payment', title: 'Payment received', body: `${sar(amount)} paid with ${paymentLabel(paid)}.`, link }, doneAt);
-    }
-    const body = branchName
-      ? pickup
-        ? `Collect it from ${branchName}.`
-        : `It will be delivered from ${branchName}.`
-      : "Your order screen shows the branch once it's confirmed.";
-    await notify(trx, userId, { type: 'order', title: `Order #${number} confirmed`, body, link }, new Date(doneAt.getTime() + 1));
+    const body = card
+      ? `Pay ${sar(amount)} on the secure payment page to complete it.`
+      : branchName
+        ? pickup
+          ? `Collect it from ${branchName}.`
+          : `It will be delivered from ${branchName}.`
+        : "Your order screen shows the branch once it's confirmed.";
+    await notify(trx, userId, { type: 'order', title: card ? `Order #${number} placed` : `Order #${number} confirmed`, body, link }, new Date(doneAt.getTime() + 1));
   });
   await saveCart(ctx.db, userId, { items: [] }, doneAt);
-  return { order: await orderFor(ctx, orderId), created: true };
+
+  // Card: the payment page right away, so the app can open it without another request. If RSOF has no link yet
+  // the order is still placed; the app's "Pay now" asks again (POST /orders/:id/pay).
+  if (!card) return { order: await orderFor(ctx, orderId), created: true };
+  const orderRow = await ctx.db('orders').where({ id: orderId }).first();
+  const answer = await ctx.payments.firstLink(await ctx.db('payments').where({ id: paymentId }).first(), orderRow);
+  const order = await orderFor(ctx, orderId);
+  const page = answer?.status === 'pending' ? { link: answer.link, linkExpiresAt: answer.expiresAt } : { link: null, linkExpiresAt: null };
+  return { order: { ...order, payment: { ...order.payment, ...page } }, created: true };
 }

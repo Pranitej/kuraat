@@ -152,7 +152,8 @@ export function provinceFor(city) {
 function moneyRemark(payment, total) {
   if (!payment) return null;
   if (payment.method === 'cod') return `Collect SAR ${Number(total).toFixed(2)} (cash on delivery)`;
-  if (payment.method === 'card') return 'Paid by card';
+  // The order is created BEFORE the customer pays on RSOF's payment page (19 Nov 2026): RSOF holds the payment.
+  if (payment.method === 'card') return `Card payment online: SAR ${Number(total).toFixed(2)} via payment link`;
   if (payment.method === 'branch') return `Collect SAR ${Number(total).toFixed(2)} (pay at branch)`;
   return null;
 }
@@ -260,5 +261,32 @@ export function toOrderDetail(raw) {
     })),
     total: total === undefined || total === null ? null : Number(total),
     timeline,
+  };
+}
+
+/**
+ * RSOF's payment-link answer (rof/paymentLink.js) → ours. The link is opened in the customer's browser, so it
+ * must be a web page RSOF serves: https, or on the RSOF address itself (local tests run on http). Anything
+ * else is treated as no link at all.
+ * @returns {{ outcome: string, link: string|null, expiresAt: string|null, amount: number|null, currency: string|null, reused: boolean }}
+ */
+export function toPaymentLink(raw, { baseUrl }) {
+  let link = null;
+  if (raw.outcome === 'LinkReady' && !isBlank(raw.paymentLink)) {
+    try {
+      const url = new URL(String(raw.paymentLink));
+      const rsof = new URL(baseUrl);
+      if (url.protocol === 'https:' || url.origin === rsof.origin) link = url.toString();
+    } catch {
+      link = null;
+    }
+  }
+  return {
+    outcome: raw.outcome,
+    link,
+    expiresAt: isBlank(raw.expiresAt) ? null : String(raw.expiresAt),
+    amount: raw.amount === undefined || raw.amount === null ? null : Number(raw.amount),
+    currency: isBlank(raw.currency) ? null : String(raw.currency),
+    reused: Boolean(raw.reused),
   };
 }

@@ -63,15 +63,40 @@ function presentStatus(row) {
   return { id: stepsFor(row)[step][0], code, label, group, step, cancelled };
 }
 
+/**
+ * Where the money stands, for the apps:
+ *   paid           — card, RSOF says paid (or an older simulated card payment)
+ *   pending        — card, waiting for the customer to pay on RSOF's payment page
+ *   later          — cash on delivery / pay at the branch: paid when the order arrives / is collected
+ *   refund_pending — a paid card order that was cancelled: the money goes back through RSOF / the store
+ *   refunded       — an older simulated card payment that was refunded
+ *   cancelled      — cancelled before anything was paid
+ */
+function paymentStatus(payment) {
+  const later = payment.method === 'cod' || payment.method === 'branch';
+  if (payment.status === 'voided') return 'cancelled';
+  if (later) return 'later';
+  if (payment.status === 'captured') return 'paid';
+  if (payment.status === 'refund_pending' || payment.status === 'refunded') return payment.status;
+  return 'pending';
+}
+
 function paymentView(payment) {
   if (!payment) return null;
+  const status = paymentStatus(payment);
+  const paid = status === 'paid' || status === 'refund_pending' || status === 'refunded';
   return {
     method: payment.method,
+    status,
+    // Card brand and last digits exist only on older simulated payments: RSOF's payment page keeps the card.
     brand: payment.brand ?? null,
     last4: payment.last4 ?? null,
     transactionId: payment.transaction_id ?? null,
-    // Cash on delivery and pay-at-the-branch are paid later, so there is no payment time yet.
-    paidAt: payment.method === 'cod' || payment.method === 'branch' ? null : iso(payment.created_at),
+    // Only a card that has been paid has a payment time (older simulated payments: when they were made).
+    paidAt: paid ? iso(payment.paid_at ?? payment.created_at) : null,
+    // The payment page is never stored: POST /orders and POST /orders/:id/pay hand it out fresh from RSOF.
+    link: null,
+    linkExpiresAt: null,
   };
 }
 

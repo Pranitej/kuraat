@@ -25,10 +25,11 @@ function api(method, path, body) {
 }
 const rofOrders = () => t.mockRof.store.data.orders;
 const fault = (faults) => request(t.mockRof.app).post('/__dev/faults').send(faults);
-const visa = { method: 'card', card: { number: '4242 4242 4242 4242', expiry: '12/29', cvv: '123' } };
+// A card is paid on RSOF's payment page after the order is placed (19 Nov 2026): no card details are sent.
+const card = { method: 'card' };
 const pdfCart = { items: [{ productId: PRODUCT_IDS.classic, qty: 1 }, { productId: PRODUCT_IDS.croissant, qty: 2 }] };
 const place = (overrides = {}) =>
-  api('post', '/orders', { addressId: homeId, payment: visa, idempotencyKey: randomUUID(), ...overrides });
+  api('post', '/orders', { addressId: homeId, payment: card, idempotencyKey: randomUUID(), ...overrides });
 const payment = () => t.db('payments').first();
 
 describe('placing an order', () => {
@@ -45,7 +46,8 @@ describe('placing an order', () => {
       ],
       subtotal: 313,
       total: 313,
-      payment: { method: 'card', brand: 'Visa', last4: '4242' },
+      // Waiting for the customer to pay on RSOF's page; the page comes with the new order.
+      payment: { method: 'card', status: 'pending', brand: null, last4: null, paidAt: null, link: expect.stringMatching(/\/en\/pay\/\w+$/), linkExpiresAt: '2026-11-15T09:51:00.000Z' },
       branch: { id: BRANCH_IDS.corniche, name: 'Kuraat · Al Khobar Corniche' },
       distanceKm: 5.8,
       deliveryPhone: '501234821',
@@ -70,13 +72,10 @@ describe('placing an order', () => {
       ['AssignedToBranch', 'Assigned to branch automatically'],
     ]);
     expect((await t.db('orders').first()).location_shared).toBeTruthy();
-    expect((await payment()).status).toBe('captured');
+    expect((await payment()).status).toBe('pending');
     const notes = await t.db('notifications').where({ user_id: me.user.id }).whereNot({ type: 'welcome' }).orderBy('created_at');
-    expect(notes.map((n) => [n.type, n.title])).toEqual([
-      ['payment', 'Payment received'],
-      ['order', 'Order #KR-20418 confirmed'],
-    ]);
-    expect(notes[1].body).toBe('It will be delivered from Kuraat · Al Khobar Corniche.');
+    expect(notes.map((n) => [n.type, n.title])).toEqual([['order', 'Order #KR-20418 placed']]);
+    expect(notes[0].body).toBe('Pay SAR 313.00 on the secure payment page to complete it.');
     expect((await api('get', '/cart')).body.items).toEqual([]);
   });
 
@@ -89,7 +88,7 @@ describe('placing an order', () => {
       customerEmail: 'sara.m@example.com',
       address: 'Building 14, King Fahd Rd, Al Rakah, Al Khobar 34445',
       city: 'Al Khobar',
-      remarks: 'Landmark: Near Al Rakah Park · Paid by card',
+      remarks: 'Landmark: Near Al Rakah Park · Card payment online: SAR 313.00 via payment link',
       source: 'MobileApp',
       fulfillmentType: 'Delivery',
       orderType: 0,
@@ -140,7 +139,7 @@ describe('placing an order', () => {
 
   test('Praline: ROF assigns Dhahran (Corniche has no Praline)', async () => {
     await api('put', '/cart', { items: [{ productId: PRODUCT_IDS.praline, qty: 1 }] });
-    const res = await place();
+    const res = await place({ payment: { method: 'cod' } });
     expect(res.status).toBe(201);
     expect(res.body.branch.id).toBe(BRANCH_IDS.dhahran);
     expect(res.body.distanceKm).toBe(7.4);
@@ -158,17 +157,16 @@ describe('placing an order', () => {
     expect(await t.db('payments')).toHaveLength(1);
   });
 
-  test('a declined card → 402, no ROF order; retrying the same key with another card works', async () => {
+  test('an older app that still sends card details (and has no "Pay now") is asked to update: nothing created or stored', async () => {
     await api('put', '/cart', pdfCart);
-    const idempotencyKey = randomUUID();
-    const declined = await place({ idempotencyKey, payment: { ...visa, card: { ...visa.card, number: '4000 0000 0000 0002' } } });
-    expect(declined.status).toBe(402);
-    expect(declined.body).toMatchObject({ code: 'card_declined', field: 'card' });
+    const res = await place({ payment: { method: 'card', card: { number: '4242 4242 4242 4242', expiry: '12/29', cvv: '123' }, saveCard: true } });
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ code: 'invalid', field: 'payment.method', message: 'Please update the app to pay by card, or choose another payment method.' });
+    expect(await payment()).toBeUndefined();
     expect(rofOrders()).toHaveLength(0);
-    expect((await payment()).status).toBe('failed');
-    const retry = await place({ idempotencyKey });
-    expect(retry.status).toBe(201);
-    expect(rofOrders()).toHaveLength(1);
+    expect((await api('get', '/cards')).body).toEqual([]);
+    // Cash on delivery still works from an older app.
+    expect((await place({ payment: { method: 'cod' } })).status).toBe(201);
   });
 
   test('ROF refuses the order → 409 rof_rejected with the ROF message, payment voided', async () => {
@@ -189,7 +187,7 @@ describe('placing an order', () => {
     const idempotencyKey = randomUUID();
     const res = await place({ idempotencyKey });
     expect(res.status).toBe(201);
-    expect((await payment()).status).toBe('captured');
+    expect((await payment()).status).toBe('pending');
     expect((await t.db('orders').first()).location_shared).toBeFalsy();
     expect((await api('get', '/cart')).body.items).toEqual([]);
     expect(t.logs.some(([level, line]) => level === 'error' && line.includes('pin bug'))).toBe(true);
@@ -207,7 +205,7 @@ describe('placing an order', () => {
     const res = await place();
     expect(res.status).toBe(201);
     expect(res.body.branch).toBeNull();
-    expect((await payment()).status).toBe('captured');
+    expect((await payment()).status).toBe('pending');
   });
 
   test('no hub has the stock → still placed; ROF leaves it for staff, no branch yet, cancel allowed', async () => {
@@ -215,7 +213,7 @@ describe('placing an order', () => {
     for (const branchId of Object.keys(stock)) stock[branchId] = 0;
     t.mockRof.store.data.products.find((p) => p.id === PRODUCT_IDS.classic).allowOversell = true;
     await api('put', '/cart', { items: [{ productId: PRODUCT_IDS.classic, qty: 1 }] });
-    const res = await place();
+    const res = await place({ payment: { method: 'cod' } });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ branch: null, distanceKm: null, canCancel: true, status: { code: 'SharedLocationManually', label: 'Location received' } });
     expect((await payment()).status).toBe('captured');
@@ -233,7 +231,7 @@ describe('placing an order', () => {
     expect(rofOrders()[0].status).toBe('Created'); // not "Shared location manually"
     expect(res.body.status).toMatchObject({ code: 'Created' });
     expect((await t.db('orders').first()).location_shared).toBeNull();
-    expect((await payment()).status).toBe('captured');
+    expect((await payment()).status).toBe('pending');
   });
 
   test('pin share fails → the order is still placed and paid; location_shared false, warning logged', async () => {
@@ -242,7 +240,7 @@ describe('placing an order', () => {
     const res = await place();
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ branch: null, status: { code: 'Created', label: 'Order placed' } });
-    expect((await payment()).status).toBe('captured');
+    expect((await payment()).status).toBe('pending');
     expect((await t.db('orders').first()).location_shared).toBeFalsy();
     expect(t.logs.some(([level, line]) => level === 'warn' && line.includes('pin') && line.includes('Location service unavailable'))).toBe(true);
   });
@@ -277,7 +275,7 @@ describe('placing an order', () => {
     await api('put', '/cart', pdfCart);
     const res = await place({ payment: { method: 'cod' } });
     expect(res.status).toBe(201);
-    expect(res.body.payment).toEqual({ method: 'cod', brand: null, last4: null, transactionId: null, paidAt: null });
+    expect(res.body.payment).toEqual({ method: 'cod', status: 'later', brand: null, last4: null, transactionId: null, paidAt: null, link: null, linkExpiresAt: null });
     expect(await payment()).toMatchObject({ status: 'captured', transaction_id: null });
     expect(await t.db('notifications').where({ type: 'payment' })).toHaveLength(0);
   });
@@ -291,18 +289,12 @@ describe('placing an order', () => {
     expect(rofOrders()).toHaveLength(0);
   });
 
-  test('saveCard remembers brand and last 4 only', async () => {
-    await api('put', '/cart', pdfCart);
-    await place({ payment: { ...visa, saveCard: true } });
-    expect((await api('get', '/cards')).body).toEqual([{ id: expect.any(String), brand: 'Visa', last4: '4242', expiry: '12/29' }]);
-  });
-
   test('the order is the RSOF product prices only: no delivery fee, VAT, discount or promo code', async () => {
     await api('put', '/cart', pdfCart);
     const res = await place();
     expect(res.body).toMatchObject({ subtotal: 313, total: 313 });
     for (const key of ['discount', 'deliveryFee', 'vat', 'promoCode']) expect(res.body).not.toHaveProperty(key);
-    expect(Number((await t.db('payments').first()).amount)).toBe(313); // the card is charged the RSOF prices, nothing more
+    expect(Number((await t.db('payments').first()).amount)).toBe(313); // the card payment is the RSOF prices, nothing more
   });
 
   test('empty cart → 400 empty_cart; unknown address → 404', async () => {
@@ -342,7 +334,7 @@ describe('placing an order', () => {
         address: null,
         window: { start: null, end: null },
         total: 313,
-        payment: { method: 'branch', brand: null, last4: null, transactionId: null, paidAt: null },
+        payment: { method: 'branch', status: 'later', brand: null, last4: null, transactionId: null, paidAt: null },
         branch: { id: BRANCH_IDS.corniche },
         status: { code: 'AssignedToBranch', label: 'Sent to branch' },
       });
@@ -364,13 +356,13 @@ describe('placing an order', () => {
       expect(await t.db('notifications').where({ type: 'payment' })).toHaveLength(0);
     });
 
-    test('pay now by card: same order, card payment captured', async () => {
+    test('pay now by card: same order, waiting for the payment on the RSOF page', async () => {
       await api('put', '/cart', pdfCart);
       await setLocation(26.2874, 50.2085);
-      const res = await placePickup({ payment: visa });
+      const res = await placePickup({ payment: card });
       expect(res.status).toBe(201);
-      expect(res.body.payment).toMatchObject({ method: 'card', brand: 'Visa', last4: '4242' });
-      expect(rofOrders()[0].remarks).toBe('Paid by card');
+      expect(res.body.payment).toMatchObject({ method: 'card', status: 'pending', link: expect.any(String) });
+      expect(rofOrders()[0].remarks).toBe('Card payment online: SAR 313.00 via payment link');
     });
 
     test('with no saved location the default address gives the pin', async () => {
@@ -405,7 +397,7 @@ describe('placing an order', () => {
 
     test('delivery without an address, or paying at the branch, is refused too', async () => {
       await api('put', '/cart', pdfCart);
-      const noAddress = await api('post', '/orders', { payment: visa, idempotencyKey: randomUUID() });
+      const noAddress = await api('post', '/orders', { payment: card, idempotencyKey: randomUUID() });
       expect(noAddress.status).toBe(400);
       expect(noAddress.body).toMatchObject({ code: 'invalid', field: 'addressId' });
       const atBranch = await place({ payment: { method: 'branch' } });

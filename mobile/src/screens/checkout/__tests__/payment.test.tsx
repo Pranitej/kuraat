@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { BackHandler } from 'react-native';
+import { BackHandler, Linking } from 'react-native';
 import { session } from '@/lib/storage.js';
 import type { FetchCall } from '@/test/jestFetch';
 import { renderScreen } from '@/test/renderScreen';
@@ -58,8 +58,12 @@ const ORDER = {
   cancelledAt: null,
 };
 
+const PAGE = 'https://rofuat.rsof.com.sa/en/pay/T1';
+let cardOn = true;
+
 function shop(onOrder: (c: FetchCall) => { status?: number; body?: unknown } | undefined) {
   return (c: FetchCall) => {
+    if (c.path === '/checkout/payment-options') return { body: { card: cardOn } };
     if (c.path === '/cart' && c.method === 'GET') return { body: CART };
     if (c.path === '/addresses') return { body: [ADDRESS] };
     if (c.path === '/orders' && c.method === 'POST') return onOrder(c);
@@ -68,13 +72,11 @@ function shop(onOrder: (c: FetchCall) => { status?: number; body?: unknown } | u
   };
 }
 
-async function fillCard() {
-  await fireEvent.changeText(screen.getByLabelText('Card number'), '4242424242424242');
-  await fireEvent.changeText(screen.getByLabelText('Expiry'), '12/29');
-  await fireEvent.changeText(screen.getByLabelText('CVV'), '123');
-}
+// A card is paid on RSOF's secure payment page after the order is placed: no card fields in the app.
+const CONTINUE = 'Continue to payment · SAR 185.00';
 
 beforeEach(() => {
+  cardOn = true;
   resetRouterMock();
   session.clearAll();
   session.write('checkout', {
@@ -104,8 +106,8 @@ describe('14 · Payment', () => {
     }) as unknown as typeof fetch;
 
     await screen.findByText('Payment method');
-    await fillCard();
-    const pay = screen.getByRole('button', { name: 'Pay SAR 185.00' });
+    const pay = await screen.findByRole('button', { name: CONTINUE });
+    await waitFor(() => expect(pay).toBeEnabled());
     await act(async () => {
       fireEvent.press(pay);
       fireEvent.press(pay);
@@ -127,10 +129,10 @@ describe('14 · Payment', () => {
       }),
     });
     await screen.findByText('Payment method');
-    await fillCard();
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay SAR 185.00' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: CONTINUE })).toBeEnabled());
+    await fireEvent.press(screen.getByRole('button', { name: CONTINUE }));
     expect(await screen.findAllByText("We can't reach the store right now. Please try again in a moment.")).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay SAR 185.00' }));
+    await fireEvent.press(screen.getByRole('button', { name: CONTINUE }));
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/checkout/success/o1'));
     const keys = calls
       .filter((c) => c.path === '/orders' && c.method === 'POST')
@@ -139,17 +141,34 @@ describe('14 · Payment', () => {
     expect(keys[0]).toBe(keys[1]);
   });
 
-  test('a declined card shows the server message', async () => {
+  test('card sends only the method: the card is entered on the secure payment page', async () => {
+    const { calls } = await renderScreen(<PaymentScreen />, { server: shop(() => ({ status: 201, body: ORDER })) });
+    await screen.findByText('Payment method');
+    expect(screen.queryByLabelText('Card number')).toBeNull();
+    await waitFor(() => expect(screen.getByRole('button', { name: CONTINUE })).toBeEnabled());
+    await fireEvent.press(screen.getByRole('button', { name: CONTINUE }));
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/checkout/success/o1'));
+    expect(calls.find((c) => c.path === '/orders' && c.method === 'POST')?.body).toMatchObject({ payment: { method: 'card' } });
+  });
+
+  test('card payment not working: card is greyed out and cash on delivery is chosen', async () => {
+    cardOn = false;
+    await renderScreen(<PaymentScreen />, { server: shop(() => ({ status: 201, body: ORDER })) });
+    await screen.findByText('Payment method');
+    const card = await screen.findByRole('radio', { name: 'Credit / debit card, Card payment is not available right now' });
+    expect(card.props.accessibilityState).toMatchObject({ disabled: true });
+    await waitFor(() => expect(screen.getByRole('radio', { name: /Cash on delivery/ }).props.accessibilityState).toMatchObject({ checked: true }));
+  });
+
+  test('card stops working while paying: the message shows and cash on delivery is offered instead', async () => {
     await renderScreen(<PaymentScreen />, {
-      server: shop(() => ({
-        status: 402,
-        body: { code: 'card_declined', field: 'card.number', message: 'Your card was declined. Try another card.' },
-      })),
+      server: shop(() => ({ status: 503, body: { code: 'payment_unavailable', message: "Card payment isn't available right now. Choose cash on delivery or pay at the branch." } })),
     });
     await screen.findByText('Payment method');
-    await fillCard();
-    await fireEvent.press(screen.getByRole('button', { name: 'Pay SAR 185.00' }));
-    expect((await screen.findAllByText('Your card was declined. Try another card.')).length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getByRole('button', { name: CONTINUE })).toBeEnabled());
+    await fireEvent.press(screen.getByRole('button', { name: CONTINUE }));
+    expect((await screen.findAllByText("Card payment isn't available right now. Choose cash on delivery or pay at the branch.")).length).toBeGreaterThan(0);
+    expect(screen.getByRole('radio', { name: /Cash on delivery/ }).props.accessibilityState).toMatchObject({ checked: true });
     expect(mockRouter.replace).not.toHaveBeenCalled();
   });
 
@@ -167,12 +186,11 @@ describe('14 · Payment', () => {
     await renderScreen(<PaymentScreen />, { server: shop(() => ({ status: 201, body: ORDER })) });
     await screen.findByText('Payment method');
     expect(screen.getAllByRole('radio').map((r) => r.props.accessibilityLabel)).toEqual([
-      'Credit / debit card, Visa, Mastercard, Mada',
+      'Credit / debit card, Mada, Visa, Mastercard · on a secure payment page',
       'Cash on delivery, Pay when your order arrives',
     ]);
     expect(screen.queryByText(/UPI/)).toBeNull();
     expect(screen.getByRole('radio', { name: /Credit \/ debit card/ }).props.accessibilityState).toMatchObject({ checked: true });
-    expect(screen.getByLabelText('Card number')).toBeTruthy();
   });
 });
 
@@ -191,7 +209,7 @@ describe('14 · Payment — branch pickup (design 2026-11-18 §5.3)', () => {
     await renderScreen(<PaymentScreen />, { server: pickupShop(() => ({ status: 201, body: PICKUP_ORDER })) });
     await screen.findByText('Payment method');
     expect(screen.getAllByRole('radio').map((r) => r.props.accessibilityLabel)).toEqual([
-      'Pay now, Credit / debit card · Visa, Mastercard, Mada',
+      'Pay now, Card · Mada, Visa, Mastercard on a secure payment page',
       'Pay at branch, Pay when you collect your order',
     ]);
     expect(screen.queryByRole('radio', { name: /Cash on delivery/ })).toBeNull();
@@ -233,7 +251,7 @@ describe('14 · Payment — branch pickup (design 2026-11-18 §5.3)', () => {
     expect(screen.getByRole('button', { name: 'Pay' })).toBeDisabled();
     up = true;
     await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByRole('button', { name: 'Pay SAR 185.00' })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: CONTINUE })).toBeEnabled();
   });
 
   test('while the pickup total is on its way the screen says so', async () => {
@@ -260,6 +278,64 @@ describe('15 · Payment successful — pay at branch', () => {
     expect(screen.getByText('Pay SAR 185.00 at the branch when you collect your order')).toBeTruthy();
     expect(screen.getByText('Pay at branch')).toBeTruthy();
     expect(screen.getByText('Amount due')).toBeTruthy();
+  });
+});
+
+describe('15 · Complete your payment (card paid on the secure payment page)', () => {
+  const WAITING = { ...ORDER, payment: { method: 'card', status: 'pending', brand: null, last4: null, transactionId: null, paidAt: null } };
+  const PAID = { ...ORDER, payment: { method: 'card', status: 'paid', brand: null, last4: null, transactionId: null, paidAt: '2026-11-16T09:25:00.000Z' } };
+
+  test('a card order not paid yet: Pay opens the payment page in the browser', async () => {
+    setMockParams({ orderId: 'o1' });
+    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    const { calls } = await renderScreen(<PaymentSuccessScreen />, {
+      server: (c) =>
+        c.path === '/orders/o1'
+          ? { body: WAITING }
+          : c.path === '/orders/o1/pay'
+            ? { body: { status: 'pending', link: PAGE, expiresAt: '2099-01-01T00:00:00.000Z', amount: 185, currency: 'SAR' } }
+            : shop(() => undefined)(c),
+    });
+    expect(await screen.findAllByText('Complete your payment')).toBeTruthy();
+    expect(screen.getByText('Your order is placed. Pay SAR 185.00 on the secure payment page to confirm it.')).toBeTruthy();
+    const pay = await screen.findByRole('button', { name: 'Pay SAR 185.00' });
+    await waitFor(() => expect(pay).toBeEnabled());
+    await fireEvent.press(pay);
+    await waitFor(() => expect(open).toHaveBeenCalledWith(PAGE));
+    expect(calls.filter((c) => c.path === '/orders/o1/pay')).toHaveLength(1);
+    open.mockRestore();
+  });
+
+  test('once the kuraat server says paid, the screen becomes "Payment successful"', async () => {
+    setMockParams({ orderId: 'o1' });
+    let paid = false;
+    await renderScreen(<PaymentSuccessScreen />, {
+      server: (c) => {
+        if (c.path === '/orders/o1') return { body: paid ? PAID : WAITING };
+        if (c.path === '/orders/o1/pay') {
+          paid = true;
+          return { body: { status: 'paid' } };
+        }
+        return shop(() => undefined)(c);
+      },
+    });
+    expect(await screen.findByText('Payment successful')).toBeTruthy();
+    expect(screen.getByText('SAR 185.00 paid by card')).toBeTruthy();
+    expect(screen.getByText('Card · Paid')).toBeTruthy();
+  });
+
+  test('the payment page cannot be made yet: the message shows with Try again', async () => {
+    setMockParams({ orderId: 'o1' });
+    await renderScreen(<PaymentSuccessScreen />, {
+      server: (c) =>
+        c.path === '/orders/o1'
+          ? { body: WAITING }
+          : c.path === '/orders/o1/pay'
+            ? { status: 503, body: { code: 'payment_not_ready', message: "Online payment isn't ready for this order yet. Please try again in a few minutes." } }
+            : shop(() => undefined)(c),
+    });
+    expect(await screen.findByText("Online payment isn't ready for this order yet. Please try again in a few minutes.")).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
   });
 });
 

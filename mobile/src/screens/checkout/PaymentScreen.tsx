@@ -6,34 +6,27 @@ import { CheckoutSteps } from '@/components/checkout/CheckoutParts';
 import { BottomBar, Screen, ScreenHeader } from '@/components/layout';
 import { Banknote, CreditCard, Lock, Store, TriangleAlert, type LucideIcon } from '@/components/icons';
 import { DeliveryFromCard } from '@/components/shop/DeliveryFromCard';
-import { Button, Field, RadioDot, Text, Toggle } from '@/components/ui';
+import { Button, RadioDot, Text } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useAddresses } from '@/context/AddressContext';
 import { useCart } from '@/context/CartContext';
 import { useCheckout } from '@/context/CheckoutContext';
 import { useOrders } from '@/context/OrderContext';
 import { useToast } from '@/context/ToastContext';
-import {
-  PICKUP,
-  formatCardNumber,
-  formatExpiry,
-  formatSAR,
-  onlyDigits,
-  validateCardNumber,
-  validateCvv,
-  validateExpiry,
-} from '@/domain';
+import { CARD_PAYMENT, PICKUP, formatSAR } from '@/domain';
 import { useDeliveryQuote } from '@/hooks/quote';
 import { success as successHaptic } from '@/lib/haptics';
+import { getPaymentOptions } from '@/services/checkoutService.js';
 import { offeredMethod, toPaymentBody } from '@/services/orderService.js';
 import { colors, radii } from '@/theme/theme';
 import type { PaymentMethod } from '@/types/api';
 
 // Saudi Arabia: card (incl. Mada) and cash on delivery; branch pickup pays now (card) or at the branch.
-// UPI (shown in the PDF) was removed — it is India-only.
+// UPI (shown in the PDF) was removed — it is India-only. A card is paid on RSOF's secure payment page after the
+// order is placed (19 Nov 2026): no card details are typed in the app.
 type MethodRow = { id: PaymentMethod; title: string; subtitle: string; icon: LucideIcon };
 const DELIVERY_METHODS: MethodRow[] = [
-  { id: 'card', title: 'Credit / debit card', subtitle: 'Visa, Mastercard, Mada', icon: CreditCard },
+  { id: 'card', title: CARD_PAYMENT.title, subtitle: CARD_PAYMENT.subtitle, icon: CreditCard },
   { id: 'cod', title: 'Cash on delivery', subtitle: 'Pay when your order arrives', icon: Banknote },
 ];
 const PICKUP_METHODS: MethodRow[] = [
@@ -41,9 +34,7 @@ const PICKUP_METHODS: MethodRow[] = [
   { id: 'branch', title: PICKUP.payAtBranch, subtitle: PICKUP.payAtBranchSub, icon: Store },
 ];
 
-/** Server field names → this form's error slots. */
-const FIELD_ERRORS: Record<string, keyof Errors> = { 'card.number': 'number', 'card.expiry': 'expiry', 'card.cvv': 'cvv' };
-type Errors = Partial<Record<'number' | 'expiry' | 'cvv' | 'form', string>>;
+type Errors = Partial<Record<'form', string>>;
 
 /** 14 · Payment */
 export default function PaymentScreen() {
@@ -71,12 +62,25 @@ export default function PaymentScreen() {
 
   // The remembered method if this way of getting the order still offers it (a draft may even say "upi").
   const [method, setMethod] = useState<PaymentMethod>(() => offeredMethod(checkout.paymentMethod, checkout.fulfilment) as PaymentMethod);
-  const [card, setCard] = useState({ number: '', expiry: '', cvv: '' });
-  const [save, setSave] = useState(true);
   const [errors, setErrors] = useState<Errors>({});
   const [processing, setProcessing] = useState(false);
   // Blocks a second tap before the first one has re-rendered the button (review focus 2).
   const paying = useRef(false);
+  // Card works only while RSOF's payment page does (null = still asking the kuraat server).
+  const [cardAvailable, setCardAvailable] = useState<boolean | null>(null);
+  const fulfilment = checkout.fulfilment;
+
+  useEffect(() => {
+    let alive = true;
+    getPaymentOptions().then(({ card }) => {
+      if (!alive) return;
+      setCardAvailable(card);
+      if (!card) setMethod((m) => offeredMethod(m, fulfilment, { cardAvailable: false }) as PaymentMethod);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [fulfilment]);
 
   const waiting = (!cart.items.length && (cart.status === 'loading' || cart.status === 'idle')) || !addressesLoaded;
   if (!processing && waiting) return <Screen>{null}</Screen>;
@@ -91,17 +95,10 @@ export default function PaymentScreen() {
     checkout.patch({ paymentMethod: id });
   };
 
-  const validate = () => {
-    if (!totals) return false;
-    let errs: Errors = {};
-    if (method === 'card')
-      errs = { number: validateCardNumber(card.number), expiry: validateExpiry(card.expiry), cvv: validateCvv(card.cvv) };
-    setErrors(errs);
-    return !Object.values(errs).some(Boolean);
-  };
+  const cardOff = method === 'card' && cardAvailable !== true;
 
   const pay = async () => {
-    if (paying.current || (!pickup && !address) || !validate()) return;
+    if (paying.current || (!pickup && !address) || !totals || cardOff) return;
     paying.current = true;
     setProcessing(true);
     setErrors({});
@@ -110,7 +107,7 @@ export default function PaymentScreen() {
       const order = await placeOrder({
         fulfilment: pickup ? 'pickup' : 'delivery',
         addressId: address?.id,
-        payment: toPaymentBody(method, { card, saveCard: save }),
+        payment: toPaymentBody(method),
         idempotencyKey: ensureIdempotencyKey(),
       });
       successHaptic();
@@ -120,16 +117,21 @@ export default function PaymentScreen() {
     } catch (err) {
       const e = err as { code?: string; field?: string; message: string };
       if (e.code === 'idempotency_conflict') checkout.renewIdempotencyKey();
+      // Card stopped working between opening this screen and paying: grey it out and offer the other way.
+      if (e.code === 'payment_unavailable' && method === 'card') {
+        setCardAvailable(false);
+        choose(offeredMethod('card', checkout.fulfilment, { cardAvailable: false }) as PaymentMethod);
+      }
       paying.current = false;
       setProcessing(false);
-      const slot = e.field ? FIELD_ERRORS[e.field] : undefined;
-      setErrors({ form: e.message, ...(slot ? { [slot]: e.message } : {}) });
-      toast.show(e.code === 'card_declined' ? 'Payment declined' : 'Payment could not be completed', { tone: 'error' });
+      setErrors({ form: e.message });
+      toast.show('Your order could not be placed', { tone: 'error' });
     }
   };
 
   const later = method === 'cod' || method === 'branch';
-  const payLabel = !totals ? 'Pay' : later ? `Place order · ${formatSAR(totals.total)}` : `Pay ${formatSAR(totals.total)}`;
+  // Card: the order is placed first, then paid on the secure payment page (the next screen opens it).
+  const payLabel = !totals ? 'Pay' : later ? `Place order · ${formatSAR(totals.total)}` : `Continue to payment · ${formatSAR(totals.total)}`;
 
   return (
     <Screen
@@ -152,7 +154,7 @@ export default function PaymentScreen() {
               </Text>
             </View>
           ) : null}
-          <Button block leftIcon={later ? undefined : Lock} loading={processing} disabled={!totals} onPress={pay}>
+          <Button block leftIcon={later ? undefined : Lock} loading={processing} disabled={!totals || cardOff} onPress={pay}>
             {payLabel}
           </Button>
         </BottomBar>
@@ -185,15 +187,17 @@ export default function PaymentScreen() {
       <View accessibilityRole="radiogroup" accessibilityLabel="Payment method" style={styles.methods}>
         {METHODS.map((m) => {
           const checked = method === m.id;
+          const off = m.id === 'card' && cardAvailable === false;
+          const subtitle = off ? CARD_PAYMENT.unavailable : m.subtitle;
           return (
             <View key={m.id} style={[styles.method, checked ? styles.methodChecked : null]}>
               <Pressable
                 onPress={() => choose(m.id)}
-                disabled={processing}
+                disabled={processing || off}
                 accessibilityRole="radio"
-                accessibilityState={{ checked, disabled: processing }}
-                accessibilityLabel={`${m.title}, ${m.subtitle}`}
-                style={styles.methodRow}
+                accessibilityState={{ checked, disabled: processing || off }}
+                accessibilityLabel={`${m.title}, ${subtitle}`}
+                style={[styles.methodRow, off ? styles.methodOff : null]}
               >
                 <RadioDot checked={checked} />
                 <View style={styles.methodIcon}>
@@ -204,58 +208,16 @@ export default function PaymentScreen() {
                     {m.title}
                   </Text>
                   <Text variant="small" color="muted">
-                    {m.subtitle}
+                    {subtitle}
                   </Text>
                 </View>
               </Pressable>
 
               {checked && m.id === 'card' ? (
                 <Animated.View entering={FadeIn.duration(180)} style={styles.methodBody}>
-                  <Field
-                    label="Card number"
-                    icon={CreditCard}
-                    keyboardType="number-pad"
-                    autoComplete="cc-number"
-                    textContentType="creditCardNumber"
-                    placeholder="1234 5678 9012 3456"
-                    value={card.number}
-                    onChangeText={(t) => setCard((c) => ({ ...c, number: formatCardNumber(t) }))}
-                    trailing={<Lock size={18} color={colors.ink} strokeWidth={1.8} />}
-                    error={errors.number}
-                    disabled={processing}
-                  />
-                  <View style={styles.cardRow}>
-                    <Field
-                      label="Expiry"
-                      keyboardType="number-pad"
-                      autoComplete="cc-exp"
-                      placeholder="MM / YY"
-                      value={card.expiry}
-                      onChangeText={(t) => setCard((c) => ({ ...c, expiry: formatExpiry(t, c.expiry) }))}
-                      error={errors.expiry}
-                      disabled={processing}
-                      style={styles.flex}
-                    />
-                    <Field
-                      label="CVV"
-                      keyboardType="number-pad"
-                      autoComplete="cc-csc"
-                      secureTextEntry
-                      placeholder="•••"
-                      maxLength={4}
-                      value={card.cvv}
-                      onChangeText={(t) => setCard((c) => ({ ...c, cvv: onlyDigits(t).slice(0, 4) }))}
-                      error={errors.cvv}
-                      disabled={processing}
-                      style={styles.flex}
-                    />
-                  </View>
-                  <View style={styles.saveRow}>
-                    <Text weight={600} style={styles.flex}>
-                      Save this card for next time
-                    </Text>
-                    <Toggle value={save} onChange={setSave} label="Save this card for next time" disabled={processing} />
-                  </View>
+                  <Text variant="small" color="muted">
+                    {CARD_PAYMENT.returnHint}
+                  </Text>
                 </Animated.View>
               ) : null}
 
@@ -335,8 +297,7 @@ const styles = StyleSheet.create({
   },
   methodTitle: { fontSize: 16, lineHeight: 22 },
   methodBody: { paddingHorizontal: 16, paddingBottom: 16 },
-  cardRow: { marginTop: 16, flexDirection: 'row', gap: 12 },
-  saveRow: { marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  methodOff: { opacity: 0.5 },
   delivery: { marginTop: 20 },
   totalRow: { marginBottom: 12, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   total: { fontSize: 18, fontVariant: ['tabular-nums'] },

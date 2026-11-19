@@ -29,6 +29,9 @@ const schema = z.object({
   ROF_PASSWORD: text(),
   ROF_INVENTORY_CHECK: flag(false),
   ROF_TIMEOUT_MS: integer(10000),
+  // Card payments: RSOF's payment-link API key (scope payments.link). Without it card orders are refused before
+  // anything is created; cash on delivery and pay at branch still work.
+  ROF_PAYMENT_API_KEY: optionalText(),
   OTP_MODE: z.preprocess(blankToUndefined, z.enum(['test', 'whatsapp']).default('test')),
   OTP_TEST_CODE: z.preprocess(blankToUndefined, z.string().regex(/^\d{6}$/, 'must be 6 digits').default('123456')),
   // WhatsApp login codes (OTP_MODE=whatsapp): RSOF's messaging API. User, password, sender and template are
@@ -44,7 +47,6 @@ const schema = z.object({
   PASSWORD_HASH_COST: z.preprocess(blankToUndefined, z.coerce.number().int().min(4).max(15).default(12)),
   AUTH_RATE_LIMIT_PER_MINUTE: integer(20),
   OTP_ALLOW_TEST_IN_PRODUCTION: flag(false),
-  PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION: flag(false),
   /** Express "trust proxy": e.g. 1 behind one reverse proxy / load balancer. Unset = do not trust. */
   TRUST_PROXY: optionalText(),
 });
@@ -52,10 +54,6 @@ const schema = z.object({
 const TEST_OTP_IN_PRODUCTION =
   'OTP_MODE=test lets anyone sign in to any account with the test code. In production use it only for UAT, ' +
   'by also setting OTP_ALLOW_TEST_IN_PRODUCTION=true.';
-
-const SIMULATED_PAYMENTS_IN_PRODUCTION =
-  'Card payments are simulated (no payment gateway is connected yet): any valid-looking test card is "paid" and no money moves. ' +
-  'In production start only for a demo or UAT, by also setting PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION=true.';
 
 /** Validated settings object used across the server. */
 export function loadConfig(env = process.env) {
@@ -71,9 +69,6 @@ export function loadConfig(env = process.env) {
   }
   if (e.NODE_ENV === 'production' && e.OTP_MODE === 'test' && !e.OTP_ALLOW_TEST_IN_PRODUCTION) {
     throw new Error(`Invalid configuration: ${TEST_OTP_IN_PRODUCTION}`);
-  }
-  if (e.NODE_ENV === 'production' && !e.PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION) {
-    throw new Error(`Invalid configuration: ${SIMULATED_PAYMENTS_IN_PRODUCTION}`);
   }
   return {
     port: e.PORT,
@@ -91,6 +86,7 @@ export function loadConfig(env = process.env) {
       password: e.ROF_PASSWORD,
       inventoryCheck: e.ROF_INVENTORY_CHECK,
       timeoutMs: e.ROF_TIMEOUT_MS,
+      paymentApiKey: e.ROF_PAYMENT_API_KEY ?? null,
     },
     otp: { mode: e.OTP_MODE, testCode: e.OTP_TEST_CODE },
     whatsapp: {

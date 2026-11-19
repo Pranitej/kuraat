@@ -39,6 +39,13 @@ export function checkoutRoutes(ctx) {
     return usual ? toAddress(usual).location : null;
   }
 
+  // Which payment methods work right now. Card is paid on RSOF's payment page and is offered only while RSOF's
+  // payment-link API answers (cash on delivery and pay at the branch always work). The apps grey card out when false.
+  router.get('/payment-options', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ card: Boolean(await ctx.payments?.available()) });
+  });
+
   router.post('/quote', validate({ body: quoteSchema }), async (req, res) => {
     const cart = await loadCart(ctx.db, req.userId);
     const items = req.body.productIds

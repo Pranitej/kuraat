@@ -9,6 +9,7 @@ import * as pickup from './004_pickup.js';
 import * as internationalPhone from './005_international_phone.js';
 import * as addressNoPhone from './006_address_no_phone.js';
 import * as addressLocationOptional from './007_address_location_optional.js';
+import * as onlinePayment from './008_online_payment.js';
 
 export const migrations = [
   { name: '001_init', ...init },
@@ -18,4 +19,5 @@ export const migrations = [
   { name: '005_international_phone', ...internationalPhone },
   { name: '006_address_no_phone', ...addressNoPhone },
   { name: '007_address_location_optional', ...addressLocationOptional },
+  { name: '008_online_payment', ...onlinePayment },
 ];

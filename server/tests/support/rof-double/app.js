@@ -9,6 +9,7 @@
  * the real UAT (18 Nov 2026) and are copied from it. Still an assumption (verify with `npm run rof:check`):
  * - POST /api/orders/{id}/resend-otp failure wording
  */
+import { randomUUID } from 'node:crypto';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { registerOrderRoutes } from './orders.js';
@@ -52,6 +53,51 @@ export function createMockRof({ store, now = () => new Date(), tokenSecret = 'mo
     const iat = nowSec();
     const token = jwt.sign({ sub: email, tenantId: db.tenantId, iat, exp: iat + tokenTtlSec }, app.locals.tokenSecret);
     return res.json(ok({ token, tenantId: db.tenantId }));
+  });
+
+  /* ---------- payment links (lead's note, 19 Nov 2026 — X-Api-Key, not the Bearer login) ---------- */
+
+  // Shapes from the lead's note; NOT verified on UAT yet (the endpoint answered 404 there on 19 Nov 2026).
+  // faults.paymentOutcome: 'NotReady' | 'Error' | … → that outcome; faults.paymentLinkHttp: an HTTP status to answer with.
+  app.post('/api/v1/orders/payment-link', (req, res) => {
+    if (req.get('x-api-key') !== db.paymentApiKey) return res.status(401).json(fail('Invalid API key'));
+    db.paymentLinkCalls = (db.paymentLinkCalls || 0) + 1;
+    if (app.locals.faults.paymentLinkHttp) return res.status(app.locals.faults.paymentLinkHttp).json(fail('Payment service error'));
+    const answer = (outcome, message, extra = {}) =>
+      res.json({
+        success: outcome === 'LinkReady' || outcome === 'AlreadyPaid',
+        message,
+        data: { outcome, orderNumber: Number(req.body?.orderNumber), amount: null, currency: 'SAR', paymentLink: null, expiresAt: null, reused: false, orders: null, message, ...extra },
+      });
+    if (app.locals.faults.paymentOutcome) return answer(app.locals.faults.paymentOutcome, 'Not available right now.');
+    const order = db.orders.find((o) => o.orderNumber === Number(req.body?.orderNumber));
+    if (!order || order.phoneNumber !== String(req.body?.phone ?? '')) return answer('NoPayableOrder', 'No payable order matches this order number and phone.');
+    db.paymentLinks = db.paymentLinks || {};
+    const state = (db.paymentLinks[order.orderNumber] ||= { paid: false, token: null, expiresAt: 0 });
+    const amount = order.items.reduce((sum, i) => sum + (db.products.find((p) => p.id === i.productId)?.sellingPrice ?? 0) * i.quantity, 0);
+    // Assumed: a paid order stays 'AlreadyPaid' even once cancelled (tests also cover RSOF answering NoPayableOrder then).
+    if (state.paid) return answer('AlreadyPaid', 'Order is already paid.', { amount });
+    if (order.status === 'Canceled') return answer('NoPayableOrder', 'No payable order matches this order number and phone.');
+    const reused = Boolean(state.token) && state.expiresAt > now().getTime();
+    if (!reused) {
+      state.token = randomUUID().replace(/-/g, '');
+      state.expiresAt = now().getTime() + 30 * 60_000;
+    }
+    store.save();
+    return answer('LinkReady', reused ? 'Payment link reused.' : 'Payment link created.', {
+      amount,
+      paymentLink: `${req.protocol}://${req.get('host')}/en/pay/${state.token}`,
+      expiresAt: new Date(state.expiresAt).toISOString(),
+      reused,
+    });
+  });
+
+  /** Plays the customer paying on RSOF's page (dev-only; never exists in real ROF). */
+  app.post('/__dev/orders/:orderNumber/pay', (req, res) => {
+    db.paymentLinks = db.paymentLinks || {};
+    const state = (db.paymentLinks[Number(req.params.orderNumber)] ||= { paid: false, token: null, expiresAt: 0 });
+    state.paid = true;
+    res.json({ orderNumber: Number(req.params.orderNumber), paid: true });
   });
 
   app.use('/api', (req, res, next) => {

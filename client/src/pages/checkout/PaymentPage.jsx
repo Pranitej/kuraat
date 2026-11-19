@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { Banknote, CreditCard, Lock, Store, TriangleAlert } from 'lucide-react';
 import ScreenHeader from '@/components/layout/ScreenHeader.jsx';
 import BottomBar from '@/components/layout/BottomBar.jsx';
-import { Button, RadioDot, Skeleton, TextField, Toggle } from '@/components/ui';
+import { Button, RadioDot, Skeleton } from '@/components/ui';
 import { CheckoutLayout, CheckoutSteps, OrderSummary } from '@/components/checkout/CheckoutParts.jsx';
 import DeliveryFromCard from '@/components/shop/DeliveryFromCard.jsx';
 import { useAddresses } from '@/context/AddressContext.jsx';
@@ -12,25 +12,24 @@ import { useCheckout } from '@/context/CheckoutContext.jsx';
 import { useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
 import { useDeliveryQuote } from '@/hooks/useDeliveryQuote.js';
+import { getPaymentOptions } from '@/services/checkoutService.js';
 import { offeredMethod, toPaymentBody } from '@/services/orderService.js';
-import { PICKUP, formatCardNumber, formatExpiry, formatSAR, onlyDigits, validateCardNumber, validateCvv, validateExpiry } from '@/domain';
+import { CARD_PAYMENT, PICKUP, formatSAR } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
 import { cn } from '@/lib/cn.js';
 
 // Saudi Arabia: card (incl. Mada) and cash on delivery; branch pickup pays now (card) or at the branch.
-// UPI (shown in the PDF) was removed — it is India-only.
+// UPI (shown in the PDF) was removed — it is India-only. A card is paid on RSOF's secure payment page after the
+// order is placed (19 Nov 2026): no card details are typed here.
 const DELIVERY_METHODS = [
-  { id: 'card', title: 'Credit / debit card', subtitle: 'Visa, Mastercard, Mada', icon: CreditCard },
+  { id: 'card', title: CARD_PAYMENT.title, subtitle: CARD_PAYMENT.subtitle, icon: CreditCard },
   { id: 'cod', title: 'Cash on delivery', subtitle: 'Pay when your order arrives', icon: Banknote },
 ];
 const PICKUP_METHODS = [
   { id: 'card', title: PICKUP.payNow, subtitle: PICKUP.payNowSub, icon: CreditCard },
   { id: 'branch', title: PICKUP.payAtBranch, subtitle: PICKUP.payAtBranchSub, icon: Store },
 ];
-
-/** Server field names → this form's error slots. */
-const FIELD_ERRORS = { 'card.number': 'number', 'card.expiry': 'expiry', 'card.cvv': 'cvv' };
 
 /** 14 · Payment */
 export default function PaymentPage() {
@@ -55,10 +54,22 @@ export default function PaymentPage() {
 
   // The remembered method if this way of getting the order still offers it (a draft may even say "upi").
   const [method, setMethod] = useState(() => offeredMethod(checkout.paymentMethod, checkout.fulfilment));
-  const [card, setCard] = useState({ number: '', expiry: '', cvv: '' });
-  const [save, setSave] = useState(true);
   const [errors, setErrors] = useState({});
   const [processing, setProcessing] = useState(false);
+  // Card works only while RSOF's payment page does (null = still asking the kuraat server).
+  const [cardAvailable, setCardAvailable] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    getPaymentOptions().then(({ card }) => {
+      if (!alive) return;
+      setCardAvailable(card);
+      if (!card) setMethod((m) => offeredMethod(m, checkout.fulfilment, { cardAvailable: false }));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [checkout.fulfilment]);
 
   // After a reload the cart and addresses are still on their way from the server: wait for them.
   if (!processing && ((!cart.items.length && cart.status === 'loading') || !addressesLoaded)) return <div className="min-h-[60dvh]" aria-busy="true" />;
@@ -73,16 +84,10 @@ export default function PaymentPage() {
     checkout.patch({ paymentMethod: id });
   };
 
-  const validate = () => {
-    if (!totals) return false;
-    let errs = {};
-    if (method === 'card') errs = { number: validateCardNumber(card.number), expiry: validateExpiry(card.expiry), cvv: validateCvv(card.cvv) };
-    setErrors(errs);
-    return !Object.values(errs).some(Boolean);
-  };
+  const cardOff = method === 'card' && cardAvailable !== true;
 
   const pay = async () => {
-    if (processing || !validate()) return;
+    if (processing || !totals || cardOff) return;
     setProcessing(true);
     setErrors({});
     try {
@@ -90,7 +95,7 @@ export default function PaymentPage() {
       const order = await placeOrder({
         fulfilment: pickup ? 'pickup' : 'delivery',
         addressId: address?.id,
-        payment: toPaymentBody(method, { card, saveCard: save }),
+        payment: toPaymentBody(method),
         idempotencyKey: ensureIdempotencyKey(),
       });
       cart.reload(); // the server emptied it
@@ -98,16 +103,22 @@ export default function PaymentPage() {
       navigate(ROUTES.paymentSuccess(order.id), { replace: true });
     } catch (err) {
       if (err.code === 'idempotency_conflict') checkout.renewIdempotencyKey();
+      // Card stopped working between opening this screen and paying: grey it out and offer the other way.
+      if (err.code === 'payment_unavailable' && method === 'card') {
+        setCardAvailable(false);
+        choose(offeredMethod('card', checkout.fulfilment, { cardAvailable: false }));
+      }
       setProcessing(false);
-      setErrors({ form: err.message, ...(FIELD_ERRORS[err.field] ? { [FIELD_ERRORS[err.field]]: err.message } : {}) });
-      toast.show(err.code === 'card_declined' ? 'Payment declined' : 'Payment could not be completed', { tone: 'error' });
+      setErrors({ form: err.message });
+      toast.show('Your order could not be placed', { tone: 'error' });
     }
   };
 
   const later = method === 'cod' || method === 'branch';
-  const payLabel = !totals ? 'Pay' : later ? `Place order · ${formatSAR(totals.total)}` : `Pay ${formatSAR(totals.total)}`;
+  // Card: the order is placed first, then paid on the secure payment page (the next screen opens it).
+  const payLabel = !totals ? 'Pay' : later ? `Place order · ${formatSAR(totals.total)}` : `Continue to payment · ${formatSAR(totals.total)}`;
   const cta = (
-    <Button block leftIcon={later ? undefined : Lock} loading={processing} disabled={!totals} onClick={pay}>
+    <Button block leftIcon={later ? undefined : Lock} loading={processing} disabled={!totals || cardOff} onClick={pay}>
       {payLabel}
     </Button>
   );
@@ -154,15 +165,16 @@ export default function PaymentPage() {
       <div role="radiogroup" aria-label="Payment method" className="mt-3 flex flex-col gap-3">
         {METHODS.map((m) => {
           const checked = method === m.id;
+          const off = m.id === 'card' && cardAvailable === false;
           return (
             <div key={m.id} className={cn('rounded-xl bg-white transition-[border-color]', checked ? 'border-[1.5px] border-maroon' : 'border border-line-subtle')}>
               <button
                 type="button"
                 role="radio"
                 aria-checked={checked}
-                disabled={processing}
+                disabled={processing || off}
                 onClick={() => choose(m.id)}
-                className="flex w-full items-center gap-3.5 p-4 text-left disabled:cursor-default"
+                className={cn('flex w-full items-center gap-3.5 p-4 text-left disabled:cursor-default', off && 'opacity-50')}
               >
                 <RadioDot checked={checked} />
                 <span className="grid size-[42px] shrink-0 place-items-center rounded-sm bg-sand text-maroon" aria-hidden>
@@ -170,57 +182,11 @@ export default function PaymentPage() {
                 </span>
                 <span className="min-w-0">
                   <span className="block text-[16px] font-bold leading-[22px] text-ink">{m.title}</span>
-                  <span className="block text-small text-muted">{m.subtitle}</span>
+                  <span className="block text-small text-muted">{off ? CARD_PAYMENT.unavailable : m.subtitle}</span>
                 </span>
               </button>
 
-              {checked && m.id === 'card' && (
-                <fieldset disabled={processing} className="animate-fade-in px-4 pb-4">
-                  <legend className="sr-only">Card details</legend>
-                  <TextField
-                    label="Card number"
-                    icon={CreditCard}
-                    inputMode="numeric"
-                    autoComplete="cc-number"
-                    placeholder="1234 5678 9012 3456"
-                    value={card.number}
-                    onChange={(e) => setCard((c) => ({ ...c, number: formatCardNumber(e.target.value) }))}
-                    trailing={<Lock size={18} strokeWidth={1.8} className="shrink-0 text-ink" aria-hidden />}
-                    error={errors.number}
-                  />
-                  <div className="mt-4 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
-                    <TextField
-                      label="Expiry"
-                      inputMode="numeric"
-                      autoComplete="cc-exp"
-                      placeholder="MM / YY"
-                      value={card.expiry}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setCard((c) => ({ ...c, expiry: formatExpiry(value, c.expiry) }));
-                      }}
-                      error={errors.expiry}
-                    />
-                    <TextField
-                      label="CVV"
-                      inputMode="numeric"
-                      autoComplete="cc-csc"
-                      type="password"
-                      placeholder="•••"
-                      maxLength={4}
-                      value={card.cvv}
-                      onChange={(e) => setCard((c) => ({ ...c, cvv: onlyDigits(e.target.value).slice(0, 4) }))}
-                      error={errors.cvv}
-                    />
-                  </div>
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <label htmlFor="save-card" className="text-[15px] font-semibold text-ink">
-                      Save this card for next time
-                    </label>
-                    <Toggle id="save-card" checked={save} onChange={setSave} label="Save this card for next time" />
-                  </div>
-                </fieldset>
-              )}
+              {checked && m.id === 'card' && <p className="animate-fade-in px-4 pb-4 text-small text-muted">{CARD_PAYMENT.returnHint}</p>}
 
               {checked && m.id === 'cod' && totals && (
                 <p className="animate-fade-in px-4 pb-4 text-small text-muted">

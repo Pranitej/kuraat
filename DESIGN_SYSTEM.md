@@ -314,9 +314,24 @@ Same screen after "Read more" and scrolling: compact sticky header (back · prod
 1. **Components:** stepper (✓ ✓ 3); "Payment method"; radio cards: **Credit / debit card** (Visa, Mastercard, Mada) expands to Card number (card icon + lock), Expiry (MM / YY), CVV, "Save this card for next time" toggle; **Cash on delivery** ("Pay when your order arrives"); bottom bar "Total · 3 items  SAR 328.00" + primary "🔒 Pay SAR 328.00".
 2. **Validation:** Luhn card number, future expiry, 3–4 digit CVV.
 3. **Interaction:** processing state (button spinner, inputs locked) → Payment successful; declined card shows an inline error.
+4. **Deliberate deviation (19 Nov 2026) — card is paid on RSOF's secure payment page:** the card radio no longer expands
+   to card fields (no card number, expiry, CVV or "Save this card" in the app). Subtitle "Mada, Visa, Mastercard · on a
+   secure payment page"; when selected, a muted line "After paying, come back here. We'll check your payment for you."
+   The bottom bar reads "🔒 Continue to payment · SAR …" (the order is placed first, then paid). While card payment is
+   not working (the kuraat server's `GET /checkout/payment-options` says `card: false`) the card radio is greyed out
+   (50 % opacity, subtitle "Card payment is not available right now") and cash on delivery / pay at branch is chosen.
+   Do not re-add the card form when "matching the PDF".
 
 ### 15 · Payment successful (page 17)
 Cream with sand circle pattern fading downward; 126 sand halo + 104 maroon circle + white check; title "Payment successful"; "SAR 328.00 paid with Visa •••• 4242"; details card (Transaction ID, Date, Method, Amount); WhatsApp receipt note; "Confirming your order with the branch…" + progress bar (4 pt, maroon on sand) that fills, then primary "Continue" (enabled when confirmed) → Order confirmed. Cash on delivery shows "Order placed" wording with method "Cash on delivery".
+**Card not paid yet (19 Nov 2026):** the same cream page without the check halo: title "Complete your payment", "Order #…",
+then a white card ("Complete your payment" h3, "Your order is placed. Pay SAR … on the secure payment page to confirm it.",
+primary "🔒 Pay SAR …" that opens RSOF's page — a new tab on the web, the phone's browser in the app —, secondary
+"I've paid · Check again", muted return hint) and a ghost "View my order". The same card sits at the top of the order
+detail screen while the order waits for its payment; order cards in the list add a bold hotpink "Waiting for payment"
+under the total. Once paid it is the normal "Payment successful" page ("SAR … paid by card", details card with Order
+number instead of Transaction ID). The WhatsApp line always reads "Your order details have been sent to your WhatsApp"
+(RSOF sends no payment receipt).
 
 ### 16 · Order confirmed + branch popup (page 18)
 1. **Underlying screen:** maroon header with pattern, 72 white circle + maroon check, "Order confirmed!" (`title` white), "Order #KR-20418 · Today, 12:21" (white 80 %). Sheet: sand "Estimated delivery / Today, 5:00 – 7:00 PM" card; "Your items" rows (56 thumbnail, name, "Qty n"); white "Delivering to" card; two buttons side-by-side: Secondary "Track order", Primary "Back to home".

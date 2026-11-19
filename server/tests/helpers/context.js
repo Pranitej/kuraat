@@ -7,6 +7,7 @@ import { createContext } from '../../src/context.js';
 import { createDb, migrateLatest } from '../../src/db/knex.js';
 import { createApp } from '../../src/http/app.js';
 import { createRofClient } from '../../src/rof/client.js';
+import { createPaymentLinkClient } from '../../src/rof/paymentLink.js';
 import { createMockRofHarness } from './mockRof.js';
 
 export function createFakeClock(start = '2026-11-15T09:21:00.000Z') {
@@ -31,13 +32,17 @@ export async function truncateAll(db) {
   await db.raw('SET FOREIGN_KEY_CHECKS = 1');
 }
 
-/** rofData: the stand-in's starting state (default: its seed with an empty order book). */
-export async function createTestContext({ configOverrides = {}, withRof = false, rofTimeoutMs = 2000, rofData } = {}) {
+/**
+ * rofData: the stand-in's starting state (default: its seed with an empty order book).
+ * cardPayments: false = no payment API key (card orders are refused), as when ROF_PAYMENT_API_KEY is not set.
+ */
+export async function createTestContext({ configOverrides = {}, withRof = false, rofTimeoutMs = 2000, rofData, cardPayments = true } = {}) {
   const base = loadConfig(process.env);
   const clock = createFakeClock();
   let mockRof = null;
   let rofServer = null;
   let rof = null;
+  let paymentLinks = null;
   let config = { ...base, ...configOverrides, databaseUrl: base.testDatabaseUrl };
 
   if (withRof) {
@@ -46,6 +51,11 @@ export async function createTestContext({ configOverrides = {}, withRof = false,
     const { email, password } = mockRof.store.data.credentials;
     config = { ...config, rof: { ...config.rof, baseUrl: rofServer.baseUrl, mediaBaseUrl: rofServer.baseUrl, email, password, timeoutMs: rofTimeoutMs } };
     rof = createRofClient({ ...config.rof, now: () => clock.now().getTime() });
+    if (cardPayments) {
+      const apiKey = mockRof.store.data.paymentApiKey;
+      config = { ...config, rof: { ...config.rof, paymentApiKey: apiKey } };
+      paymentLinks = createPaymentLinkClient({ baseUrl: rofServer.baseUrl, apiKey, timeoutMs: rofTimeoutMs });
+    }
   }
 
   const db = createDb(config.databaseUrl);
@@ -56,7 +66,7 @@ export async function createTestContext({ configOverrides = {}, withRof = false,
     warn: (...args) => logs.push(['warn', args.join(' ')]),
     error: (...args) => logs.push(['error', args.join(' ')]),
   };
-  const ctx = createContext({ config, db, rof, clock, logger });
+  const ctx = createContext({ config, db, rof, paymentLinks, clock, logger });
   const app = createApp(ctx);
   return {
     ctx,

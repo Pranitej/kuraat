@@ -2,7 +2,7 @@
 // The 12/24-hour style follows the device: these use a 24-hour device unless a test says otherwise.
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { setClockReader } from './format.js';
-import { ORDER_FILTERS, PICKUP, cancelRefundText, filterOrders, isPickup, orderHistoryView, orderItemCount, orderStatusView, orderTimelineView, paidLater, paymentLabel } from './orders.js';
+import { CARD_PAYMENT, ORDER_FILTERS, PICKUP, awaitingPayment, cancelRefundText, filterOrders, isPickup, orderHistoryView, orderItemCount, orderStatusView, orderTimelineView, paidLater, paymentLabel } from './orders.js';
 
 beforeEach(() => setClockReader(() => true));
 afterEach(() => setClockReader(null));
@@ -163,8 +163,39 @@ describe('paid later, and what the cancel dialog promises (review: Important 1)'
     expect(cancelRefundText({ payment: null, total: 313 })).toBe('Nothing has been charged.');
   });
 
-  test('a card payment is refunded to the card', () => {
+  test('an older card payment is refunded to the card', () => {
     expect(cancelRefundText({ payment: { method: 'card', brand: 'Visa', last4: '4242' }, total: 313 })).toBe('We will refund SAR 313.00 to Visa •••• 4242.');
+  });
+
+  test('a card paid on the payment page is refunded; a card order not paid yet has nothing to refund', () => {
+    expect(cancelRefundText({ payment: { method: 'card', status: 'paid', brand: null, last4: null }, total: 313 })).toBe('Your SAR 313.00 card payment will be refunded.');
+    expect(cancelRefundText({ payment: { method: 'card', status: 'pending', brand: null, last4: null }, total: 313 })).toBe('Nothing has been charged.');
+  });
+});
+
+describe('card payment on the secure payment page', () => {
+  const card = (status, extra = {}) => ({ payment: { method: 'card', status, brand: null, last4: null }, status: { cancelled: false }, ...extra });
+
+  test('waiting for payment: only an unpaid card order that is not cancelled', () => {
+    expect(awaitingPayment(card('pending'))).toBe(true);
+    expect(awaitingPayment(card('paid'))).toBe(false);
+    expect(awaitingPayment(card('pending', { status: { cancelled: true } }))).toBe(false);
+    expect(awaitingPayment({ payment: { method: 'cod', status: 'later' }, status: {} })).toBe(false);
+    expect(awaitingPayment({ payment: null })).toBe(false);
+    expect(awaitingPayment(null)).toBe(false);
+  });
+
+  test('labels say where the money stands', () => {
+    expect(paymentLabel(card('paid').payment)).toBe('Card · Paid');
+    expect(paymentLabel(card('pending').payment)).toBe('Card · Waiting for payment');
+    expect(paymentLabel(card('refund_pending').payment)).toBe('Card · Refund on its way');
+    expect(paymentLabel(card('cancelled').payment)).toBe('Card · Not paid');
+    expect(paymentLabel({ method: 'card' })).toBe('Card');
+  });
+
+  test('screen text', () => {
+    expect(CARD_PAYMENT.pay('SAR 185.00')).toBe('Pay SAR 185.00');
+    expect(CARD_PAYMENT.waitingBody('SAR 185.00')).toBe('Your order is placed. Pay SAR 185.00 on the secure payment page to confirm it.');
   });
 });
 

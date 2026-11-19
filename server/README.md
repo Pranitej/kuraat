@@ -14,7 +14,8 @@ client / mobile  ──►  kuraat server (this app)  ──►  RSOF order syst
 | Customer accounts and login (WhatsApp code or password), profile | Categories, products, product details (custom fields) |
 | Addresses (coordinates only if the customer shared their location — optional) | Hub branches (location, phone) |
 | Cart and product prices (no delivery fee, VAT or promo codes) | Order creation + branch assignment (from the pin, only when the customer shared one; otherwise RSOF asks them) |
-| Payments (simulated in UAT), saved cards (brand + last 4 only) | Order status, timeline, cancel, delivery-code resend |
+| Which payment the customer chose, and "paid" once RSOF says so | Order status, timeline, cancel, delivery-code resend |
+| | Card payments: RSOF's payment link (`POST /api/v1/orders/payment-link`, `X-Api-Key`) — the customer pays on RSOF's page |
 | Notifications, delivery estimates, branch opening hours | |
 
 Design: `docs/superpowers/specs/2026-11-15-rsof-uat-integration-design.md` (kept locally, outside git).
@@ -69,7 +70,7 @@ Using WAMP's MySQL instead of Docker: create databases `kuraat` and `kuraat_test
 | `AUTH_RATE_LIMIT_PER_MINUTE` | `20` | Per IP, for `/auth/*` |
 | `TRUST_PROXY` | unset | Set to `1` when running behind one reverse proxy / load balancer (so limits use the customer IP) |
 | `OTP_ALLOW_TEST_IN_PRODUCTION` | `false` | With `NODE_ENV=production` the server refuses `OTP_MODE=test` unless this is `true` — set it for UAT only |
-| `PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION` | `false` | Card payments are simulated (no gateway yet). With `NODE_ENV=production` the server refuses to start unless this is `true` — a demo/UAT acknowledgement that no real money moves |
+| `ROF_PAYMENT_API_KEY` | unset | RSOF API key with the `payments.link` scope, for card payments. Unset, or RSOF's payment-link API not answering (checked at most once a minute with a request that matches no order) → card is shown as unavailable and refused before anything is created; cash on delivery and pay at branch still work. Never commit it |
 
 Business rules ROF does not hold (fees, promo codes, opening hours, delivery slots, max detour) are in
 [`src/config/business.js`](src/config/business.js).
@@ -87,8 +88,8 @@ All bodies are JSON. Signed-in routes need `Authorization: Bearer <accessToken>`
 | Addresses | `GET /addresses` · `POST /addresses` · `PATCH /addresses/:id` · `DELETE /addresses/:id` · `POST /addresses/:id/default` |
 | Shop | `GET /categories` · `GET /products?categoryId&search` · `GET /products/:id` · `GET /branches` |
 | Favourites, cards | `GET/PUT /favorites` · `GET /cards` · `DELETE /cards/:id` |
-| Cart & checkout | `GET/PUT /cart` `{ items: [{ productId, qty }] }` · `POST /checkout/quote` `{ fulfilment?: 'delivery'·'pickup', addressId (delivery), productIds?, location? }` (pickup: nearest-hub estimate from the request, else the last known location, else the usual address — plus the stored cart priced from RSOF prices) |
-| Orders | `POST /orders` `{ fulfilment?: 'delivery'·'pickup', addressId (delivery only), payment, idempotencyKey — the order always carries the account's mobile number; a `deliveryPhone` sent by an older app is ignored }` (delivery pays card or cash; pickup — no address — pays card or `{ method: 'branch' }`) · `GET /orders?tab=ongoing·delivered·all&refresh=true` · `GET /orders/:id?refresh=true` (`refresh=true` = re-read ROF now, at most once per 10 s per customer) · `POST /orders/:id/cancel` · `POST /orders/:id/resend-code` |
+| Cart & checkout | `GET/PUT /cart` `{ items: [{ productId, qty }] }` · `GET /checkout/payment-options` → `{ card: boolean }` (card works right now) · `POST /checkout/quote` `{ fulfilment?: 'delivery'·'pickup', addressId (delivery), productIds?, location? }` (pickup: nearest-hub estimate from the request, else the last known location, else the usual address — plus the stored cart priced from RSOF prices) |
+| Orders | `POST /orders` `{ fulfilment?: 'delivery'·'pickup', addressId (delivery only), payment, idempotencyKey — the order always carries the account's mobile number; a `deliveryPhone` sent by an older app is ignored }` (delivery pays `{ method: 'card' }` or `{ method: 'cod' }`; pickup — no address — pays card or `{ method: 'branch' }`) · `GET /orders?tab=ongoing·delivered·all&refresh=true` · `GET /orders/:id?refresh=true` (`refresh=true` = re-read ROF now, at most once per 10 s per customer) · `POST /orders/:id/pay` → `{ status: 'pending', link, expiresAt, amount, currency }` or `{ status: 'paid' }` (card orders placed in the app) · `POST /orders/:id/cancel` · `POST /orders/:id/resend-code` |
 | Notifications | `GET /notifications` · `POST /notifications/:id/read` · `POST /notifications/read-all` |
 
 Products: `{ id, name, description[], price, categoryId, categoryName, images[], inStock, maxQuantity, meta,
@@ -105,10 +106,21 @@ deleted; placed orders stay for RSOF's records with only the city of the address
 an order is on its way, 400 `unverified` without a fresh verified code. The number can sign up again afterwards.
 
 Placing an order: create a new `idempotencyKey` (UUID) when the payment screen opens and send the same key on every
-retry — the server then never creates a second ROF order. A declined card can be retried with the same key.
+retry — the server then never creates a second ROF order.
 
-Test payments (UAT): card `4242 4242 4242 4242` (any future expiry, any CVV) succeeds; `4000 0000 0000 0002` is
-declined; cash on delivery. UPI is not offered (Saudi Arabia).
+Card payments (19 Nov 2026) — RSOF holds the money; the kuraat server never sees a card number:
+1. `POST /orders` with `payment: { method: 'card' }` creates the order in RSOF (RSOF needs its number for the link), then
+   asks RSOF for the payment link. The reply's `payment` is `{ status: 'pending', link, linkExpiresAt }` (`link` null if
+   RSOF had none yet). The app opens `link`.
+2. The customer pays on RSOF's page. Nothing tells us by itself: the app calls `POST /orders/:id/pay` when it shows the
+   order and when the customer comes back; RSOF's `AlreadyPaid` → our payment becomes `paid` (with `paidAt`) and a
+   "Payment received" notification is stored.
+3. Not paid: the order stays in RSOF; the apps show "Waiting for payment · Pay now". RSOF answers: `NotReady` → 503
+   `payment_not_ready`; `Error`, RSOF down or the key refused → 503 `payment_unavailable`; `NoPayableOrder` → 409 `not_payable`.
+4. Cancelling: an unpaid card order is voided; a paid one becomes `refund_pending` (RSOF / the store returns the money).
+   RSOF is asked first whether the customer paid a moment ago.
+`payment.status` in order replies: `paid` · `pending` · `later` (cash / at branch) · `refund_pending` · `refunded` (older
+simulated payments) · `cancelled`. Card details sent by an older app build are dropped and never stored. UPI is not offered (Saudi Arabia).
 
 ## How the ROF connection is built (for whoever switches to UAT)
 

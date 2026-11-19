@@ -39,7 +39,7 @@ export const PICKUP = {
   phoneHelper: 'The mobile number of your account. We use it to reach you about your pickup.',
   likely: 'Likely pickup branch',
   payNow: 'Pay now',
-  payNowSub: 'Credit / debit card · Visa, Mastercard, Mada',
+  payNowSub: 'Card · Mada, Visa, Mastercard on a secure payment page',
   payAtBranch: 'Pay at branch',
   payAtBranchSub: 'Pay when you collect your order',
   payAtBranchHint: (total) => `Please pay ${total} at the pickup counter when you collect your order.`,
@@ -119,15 +119,49 @@ export function orderItemCount(order) {
 /** Cash on delivery and pay at branch are paid later: nothing is charged when the order is placed. */
 export const paidLater = (payment) => payment?.method === 'cod' || payment?.method === 'branch';
 
+/**
+ * A card order placed in the app that is not paid yet: the customer pays on RSOF's secure payment page
+ * (server/README.md → Card payments). Cancelled orders are never "waiting for payment".
+ */
+export const awaitingPayment = (order) => order?.payment?.method === 'card' && order.payment.status === 'pending' && !order.status?.cancelled;
+
+/** Card payment on RSOF's secure payment page (19 Nov 2026), shared by the web and the app. */
+export const CARD_PAYMENT = {
+  title: 'Credit / debit card',
+  subtitle: 'Mada, Visa, Mastercard · on a secure payment page',
+  unavailable: 'Card payment is not available right now',
+  waitingTitle: 'Complete your payment',
+  waitingBody: (total) => `Your order is placed. Pay ${total} on the secure payment page to confirm it.`,
+  pay: (total) => `Pay ${total}`,
+  payNow: 'Pay now',
+  returnHint: "After paying, come back here. We'll check your payment for you.",
+  check: "I've paid · Check again",
+  checking: 'Checking your payment…',
+  notYet: "We haven't received your payment yet. If you just paid, wait a moment and check again.",
+  waitingTag: 'Waiting for payment',
+  paidTitle: 'Payment received',
+  paidBody: (total) => `${total} paid by card`,
+};
+
 /** What the "cancel this order?" dialog says about the money. */
 export function cancelRefundText(order) {
-  if (!order.payment || paidLater(order.payment)) return 'Nothing has been charged.';
-  return `We will refund ${formatSAR(order.total)} to ${paymentLabel(order.payment)}.`;
+  const payment = order.payment;
+  if (!payment || paidLater(payment) || payment.status === 'pending') return 'Nothing has been charged.';
+  // Older payments carry the card's last digits; payments on RSOF's page do not (RSOF keeps the card).
+  if (payment.last4) return `We will refund ${formatSAR(order.total)} to ${paymentLabel(payment)}.`;
+  return `Your ${formatSAR(order.total)} card payment will be refunded.`;
 }
 
 export function paymentLabel(payment) {
   if (!payment) return '';
-  if (payment.method === 'card') return `${payment.brand} •••• ${payment.last4}`;
+  if (payment.method === 'card' && payment.last4) return `${payment.brand} •••• ${payment.last4}`;
+  if (payment.method === 'card') {
+    if (payment.status === 'paid') return 'Card · Paid';
+    if (payment.status === 'pending') return `Card · ${CARD_PAYMENT.waitingTag}`;
+    if (payment.status === 'refund_pending') return 'Card · Refund on its way';
+    if (payment.status === 'cancelled') return 'Card · Not paid';
+    return 'Card';
+  }
   if (payment.method === 'cod') return 'Cash on delivery';
   if (payment.method === 'branch') return 'Pay at branch';
   return ''; // a method no longer offered (e.g. an old UPI test order): no label rather than a wrong one

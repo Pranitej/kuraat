@@ -86,21 +86,21 @@ describe('production guards (nothing fake goes live by accident)', () => {
   const prod = { ...valid, NODE_ENV: 'production' };
 
   test('test login codes are refused in production unless acknowledged', () => {
-    expect(() => loadConfig({ ...prod, PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION: 'true' })).toThrow(/OTP_MODE=test/);
+    expect(() => loadConfig(prod)).toThrow(/OTP_MODE=test/);
   });
 
-  test('simulated card payments are refused in production unless acknowledged', () => {
+  test('real WhatsApp codes in production start (card payments are real: RSOF payment links, nothing simulated)', () => {
     const whatsapp = { OTP_MODE: 'whatsapp', WHATSAPP_API_USER: 'u', WHATSAPP_API_PASSWORD: 'p', WHATSAPP_SENDER: '+15550001111', WHATSAPP_TEMPLATE_NAME: 'login_code' };
-    expect(() => loadConfig({ ...prod, ...whatsapp })).toThrow(/PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION/);
+    expect(() => loadConfig({ ...prod, ...whatsapp })).not.toThrow();
   });
 
-  test('real WhatsApp codes in production start once the payment acknowledgement is given', () => {
-    const whatsapp = { OTP_MODE: 'whatsapp', WHATSAPP_API_USER: 'u', WHATSAPP_API_PASSWORD: 'p', WHATSAPP_SENDER: '+15550001111', WHATSAPP_TEMPLATE_NAME: 'login_code' };
-    expect(() => loadConfig({ ...prod, ...whatsapp, PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION: 'true' })).not.toThrow();
+  test('test codes acknowledged (a demo / UAT launch) starts', () => {
+    expect(() => loadConfig({ ...prod, OTP_ALLOW_TEST_IN_PRODUCTION: 'true' })).not.toThrow();
   });
 
-  test('both acknowledged (a demo / UAT launch) starts', () => {
-    expect(() => loadConfig({ ...prod, OTP_ALLOW_TEST_IN_PRODUCTION: 'true', PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION: 'true' })).not.toThrow();
+  test('the payment-link API key is optional; without it card payments are off', () => {
+    expect(loadConfig(valid).rof.paymentApiKey).toBeNull();
+    expect(loadConfig({ ...valid, ROF_PAYMENT_API_KEY: '  rofi_1234abcd_secret  ' }).rof.paymentApiKey).toBe('rofi_1234abcd_secret');
   });
 
   test('outside production neither guard applies', () => {

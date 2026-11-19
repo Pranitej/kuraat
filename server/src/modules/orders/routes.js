@@ -1,4 +1,4 @@
-/** /api/v1/orders — place, list, detail (live from ROF), cancel, resend delivery code. */
+/** /api/v1/orders — place, list, detail (live from ROF), pay by card (RSOF payment link), cancel, resend delivery code. */
 import express from 'express';
 import { z } from 'zod';
 import { requireAuth } from '../../http/auth.js';
@@ -7,16 +7,17 @@ import { placeOrder } from './place.js';
 
 /**
  * Saudi Arabia: card (incl. Mada), cash on delivery (delivery orders) or pay at the branch (pickup
- * orders). UPI is India-only and is not offered.
+ * orders). UPI is India-only and is not offered. A card is paid on RSOF's payment page after the order is
+ * placed (19 Nov 2026), so no card details are sent. An older app build still sends them and has no "Pay now"
+ * screen: its card order would never be paid, so it is refused (nothing created, the details never stored or logged).
  */
+const OLD_APP_CARD = 'Please update the app to pay by card, or choose another payment method.';
 const paymentSchema = z.discriminatedUnion(
   'method',
   [
-    z.object({
-      method: z.literal('card'),
-      card: z.object({ number: z.string().max(30), expiry: z.string().max(10), cvv: z.string().max(4) }),
-      saveCard: z.boolean().optional(),
-    }),
+    z
+      .object({ method: z.literal('card'), card: z.unknown().optional() })
+      .refine((p) => p.card === undefined, { path: ['method'], message: OLD_APP_CARD }),
     z.object({ method: z.literal('cod') }),
     z.object({ method: z.literal('branch') }),
   ],
@@ -65,6 +66,12 @@ export function orderRoutes(ctx) {
 
   router.post('/:id/cancel', async (req, res) => {
     res.json(await ctx.orders.cancel(req.userId, req.params.id));
+  });
+
+  // Card orders placed in the app: RSOF's payment page ({ status: 'pending', link, expiresAt, amount, currency })
+  // or { status: 'paid' }. The apps ask when they show an unpaid order and when the customer comes back from paying.
+  router.post('/:id/pay', async (req, res) => {
+    res.json(await ctx.payments.pay(req.userId, req.params.id));
   });
 
   router.post('/:id/resend-code', async (req, res) => {

@@ -6,7 +6,7 @@ import { PRODUCT_IDS } from '../support/rof-double/seed.js';
 import { loadConfig } from '../../src/config/env.js';
 import { signInDemo } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
-import { VISA, advance, placeTestOrder } from '../helpers/orders.js';
+import { CARD, advance, placeTestOrder } from '../helpers/orders.js';
 
 let t;
 afterEach(async () => {
@@ -14,7 +14,7 @@ afterEach(async () => {
   t = null;
 });
 
-describe('finding 1 — concurrent retries after a failed payment', () => {
+describe('finding 1 — concurrent retries after a failed attempt', () => {
   test('two simultaneous retries with the same key create exactly one ROF order', async () => {
     t = await createTestContext({ withRof: true });
     await t.reset();
@@ -23,10 +23,14 @@ describe('finding 1 — concurrent retries after a failed payment', () => {
     await api('put', '/cart', { items: [{ productId: PRODUCT_IDS.classic, qty: 1 }] });
     const home = (await api('get', '/addresses')).body.find((a) => a.isDefault);
     const idempotencyKey = randomUUID();
-    const body = (card) => ({ addressId: home.id, payment: { ...VISA, card }, idempotencyKey });
-    expect((await api('post', '/orders', body({ ...VISA.card, number: '4000 0000 0000 0002' }))).status).toBe(402);
+    const body = { addressId: home.id, payment: CARD, idempotencyKey };
+    // The first attempt fails (RSOF refuses the order): the key may be used again.
+    const fault = (faults) => request(t.mockRof.app).post('/__dev/faults').send(faults);
+    await fault({ createOrderReject: 'Only 0 of "Truffle Box · Classic" available (requested 1)' });
+    expect((await api('post', '/orders', body)).status).toBe(409);
+    await fault({ createOrderReject: null });
 
-    const [a, b] = await Promise.all([api('post', '/orders', body(VISA.card)), api('post', '/orders', body(VISA.card))]);
+    const [a, b] = await Promise.all([api('post', '/orders', body), api('post', '/orders', body)]);
     expect([a.status, b.status].sort()).toEqual([201, 409]);
     expect(t.mockRof.store.data.orders).toHaveLength(1);
   });
@@ -74,7 +78,7 @@ describe('finding 3 — test login codes in production', () => {
   };
   test('refuses to start in production with OTP_MODE=test unless explicitly allowed (UAT)', () => {
     expect(() => loadConfig(env)).toThrow(/OTP_MODE=test/);
-    expect(loadConfig({ ...env, OTP_ALLOW_TEST_IN_PRODUCTION: 'true', PAYMENTS_ALLOW_SIMULATED_IN_PRODUCTION: 'true' }).otp.mode).toBe('test');
+    expect(loadConfig({ ...env, OTP_ALLOW_TEST_IN_PRODUCTION: 'true' }).otp.mode).toBe('test');
   });
 });
 

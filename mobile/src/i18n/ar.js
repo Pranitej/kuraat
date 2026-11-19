@@ -123,6 +123,7 @@ export default {
   'Shop now': 'تسوّق الآن',
   'Contact us': 'تواصل معنا',
   'Head office': 'المكتب الرئيسي',
+  'Support': 'الدعم',
   'Support · {hours}': 'الدعم · {hours}',
   Email: 'البريد الإلكتروني',
   'View all': 'عرض الكل',

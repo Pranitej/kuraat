@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
-import { ChevronRight, ListFilter, Mail, MapPin, Phone, Search, ShoppingBag, Store, X } from 'lucide-react';
+import { ChevronRight, ListFilter, Phone, Search, ShoppingBag, Store, X } from 'lucide-react';
 import { Avatar, Button, Chip, IconButton, Logo, MaroonPanel, Sheet, Tag } from '@/components/ui';
 import { CountBadge } from '@/components/layout/AppBar.jsx';
 import LanguageToggle from '@/components/layout/LanguageToggle.jsx';
 import { promoBannerPhoto } from '@/assets/images.js';
-import { HEAD_OFFICE, SORT_OPTIONS, formatDistance, mapsUrl, telUrl } from '@/domain';
+import { HEAD_OFFICE, SORT_OPTIONS, formatDistance, telUrl } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
 import { useScrollY } from '@/hooks';
@@ -151,11 +151,7 @@ export function PromoBanner({ onShop, className }) {
 
 /** Maroon "Contact us" footer (PDF screen 08). */
 export function ContactSection() {
-  const rows = [
-    { icon: MapPin, label: t('Head office'), value: HEAD_OFFICE.address, href: mapsUrl(HEAD_OFFICE.location, 'kuraat head office'), external: true },
-    { icon: Phone, label: t('Support · {hours}', { hours: HEAD_OFFICE.supportHours }), value: HEAD_OFFICE.supportPhone, href: telUrl(HEAD_OFFICE.supportPhone) },
-    { icon: Mail, label: t('Email'), value: HEAD_OFFICE.email, href: `mailto:${HEAD_OFFICE.email}` },
-  ];
+  const rows = [{ icon: Phone, label: t('Support'), value: HEAD_OFFICE.supportPhone, href: telUrl(HEAD_OFFICE.supportPhone) }];
   return (
     <MaroonPanel as="footer" className="mt-10 rounded-t-sheet lg:mt-16" fade="edges">
       <div className="mx-auto max-w-column px-6 pb-28 pt-8 lg:max-w-app lg:px-8 lg:pb-12 lg:pt-10">

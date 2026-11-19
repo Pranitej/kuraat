@@ -5,11 +5,11 @@ import Animated, { interpolateColor, useAnimatedStyle } from 'react-native-reani
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { promoBannerPhoto } from '@/assets/images';
 import { useScreenScrollY } from '@/components/layout';
-import { ChevronRight, ListFilter, Mail, MapPin, Phone, Search, ShoppingBag, Store, X } from '@/components/icons';
+import { ChevronRight, ListFilter, Phone, Search, ShoppingBag, Store, X } from '@/components/icons';
 import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { Avatar, BottomSheet, Button, Chip, IconButton, Logo, MaroonPanel, Tag, Text } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
-import { HEAD_OFFICE, SORT_OPTIONS, formatDistance, mapsUrl, telUrl } from '@/domain';
+import { HEAD_OFFICE, SORT_OPTIONS, formatDistance, telUrl } from '@/domain';
 import { useOpenUrl } from '@/lib/linking';
 import { FONT_FAMILY, MAX_FONT_SCALE, colors, layout, radii, shadows } from '@/theme/theme';
 import type { Branch, User } from '@/types/api';
@@ -208,11 +208,7 @@ export function PromoBanner({ onShop }: { onShop: () => void }) {
 export function ContactSection() {
   const openUrl = useOpenUrl();
   const insets = useSafeAreaInsets();
-  const rows = [
-    { icon: MapPin, label: t('Head office'), value: HEAD_OFFICE.address, url: mapsUrl(HEAD_OFFICE.location, 'kuraat head office') },
-    { icon: Phone, label: t('Support · {hours}', { hours: HEAD_OFFICE.supportHours }), value: HEAD_OFFICE.supportPhone, url: telUrl(HEAD_OFFICE.supportPhone) },
-    { icon: Mail, label: t('Email'), value: HEAD_OFFICE.email, url: `mailto:${HEAD_OFFICE.email}` },
-  ];
+  const rows = [{ icon: Phone, label: t('Support'), value: HEAD_OFFICE.supportPhone, url: telUrl(HEAD_OFFICE.supportPhone) }];
   return (
     <MaroonPanel fade="edges" style={styles.contact}>
       <View style={[styles.contactInner, { paddingBottom: 112 + insets.bottom }]}>

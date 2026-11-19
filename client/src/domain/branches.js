@@ -31,12 +31,9 @@ export function cityFilters(branches) {
   return cities.length < 2 ? [] : ['All', ...cities];
 }
 
+/** Contact us (19 Nov 2026): the support number only — no head-office address and no email. */
 export const HEAD_OFFICE = {
-  address: 'Prince Faisal bin Fahd Rd, Al Khobar 31952',
-  supportHours: '9 AM – 11 PM',
-  supportPhone: '+966 13 555 0100',
-  email: 'care@kuraat.com',
-  location: { lat: 26.30696, lng: 50.21868 },
+  supportPhone: '+966 92 001 8958',
 };
 
 const BRAND_PREFIX = /^kuraat\s*·\s*/i;

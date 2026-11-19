@@ -4,7 +4,7 @@ import { Check, ChevronRight, RefreshCw, Store, X } from 'lucide-react';
 import { Card, IconButton, Tag } from '@/components/ui';
 import { useToast } from '@/context/ToastContext.jsx';
 import { useProductImage } from '@/hooks/useProductImage.js';
-import { CARD_PAYMENT, PENDING_BRANCH, PICKUP, awaitingPayment, formatOrderDate, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
+import { PENDING_BRANCH, PICKUP, formatOrderDate, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
 import { t } from '@/i18n';
@@ -96,8 +96,6 @@ export function OrderCard({ order, now }) {
               {count} {count === 1 ? t('item') : t('items')}
             </p>
             <p className="tabular text-[18px] font-bold leading-6 text-ink">{formatSAR(order.total)}</p>
-            {/* A card order not paid yet: the order page has the Pay button. */}
-            {awaitingPayment(order) && <p className="text-small font-bold text-hotpink">{CARD_PAYMENT.waitingTag}</p>}
           </div>
         </div>
       </Link>

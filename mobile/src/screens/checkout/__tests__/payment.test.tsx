@@ -286,97 +286,61 @@ describe('15 · Payment successful — pay at branch', () => {
   });
 });
 
-describe('15 · Complete your payment (card paid on the secure payment page)', () => {
-  const WAITING = { ...ORDER, payment: { method: 'card', status: 'pending', brand: null, last4: null, transactionId: null, paidAt: null } };
-  const PAID = { ...ORDER, payment: { method: 'card', status: 'paid', brand: null, last4: null, transactionId: null, paidAt: '2026-11-16T09:25:00.000Z' } };
+describe('15 · Complete your payment (online payment on the secure payment page)', () => {
+  const ONLINE = { ...ORDER, payment: { method: 'card', status: 'online', brand: null, last4: null, transactionId: null, paidAt: null, link: PAGE } };
+  const server = (order: unknown) => (c: FetchCall) => (c.path === '/orders/o1' ? { body: order } : shop(() => undefined)(c));
 
-  test('a card order not paid yet: Pay opens the payment page in the in-app sheet; closing it unpaid says "Payment not completed"', async () => {
+  test('Pay opens the payment page in the in-app sheet, and that is all: no status, no extra RSOF calls', async () => {
     setMockParams({ orderId: 'o1' });
-    const { calls } = await renderScreen(<PaymentSuccessScreen />, {
-      server: (c) =>
-        c.path === '/orders/o1'
-          ? { body: WAITING }
-          : c.path === '/orders/o1/pay'
-            ? { body: { status: 'pending', link: PAGE, expiresAt: '2099-01-01T00:00:00.000Z', amount: 185, currency: 'SAR' } }
-            : shop(() => undefined)(c),
-    });
+    const { calls } = await renderScreen(<PaymentSuccessScreen />, { server: server(ONLINE) });
     expect(await screen.findAllByText('Complete your payment')).toBeTruthy();
     expect(screen.getByText('Your order is placed. Pay SAR 185.00 on the secure payment page to confirm it.')).toBeTruthy();
-    const pay = await screen.findByRole('button', { name: 'Pay SAR 185.00' });
-    await waitFor(() => expect(pay).toBeEnabled());
-    await fireEvent.press(pay);
+    expect(screen.getByText('After paying, check your payment status on the Orders page.')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Pay SAR 185.00' }));
     await waitFor(() => expect(mockOpenBrowser).toHaveBeenCalledWith(PAGE, expect.any(Object)));
-    // The sheet was closed without paying: RSOF is asked again and the screen says so, with Try again / View my orders.
-    expect(await screen.findByText(/Payment not completed/)).toBeTruthy();
-    expect(calls.filter((c) => c.path === '/orders/o1/pay').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByRole('button', { name: 'View my orders' })).toBeTruthy();
+    // Nothing is shown about the result and nothing is asked again.
+    expect(screen.queryByText(/not completed|successful|paid/i)).toBeNull();
+    expect(calls.filter((c) => c.path.includes('/pay'))).toHaveLength(0);
   });
 
-  test('without the in-app browser module (an older dev build) the phone browser is used instead', async () => {
+  test('RSOF gave no page with the order: one tap on Pay gets it, a second opens it', async () => {
     setMockParams({ orderId: 'o1' });
-    mockOpenBrowser.mockRejectedValue(new Error('Cannot find native module'));
+    const { calls } = await renderScreen(<PaymentSuccessScreen />, {
+      server: (c) => (c.path === '/orders/o1/pay' ? { body: { link: PAGE, expiresAt: null } } : server({ ...ONLINE, payment: { ...ONLINE.payment, link: null } })(c)),
+    });
+    await fireEvent.press(await screen.findByRole('button', { name: 'Pay SAR 185.00' }));
+    await waitFor(() => expect(calls.filter((c) => c.path === '/orders/o1/pay')).toHaveLength(1));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Pay SAR 185.00' }));
+    await waitFor(() => expect(mockOpenBrowser).toHaveBeenCalledWith(PAGE, expect.any(Object)));
+  });
+
+  test('RSOF cannot give a page: the kuraat server message shows with Try again', async () => {
+    setMockParams({ orderId: 'o1' });
     await renderScreen(<PaymentSuccessScreen />, {
       server: (c) =>
-        c.path === '/orders/o1'
-          ? { body: WAITING }
-          : c.path === '/orders/o1/pay'
-            ? { body: { status: 'pending', link: PAGE, expiresAt: '2099-01-01T00:00:00.000Z', amount: 185, currency: 'SAR' } }
-            : shop(() => undefined)(c),
+        c.path === '/orders/o1/pay'
+          ? { status: 503, body: { code: 'payment_not_ready', message: "Online payment isn't ready for this order yet. Please try again in a few minutes." } }
+          : server({ ...ONLINE, payment: { ...ONLINE.payment, link: null } })(c),
     });
-    const pay = await screen.findByRole('button', { name: 'Pay SAR 185.00' });
-    await waitFor(() => expect(pay).toBeEnabled());
-    await fireEvent.press(pay);
-    // The sheet itself failed: the message offers another try instead of a blank screen.
-    expect(await screen.findAllByText("We couldn't open the payment page. Please try again.")).toBeTruthy();
+    await fireEvent.press(await screen.findByRole('button', { name: 'Pay SAR 185.00' }));
+    expect(await screen.findByText("Online payment isn't ready for this order yet. Please try again in a few minutes.")).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
+  });
+
+  test('the in-app sheet cannot open: a message instead of a blank screen', async () => {
+    setMockParams({ orderId: 'o1' });
+    mockOpenBrowser.mockRejectedValue(new Error('Cannot find native module'));
+    await renderScreen(<PaymentSuccessScreen />, { server: server(ONLINE) });
+    await fireEvent.press(await screen.findByRole('button', { name: 'Pay SAR 185.00' }));
+    expect(await screen.findByText('Cannot find native module')).toBeTruthy();
   });
 
   test('"View my orders" goes to the Orders page and re-reads the orders', async () => {
     setMockParams({ orderId: 'o1' });
-    const { calls } = await renderScreen(<PaymentSuccessScreen />, {
-      server: (c) =>
-        c.path === '/orders/o1'
-          ? { body: WAITING }
-          : c.path === '/orders/o1/pay'
-            ? { body: { status: 'pending', link: PAGE, expiresAt: '2099-01-01T00:00:00.000Z', amount: 185, currency: 'SAR' } }
-            : shop(() => undefined)(c),
-    });
+    const { calls } = await renderScreen(<PaymentSuccessScreen />, { server: server(ONLINE) });
     await fireEvent.press(await screen.findByRole('button', { name: 'View my orders' }));
     expect(mockRouter.replace).toHaveBeenCalledWith('/orders');
     await waitFor(() => expect(calls.some((c) => c.path.startsWith('/orders?refresh=true'))).toBe(true));
-  });
-
-  test('once the kuraat server says paid, the screen becomes "Payment successful"', async () => {
-    setMockParams({ orderId: 'o1' });
-    let paid = false;
-    await renderScreen(<PaymentSuccessScreen />, {
-      server: (c) => {
-        if (c.path === '/orders/o1') return { body: paid ? PAID : WAITING };
-        if (c.path === '/orders/o1/pay') {
-          paid = true;
-          return { body: { status: 'paid' } };
-        }
-        return shop(() => undefined)(c);
-      },
-    });
-    expect(await screen.findByText('Payment successful')).toBeTruthy();
-    expect(screen.getByText('SAR 185.00 paid online')).toBeTruthy();
-    expect(screen.getByText('Online · Paid')).toBeTruthy();
-    // A paid card order ends on the Orders page, where it can be tracked.
-    expect(screen.getByRole('button', { name: 'View my orders' })).toBeTruthy();
-  });
-
-  test('the payment page cannot be made yet: the message shows with Try again', async () => {
-    setMockParams({ orderId: 'o1' });
-    await renderScreen(<PaymentSuccessScreen />, {
-      server: (c) =>
-        c.path === '/orders/o1'
-          ? { body: WAITING }
-          : c.path === '/orders/o1/pay'
-            ? { status: 503, body: { code: 'payment_not_ready', message: "Online payment isn't ready for this order yet. Please try again in a few minutes." } }
-            : shop(() => undefined)(c),
-    });
-    expect(await screen.findByText("Online payment isn't ready for this order yet. Please try again in a few minutes.")).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled();
   });
 });
 

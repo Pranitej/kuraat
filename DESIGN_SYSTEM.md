@@ -325,18 +325,13 @@ Same screen after "Read more" and scrolling: compact sticky header (back · prod
 
 ### 15 · Payment successful (page 17)
 Cream with sand circle pattern fading downward; 126 sand halo + 104 maroon circle + white check; title "Payment successful"; "SAR 328.00 paid with Visa •••• 4242"; details card (Transaction ID, Date, Method, Amount); WhatsApp receipt note; "Confirming your order with the branch…" + progress bar (4 pt, maroon on sand) that fills, then primary "Continue" (enabled when confirmed) → Order confirmed. Cash on delivery shows "Order placed" wording with method "Cash on delivery".
-**Card not paid yet (19 Nov 2026):** the same cream page without the check halo: title "Complete your payment", "Order #…",
-then a white card ("Complete your payment" h3, "Your order is placed. Pay SAR … on the secure payment page to confirm it.",
-primary "🔒 Pay SAR …" that opens RSOF's page — a popup window on the web (a new tab if the browser blocks popups),
-the in-app browser sheet in the app (the lead: inside the website/app) —, secondary "I've paid · Check again", muted hint)
-and a secondary "View my orders". While the window is open a sand note says "Finish your payment in the payment window…";
-when it is closed the payment is checked at once: paid → "Payment successful", otherwise a note "Payment not completed…"
-(RSOF only answers "paid" or "not paid yet") with the Pay button to try again. A paid card order's last button is
-"View my orders" (the Orders page, re-read fresh from RSOF; the order is there with its status, ready to track). The same card sits at the top of the order
-detail screen while the order waits for its payment; order cards in the list add a bold hotpink "Waiting for payment"
-under the total. Once paid it is the normal "Payment successful" page ("SAR … paid by card", details card with Order
-number instead of Transaction ID). The WhatsApp line always reads "Your order details have been sent to your WhatsApp"
-(RSOF sends no payment receipt).
+**Online payment (19 Nov 2026):** the same cream page without the check halo: title "Complete your payment", "Order #…", then a
+white card ("Complete your payment" h3, "Your order is placed. Pay SAR … on the secure payment page to confirm it.", primary
+"🔒 Pay SAR …" that opens RSOF's page — a popup window on the web (a new tab if the browser blocks popups), the in-app browser
+sheet in the app —, muted "After paying, check your payment status on the Orders page.") and a secondary "View my orders"
+(the Orders page, re-read fresh from RSOF). Deliberately nothing else: no paid / failed status, no re-checking — RSOF handles the
+payment and shows its own status on the Orders page. If RSOF gave no page with the order, one tap on Pay gets it (a message and
+"Try again" when it cannot). The order detail screen and the order cards do not mention the payment state either.
 
 ### 16 · Order confirmed + branch popup (page 18)
 1. **Underlying screen:** maroon header with pattern, 72 white circle + maroon check, "Order confirmed!" (`title` white), "Order #KR-20418 · Today, 12:21" (white 80 %). Sheet: sand "Estimated delivery / Today, 5:00 – 7:00 PM" card; "Your items" rows (56 thumbnail, name, "Qty n"); white "Delivering to" card; two buttons side-by-side: Secondary "Track order", Primary "Back to home".

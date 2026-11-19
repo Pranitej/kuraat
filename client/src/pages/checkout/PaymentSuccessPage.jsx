@@ -4,37 +4,35 @@ import { Check } from 'lucide-react';
 import PaymentDueCard from '@/components/checkout/PaymentDueCard.jsx';
 import { Button, Card, CirclePattern, ProgressBar, WhatsAppIcon } from '@/components/ui';
 import { useOrder, useOrders } from '@/context/OrderContext.jsx';
-import { useOrderPayment } from '@/hooks/useOrderPayment.js';
-import { CARD_PAYMENT, PENDING_BRANCH, PICKUP, awaitingPayment, formatDateTime, formatSAR, paymentLabel } from '@/domain';
+import { CARD_PAYMENT, PENDING_BRANCH, PICKUP, formatDateTime, formatSAR, isOnlinePayment, paymentLabel } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
 import { t } from '@/i18n';
 
 /**
  * 15 · Payment successful — then confirms the order with the branch before continuing.
- * A card order is paid on RSOF's secure payment page after it is placed (19 Nov 2026): until RSOF says it is paid,
- * this screen is "Complete your payment" and checks again each time the customer comes back to the tab.
+ * An online-payment order is paid on RSOF's secure payment page after it is placed (19 Nov 2026): this screen is then
+ * "Complete your payment" — Pay, and a button to the Orders page where RSOF's own status is. Nothing else is checked.
  */
 export default function PaymentSuccessPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { order, loading, refresh } = useOrder(orderId);
+  const { order, loading } = useOrder(orderId);
   const { refresh: refreshOrders } = useOrders();
   // The Orders page, with the latest status of every order (read fresh from RSOF while it opens).
   const toOrders = () => {
     refreshOrders({ force: true }).catch(() => {});
     navigate(ROUTES.orders, { replace: true });
   };
-  const payment = useOrderPayment(order, { onPaid: refresh });
-  const waiting = awaitingPayment(order);
+  const online = isOnlinePayment(order);
   // Cash on delivery and pay at the branch: placed now, paid later.
   const later = order?.payment?.method === 'cod' || order?.payment?.method === 'branch';
-  useDocumentTitle(waiting ? CARD_PAYMENT.waitingTitle : later ? t('Order placed') : t('Payment successful'));
+  useDocumentTitle(online ? CARD_PAYMENT.waitingTitle : later ? t('Order placed') : t('Payment successful'));
   const [progress, setProgress] = useState(8);
   const confirmed = progress >= 100;
 
   useEffect(() => {
-    if (!order?.id || waiting) return undefined;
+    if (!order?.id || online) return undefined;
     const steps = [
       [500, 34],
       [1200, 58],
@@ -43,19 +41,19 @@ export default function PaymentSuccessPage() {
     ];
     const timers = steps.map(([t, v]) => setTimeout(() => setProgress(v), t));
     return () => timers.forEach(clearTimeout);
-  }, [order?.id, waiting]);
+  }, [order?.id, online]);
 
   if (!order && loading) return <div className="min-h-[calc(100dvh-76px)]" aria-busy="true" />;
   if (!order) return <Navigate to={ROUTES.orders} replace />;
 
-  if (waiting) {
+  if (online) {
     return (
       <div className="relative isolate min-h-[calc(100dvh-76px)] overflow-hidden">
         <CirclePattern variant="sand" fade="down" className="-z-10 h-[420px]" />
         <div className="mx-auto flex min-h-[calc(100dvh-76px)] max-w-column flex-col px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-16 lg:max-w-[520px] lg:pt-20">
           <h1 className="text-center text-title text-ink">{CARD_PAYMENT.waitingTitle}</h1>
           <p className="mt-2 text-center text-body text-muted">{t('Order #{number}', { number: order.number })}</p>
-          <PaymentDueCard order={order} payment={payment} className="mt-6" />
+          <PaymentDueCard order={order} className="mt-6" />
           <div className="mt-auto pt-10">
             <Button block variant="secondary" onClick={toOrders}>
               {CARD_PAYMENT.viewOrders}
@@ -74,7 +72,7 @@ export default function PaymentSuccessPage() {
         [t('Amount due'), formatSAR(order.total)],
       ]
     : [
-        // Paid on RSOF's page: RSOF keeps the card and the transaction; older payments still have their id.
+        // Older simulated card payments (no new ones): they have a transaction id.
         order.payment?.transactionId ? [t('Transaction ID'), order.payment.transactionId] : [t('Order number'), `#${order.number}`],
         [t('Date'), formatDateTime(order.payment?.paidAt || order.createdAt)],
         [t('Method'), paymentLabel(order.payment)],
@@ -96,9 +94,7 @@ export default function PaymentSuccessPage() {
             ? PICKUP.paidLater(formatSAR(order.total))
             : later
               ? t('Pay {total} in cash when your order arrives', { total: formatSAR(order.total) })
-              : order.payment?.last4
-                ? t('{total} paid with {method}', { total: formatSAR(order.total), method: paymentLabel(order.payment) })
-                : CARD_PAYMENT.paidBody(formatSAR(order.total))}
+              : t('{total} paid with {method}', { total: formatSAR(order.total), method: paymentLabel(order.payment) })}
         </p>
 
         <Card className="mt-6 px-4 py-2">
@@ -121,9 +117,8 @@ export default function PaymentSuccessPage() {
             {confirmed ? (order.branch ? t('Confirmed by {name}', { name: order.branch.name }) : PENDING_BRANCH.sent) : t('Confirming your order with the branch…')}
           </p>
           <ProgressBar value={progress} className="mt-3" label={t('Confirming with the branch')} />
-          {/* Card orders end on the Orders page: the order is there with its latest status, ready to track. */}
-          <Button block className="mt-5" disabled={!confirmed} onClick={later ? () => navigate(ROUTES.orderConfirmed(order.id), { replace: true }) : toOrders}>
-            {later ? t('Continue') : CARD_PAYMENT.viewOrders}
+          <Button block className="mt-5" disabled={!confirmed} onClick={() => navigate(ROUTES.orderConfirmed(order.id), { replace: true })}>
+            {t('Continue')}
           </Button>
         </div>
       </div>

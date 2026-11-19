@@ -8,7 +8,7 @@ import { Card, IconButton, Tag, Text, type TagTone } from '@/components/ui';
 import { useToast } from '@/context/ToastContext';
 import { useProductImage } from '@/hooks/productImage';
 import { ROUTES } from '@/lib/routes';
-import { CARD_PAYMENT, PENDING_BRANCH, PICKUP, awaitingPayment, formatOrderDate, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
+import { PENDING_BRANCH, PICKUP, formatOrderDate, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
 import { t } from '@/i18n';
@@ -128,12 +128,6 @@ export const OrderCard = memo(function OrderCard({ order, now }: { order: Order;
             <Text weight={700} style={styles.total}>
               {formatSAR(order.total)}
             </Text>
-            {/* A card order not paid yet: the order screen has the Pay button. */}
-            {awaitingPayment(order) ? (
-              <Text variant="small" weight={700} style={styles.waitingPayment}>
-                {CARD_PAYMENT.waitingTag}
-              </Text>
-            ) : null}
           </View>
         </View>
       </Pressable>
@@ -236,7 +230,6 @@ const styles = StyleSheet.create({
   thumbs: { flexDirection: 'row', gap: 8 },
   thumb: { width: 48, height: 48, borderRadius: radii.sm, overflow: 'hidden', backgroundColor: colors.sand },
   right: { alignItems: 'flex-end' },
-  waitingPayment: { color: colors.hotpink },
   total: { fontSize: 18, lineHeight: 24, fontVariant: ['tabular-nums'] },
   branch: {
     marginTop: 14,

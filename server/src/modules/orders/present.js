@@ -64,27 +64,20 @@ function presentStatus(row) {
 }
 
 /**
- * Where the money stands, for the apps:
- *   paid           — card, RSOF says paid (or an older simulated card payment)
- *   pending        — card, waiting for the customer to pay on RSOF's payment page
- *   later          — cash on delivery / pay at the branch: paid when the order arrives / is collected
- *   refund_pending — a paid card order that was cancelled: the money goes back through RSOF / the store
- *   refunded       — an older simulated card payment that was refunded
- *   cancelled      — cancelled before anything was paid
+ * How the customer pays, for the apps — never whether they have paid (online payments are RSOF's business):
+ *   online    — paid on RSOF's payment page (the Orders page shows RSOF's own status)
+ *   later     — cash on delivery / pay at the branch: paid when the order arrives / is collected
+ *   cancelled — the order was cancelled
  */
 function paymentStatus(payment) {
-  const later = payment.method === 'cod' || payment.method === 'branch';
-  if (payment.status === 'voided') return 'cancelled';
-  if (later) return 'later';
-  if (payment.status === 'captured') return 'paid';
-  if (payment.status === 'refund_pending' || payment.status === 'refunded') return payment.status;
-  return 'pending';
+  if (payment.status === 'voided' || payment.status === 'refunded') return 'cancelled';
+  if (payment.method === 'cod' || payment.method === 'branch') return 'later';
+  return 'online';
 }
 
 function paymentView(payment) {
   if (!payment) return null;
   const status = paymentStatus(payment);
-  const paid = status === 'paid' || status === 'refund_pending' || status === 'refunded';
   return {
     method: payment.method,
     status,
@@ -92,8 +85,8 @@ function paymentView(payment) {
     brand: payment.brand ?? null,
     last4: payment.last4 ?? null,
     transactionId: payment.transaction_id ?? null,
-    // Only a card that has been paid has a payment time (older simulated payments: when they were made).
-    paidAt: paid ? iso(payment.paid_at ?? payment.created_at) : null,
+    // Only older simulated card payments have a payment time; online payments are RSOF's (we do not track them).
+    paidAt: payment.last4 ? iso(payment.created_at) : null,
     // The payment page is never stored: POST /orders and POST /orders/:id/pay hand it out fresh from RSOF.
     link: null,
     linkExpiresAt: null,

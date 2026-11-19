@@ -47,7 +47,7 @@ describe('placing an order', () => {
       subtotal: 313,
       total: 313,
       // Waiting for the customer to pay on RSOF's page; the page comes with the new order.
-      payment: { method: 'card', status: 'pending', brand: null, last4: null, paidAt: null, link: expect.stringMatching(/\/en\/pay\/\w+$/), linkExpiresAt: '2026-11-15T09:51:00.000Z' },
+      payment: { method: 'card', status: 'online', brand: null, last4: null, paidAt: null, link: expect.stringMatching(/\/en\/pay\/\w+$/), linkExpiresAt: '2026-11-15T09:51:00.000Z' },
       branch: { id: BRANCH_IDS.corniche, name: 'Kuraat · Al Khobar Corniche' },
       distanceKm: 5.8,
       deliveryPhone: '501234821',
@@ -361,7 +361,7 @@ describe('placing an order', () => {
       await setLocation(26.2874, 50.2085);
       const res = await placePickup({ payment: card });
       expect(res.status).toBe(201);
-      expect(res.body.payment).toMatchObject({ method: 'card', status: 'pending', link: expect.any(String) });
+      expect(res.body.payment).toMatchObject({ method: 'card', status: 'online', link: expect.any(String) });
       expect(rofOrders()[0].remarks).toBe('Online payment: SAR 313.00 via payment link');
     });
 

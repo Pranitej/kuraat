@@ -2,7 +2,7 @@
 // The 12/24-hour style follows the device: these use a 24-hour device unless a test says otherwise.
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { setClockReader } from './format.js';
-import { CARD_PAYMENT, ORDER_FILTERS, PICKUP, awaitingPayment, cancelRefundText, filterOrders, isPickup, orderHistoryView, orderItemCount, orderStatusView, orderTimelineView, paidLater, paymentLabel } from './orders.js';
+import { CARD_PAYMENT, ORDER_FILTERS, PICKUP, cancelRefundText, filterOrders, isPickup, isOnlinePayment, orderHistoryView, orderItemCount, orderStatusView, orderTimelineView, paidLater, paymentLabel } from './orders.js';
 
 beforeEach(() => setClockReader(() => true));
 afterEach(() => setClockReader(null));
@@ -167,37 +167,38 @@ describe('paid later, and what the cancel dialog promises (review: Important 1)'
     expect(cancelRefundText({ payment: { method: 'card', brand: 'Visa', last4: '4242' }, total: 313 })).toBe('We will refund SAR 313.00 to Visa •••• 4242.');
   });
 
-  test('a card paid on the payment page is refunded; a card order not paid yet has nothing to refund', () => {
-    expect(cancelRefundText({ payment: { method: 'card', status: 'paid', brand: null, last4: null }, total: 313 })).toBe('Your SAR 313.00 online payment will be refunded.');
-    expect(cancelRefundText({ payment: { method: 'card', status: 'pending', brand: null, last4: null }, total: 313 })).toBe('Nothing has been charged.');
+  test('an online payment is RSOF\'s: the dialog promises only "the store handles your refund", paid or not', () => {
+    for (const status of ['online', 'cancelled']) {
+      expect(cancelRefundText({ payment: { method: 'card', status, brand: null, last4: null }, total: 313 })).toBe('If you already paid online, the store will handle your refund.');
+    }
   });
 });
 
-describe('card payment on the secure payment page', () => {
-  const card = (status, extra = {}) => ({ payment: { method: 'card', status, brand: null, last4: null }, status: { cancelled: false }, ...extra });
+describe('online payment on the secure payment page', () => {
+  const online = (extra = {}) => ({ payment: { method: 'card', status: 'online', brand: null, last4: null }, status: { cancelled: false }, ...extra });
 
-  test('waiting for payment: only an unpaid card order that is not cancelled', () => {
-    expect(awaitingPayment(card('pending'))).toBe(true);
-    expect(awaitingPayment(card('paid'))).toBe(false);
-    expect(awaitingPayment(card('pending', { status: { cancelled: true } }))).toBe(false);
-    expect(awaitingPayment({ payment: { method: 'cod', status: 'later' }, status: {} })).toBe(false);
-    expect(awaitingPayment({ payment: null })).toBe(false);
-    expect(awaitingPayment(null)).toBe(false);
+  test('an online-payment order: a card order with no card digits that is not cancelled — never a paid / failed state', () => {
+    expect(isOnlinePayment(online())).toBe(true);
+    expect(isOnlinePayment(online({ status: { cancelled: true } }))).toBe(false);
+    expect(isOnlinePayment({ payment: { method: 'card', status: 'online', last4: '4242', brand: 'Visa' }, status: {} })).toBe(false); // an old simulated payment
+    expect(isOnlinePayment({ payment: { method: 'cod', status: 'later' }, status: {} })).toBe(false);
+    expect(isOnlinePayment({ payment: null })).toBe(false);
+    expect(isOnlinePayment(null)).toBe(false);
   });
 
-  test('labels say where the money stands', () => {
-    expect(paymentLabel(card('paid').payment)).toBe('Online · Paid');
-    expect(paymentLabel(card('pending').payment)).toBe('Online · Waiting for payment');
-    expect(paymentLabel(card('refund_pending').payment)).toBe('Online · Refund on its way');
-    expect(paymentLabel(card('cancelled').payment)).toBe('Online · Not paid');
-    expect(paymentLabel({ method: 'card' })).toBe('Online payment');
+  test('the label says how it is paid, nothing about the money', () => {
+    expect(paymentLabel(online().payment)).toBe('Pay online');
+    expect(paymentLabel({ method: 'card', status: 'cancelled' })).toBe('Pay online');
+    expect(paymentLabel({ method: 'card', brand: 'Visa', last4: '4242' })).toBe('Visa •••• 4242'); // older simulated payments keep theirs
   });
 
   test('screen text', () => {
     expect(CARD_PAYMENT.pay('SAR 185.00')).toBe('Pay SAR 185.00');
     expect(CARD_PAYMENT.waitingBody('SAR 185.00')).toBe('Your order is placed. Pay SAR 185.00 on the secure payment page to confirm it.');
+    expect(CARD_PAYMENT.returnHint).toBe('After paying, check your payment status on the Orders page.');
   });
 });
+
 
 describe('orderHistoryView (every status RSOF recorded)', () => {
   const history = [

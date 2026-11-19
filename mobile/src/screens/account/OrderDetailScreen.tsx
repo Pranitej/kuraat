@@ -2,7 +2,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { OrderItemImage, OrderTimeline, RefreshButton, StatusTag, branchLabel, type StatusView, type TimelineRow } from '@/components/account/OrderParts';
-import { PaymentDueCard } from '@/components/checkout/PaymentDueCard';
 import { Screen, ScreenHeader } from '@/components/layout';
 import { ChevronDown, ChevronUp, Navigation, PackageSearch, PackageX, Phone, Store } from '@/components/icons';
 import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Text, WhatsAppIcon } from '@/components/ui';
@@ -11,7 +10,6 @@ import { useOrder, useOrders } from '@/context/OrderContext';
 import { useToast } from '@/context/ToastContext';
 import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderHistoryView, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
 import { useCountdown } from '@/hooks';
-import { useOrderPayment } from '@/hooks/orderPayment';
 import { useOpenUrl } from '@/lib/linking';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
@@ -74,8 +72,6 @@ export default function OrderDetailScreen() {
   const [cancelling, setCancelling] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  // A card order not paid yet: the payment page, checked again when the app comes back to the front.
-  const payment = useOrderPayment(order, { onPaid: refresh });
 
   if (!order) {
     return (
@@ -135,7 +131,6 @@ export default function OrderDetailScreen() {
         <View style={styles.statusRow}>
           <StatusTag status={status} />
         </View>
-        {payment.waiting ? <PaymentDueCard order={order} payment={payment} /> : null}
         <Card style={styles.pad}>
           <OrderTimeline steps={steps} />
           {status.id === 'out_for_delivery' ? <DeliveryCodeNote order={order} onResend={resendCode} /> : null}

@@ -20,32 +20,22 @@ const sar = (n) => `SAR ${Number(n).toFixed(2)}`;
 const paidLater = (payment) => payment.method === 'cod' || payment.method === 'branch';
 
 /**
- * The "cancelled" notification. paidCheck: what RSOF said just before for a card order still waiting for its
- * payment ('unpaid' | 'unknown' — see payments/online.js settleBeforeCancel); 'unknown' must not claim nothing was charged.
+ * The "cancelled" notification. Online payments are RSOF's business (it holds the money and knows whether the
+ * customer paid), so the message promises nothing about the money beyond "the store handles your refund".
  */
-function cancellationBody(payment, paidCheck = null) {
-  // Cash on delivery, pay-at-the-branch and an unpaid card order were never charged: nothing to refund.
+function cancellationBody(payment) {
+  // Cash on delivery and pay-at-the-branch were never charged: nothing to refund.
   if (!payment || paidLater(payment)) return 'Your order was cancelled.';
-  if (payment.status === 'pending') {
-    return paidCheck === 'unknown' ? 'Your order was cancelled. If you already paid online, your payment will be refunded.' : 'Your order was cancelled.';
-  }
-  // Paid on RSOF's payment page: RSOF / the store holds the money and returns it (who and how: open with the lead).
-  if (payment.paid_at) return `Your order was cancelled. Your ${sar(payment.amount)} online payment will be refunded.`;
-  // Older simulated card payments (before 19 Nov 2026); "your original payment method" covers old UPI test orders.
-  const via = payment.method === 'card' && payment.last4 ? `${payment.brand} •••• ${payment.last4}` : 'your original payment method';
-  return `Your order was cancelled. ${sar(payment.amount)} will be refunded to ${via}.`;
+  // Older simulated card payments (before 19 Nov 2026) carry the card's last digits; "your original payment method"
+  // covers old UPI test orders.
+  if (payment.last4) return `Your order was cancelled. ${sar(payment.amount)} will be refunded to ${payment.brand} •••• ${payment.last4}.`;
+  return 'Your order was cancelled. If you already paid online, the store will handle your refund.';
 }
 
-/**
- * The payment of a cancelled order. Never charged (cash, at branch, card not paid yet) → voided. Paid on RSOF's
- * payment page → refund_pending: RSOF holds the money, the kuraat server cannot refund it. An older simulated
- * card payment → refunded (it was never real money).
- */
+/** The payment record of a cancelled order: voided (an old simulated card payment: refunded, it was never real money). */
 async function refundFor(trx, payment, now) {
   if (!payment || !['captured', 'authorized', 'pending'].includes(payment.status)) return;
-  let status = 'refunded';
-  if (paidLater(payment) || payment.status !== 'captured') status = 'voided';
-  else if (payment.paid_at) status = 'refund_pending';
+  const status = !paidLater(payment) && payment.last4 ? 'refunded' : 'voided';
   await trx('payments').where({ id: payment.id }).update({ status, updated_at: now });
 }
 
@@ -194,9 +184,6 @@ export function createOrdersService(ctx) {
     }
     const number = `KR-${row.rof_order_number}`;
     const link = { kind: 'order', id: row.id };
-    // Cancelled in RSOF while the card payment was still "pending" here: did the customer pay first? (Outside the
-    // row lock — it is an RSOF call.) Paid → the cancellation below records a refund to come, not "nothing charged".
-    const paidCheck = step === 'cancelled' && !row.cancelled ? await ctx.payments?.settleBeforeCancel(row) : null;
 
     // Lock the row: the poller, an open tracking screen and a cancel can refresh the same order at
     // once; deciding notifications on the locked row sends each one exactly once.
@@ -249,7 +236,7 @@ export function createOrdersService(ctx) {
         } else {
           const payment = await trx('payments').where({ order_id: row.id }).first();
           await refundFor(trx, payment, now);
-          await notify(trx, row.user_id, { type, title: `Order #${number} cancelled`, body: cancellationBody(payment, paidCheck), link }, now);
+          await notify(trx, row.user_id, { type, title: `Order #${number} cancelled`, body: cancellationBody(payment), link }, now);
         }
       }
       return { ...current, ...changes, notified };
@@ -328,8 +315,6 @@ export function createOrdersService(ctx) {
     async cancel(userId, id) {
       const row = await refresh(await mine(userId, id));
       if (row.cancelled || !canCancel(row.rof_status)) throw conflict('cannot_cancel', 'This order can no longer be cancelled.');
-      // A card order still "pending" here may have been paid on RSOF's page a moment ago: ask before cancelling.
-      const paidCheck = await ctx.payments?.settleBeforeCancel(row);
       try {
         await ctx.rof.cancelOrder(row.rof_order_id);
       } catch (error) {
@@ -358,7 +343,7 @@ export function createOrdersService(ctx) {
         await notify(
           trx,
           row.user_id,
-          { type: 'cancelled', title: `Order #KR-${row.rof_order_number} cancelled`, body: cancellationBody(payment, paidCheck), link: { kind: 'order', id: row.id } },
+          { type: 'cancelled', title: `Order #KR-${row.rof_order_number} cancelled`, body: cancellationBody(payment), link: { kind: 'order', id: row.id } },
           now,
         );
       });

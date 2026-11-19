@@ -121,12 +121,12 @@ export function orderItemCount(order) {
 export const paidLater = (payment) => payment?.method === 'cod' || payment?.method === 'branch';
 
 /**
- * A card order placed in the app that is not paid yet: the customer pays on RSOF's secure payment page
- * (server/README.md → Card payments). Cancelled orders are never "waiting for payment".
+ * An order the customer pays online, on RSOF's secure payment page (server/README.md → Online payment). RSOF holds the
+ * money and knows whether they paid: the apps never show a paid / failed state, they say "check the Orders page".
  */
-export const awaitingPayment = (order) => order?.payment?.method === 'card' && order.payment.status === 'pending' && !order.status?.cancelled;
+export const isOnlinePayment = (order) => order?.payment?.method === 'card' && !order.payment.last4 && !order.status?.cancelled;
 
-/** Card payment on RSOF's secure payment page (19 Nov 2026), shared by the web and the app. */
+/** Online payment on RSOF's secure payment page (19 Nov 2026), shared by the web and the app. */
 export const CARD_PAYMENT = localized({
   title: 'Pay online',
   subtitle: 'Choose how to pay on a secure payment page',
@@ -134,39 +134,24 @@ export const CARD_PAYMENT = localized({
   waitingTitle: 'Complete your payment',
   waitingBody: (total) => t('Your order is placed. Pay {total} on the secure payment page to confirm it.', { total }),
   pay: (total) => t('Pay {total}', { total }),
-  payNow: 'Pay now',
-  returnHint: "The payment page opens in a window. When you're done, we update your order for you.",
-  popupHint: "Finish your payment in the payment window. This page updates when you're done.",
-  check: "I've paid · Check again",
-  checking: 'Checking your payment…',
-  // RSOF only says "paid" or "not paid yet" — there is no separate "failed" answer.
-  notYet: 'Payment not completed. If you already paid, wait a moment and tap "I\'ve paid · Check again".',
+  returnHint: 'After paying, check your payment status on the Orders page.',
   tryAgain: 'Try again',
   viewOrders: 'View my orders',
-  waitingTag: 'Waiting for payment',
-  paidTitle: 'Payment received',
-  paidBody: (total) => `${total} paid online`,
 });
 
 /** What the "cancel this order?" dialog says about the money. */
 export function cancelRefundText(order) {
   const payment = order.payment;
-  if (!payment || paidLater(payment) || payment.status === 'pending') return t('Nothing has been charged.');
-  // Older payments carry the card's last digits; payments on RSOF's page do not (RSOF keeps the card).
+  if (!payment || paidLater(payment)) return t('Nothing has been charged.');
+  // Older simulated payments carry the card's last digits; online payments are RSOF's (it knows if the customer paid).
   if (payment.last4) return t('We will refund {amount} to {method}.', { amount: formatSAR(order.total), method: paymentLabel(payment) });
-  return t('Your {amount} online payment will be refunded.', { amount: formatSAR(order.total) });
+  return t('If you already paid online, the store will handle your refund.');
 }
 
 export function paymentLabel(payment) {
   if (!payment) return '';
   if (payment.method === 'card' && payment.last4) return `${payment.brand} •••• ${payment.last4}`;
-  if (payment.method === 'card') {
-    if (payment.status === 'paid') return t('Online · Paid');
-    if (payment.status === 'pending') return t('Online · {waitingTag}', { waitingTag: CARD_PAYMENT.waitingTag });
-    if (payment.status === 'refund_pending') return t('Online · Refund on its way');
-    if (payment.status === 'cancelled') return t('Online · Not paid');
-    return t('Online payment');
-  }
+  if (payment.method === 'card') return t('Pay online');
   if (payment.method === 'cod') return t('Cash on delivery');
   if (payment.method === 'branch') return t('Pay at branch');
   return ''; // a method no longer offered (e.g. an old UPI test order): no label rather than a wrong one

@@ -249,6 +249,8 @@ export default {
   "We'll show the branch here and on the tracking screen once it accepts.": 'سنعرض الفرع هنا وفي شاشة التتبع بمجرد قبوله.',
   'Chosen for your delivery address. Stock is confirmed by the branch.': 'تم اختياره لعنوان التوصيل. يؤكد الفرع توفر العناصر.',
   'Sent to the nearest branch': 'تم الإرسال إلى أقرب فرع',
+  'If you already paid online, the store will handle your refund.': 'إذا كنت قد دفعت إلكترونيًا، فسيتولى المتجر استرداد المبلغ.',
+  'After paying, check your payment status on the Orders page.': 'بعد الدفع، تحقق من حالة الدفع في صفحة الطلبات.',
   'Pay online': 'الدفع إلكترونيًا',
   'Choose how to pay on a secure payment page': 'اختر طريقة الدفع في صفحة دفع آمنة',
   'Online payment is not available right now': 'الدفع الإلكتروني غير متاح حاليًا',

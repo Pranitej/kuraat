@@ -2,7 +2,7 @@ import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { signInDemo, signUp } from '../helpers/auth.js';
 import { createTestContext } from '../helpers/context.js';
-import { advance, payOnRsof, placePickupTestOrder, placeTestOrder } from '../helpers/orders.js';
+import { advance, placePickupTestOrder, placeTestOrder } from '../helpers/orders.js';
 import { PRODUCT_IDS } from '../support/rof-double/seed.js';
 
 let t;
@@ -145,18 +145,12 @@ describe('order detail and tracking', () => {
 });
 
 describe('payment receipt fields', () => {
-  test('a card order shows "pending" until RSOF says it is paid, then "paid" with the payment time, in detail and list', async () => {
+  test('an online-payment order says how it is paid, never whether it was paid (RSOF knows); the page is never stored', async () => {
     const order = await placeTestOrder(t, me);
-    expect(order.payment).toMatchObject({ method: 'card', status: 'pending', paidAt: null, transactionId: null });
-    let [listed] = (await api('get', '/orders')).body;
+    expect(order.payment).toMatchObject({ method: 'card', status: 'online', paidAt: null, transactionId: null });
+    const [listed] = (await api('get', '/orders')).body;
     expect(listed.id).toBe(order.id); // one order, one id: the app never shows it twice
-    expect(listed.payment).toMatchObject({ status: 'pending', link: null }); // the page itself is never stored
-    await payOnRsof(t, order.number);
-    minutes(1);
-    expect((await api('post', `/orders/${order.id}/pay`)).body).toEqual({ status: 'paid' });
-    [listed] = (await api('get', '/orders')).body;
-    expect(listed.payment).toMatchObject({ status: 'paid', paidAt: '2026-11-15T09:22:00.000Z' });
-    expect((await api('get', `/orders/${order.id}`)).body).toMatchObject({ id: order.id, total: order.total, payment: { status: 'paid', paidAt: '2026-11-15T09:22:00.000Z' } });
+    expect(listed.payment).toMatchObject({ status: 'online', link: null });
   });
 
   test('cash on delivery has no transaction id and no payment time', async () => {
@@ -350,33 +344,16 @@ describe('pickup orders through RSOF (design 2026-11-18 §5.3)', () => {
 });
 
 describe('cancel', () => {
-  test('in step 0: cancelled in ROF, notified; a paid card order is marked "refund pending" (RSOF holds the money)', async () => {
+  test('in step 0: cancelled in ROF and notified (an online payment is RSOF\'s: "the store handles your refund")', async () => {
     const order = await placeTestOrder(t, me);
-    await payOnRsof(t, order.number);
-    await api('post', `/orders/${order.id}/pay`);
     const res = await api('post', `/orders/${order.id}/cancel`);
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: { id: 'cancelled', label: 'Cancelled', cancelled: true }, canCancel: false, payment: { status: 'refund_pending' } });
+    expect(res.body).toMatchObject({ status: { id: 'cancelled', label: 'Cancelled', cancelled: true }, canCancel: false });
     expect(t.mockRof.store.data.orders[0].status).toBe('Canceled');
-    expect((await t.db('payments').first()).status).toBe('refund_pending');
+    expect((await t.db('payments').first()).status).toBe('voided');
     const note = await t.db('notifications').where({ type: 'cancelled' }).first();
     expect(note).toMatchObject({ title: `Order #${order.number} cancelled` });
-    expect(note.body).toBe('Your order was cancelled. Your SAR 185.00 online payment will be refunded.');
-  });
-
-  test('an unpaid card order is voided: nothing was charged', async () => {
-    const order = await placeTestOrder(t, me);
-    expect((await api('post', `/orders/${order.id}/cancel`)).status).toBe(200);
-    expect((await t.db('payments').first()).status).toBe('voided');
-    expect((await t.db('notifications').where({ type: 'cancelled' }).first()).body).toBe('Your order was cancelled.');
-  });
-
-  test('paid on RSOF\'s page a moment before cancelling (not seen by us yet): RSOF is asked first, so it is a refund', async () => {
-    const order = await placeTestOrder(t, me);
-    await payOnRsof(t, order.number); // the app never asked again after paying
-    expect((await api('post', `/orders/${order.id}/cancel`)).status).toBe(200);
-    expect(await t.db('payments').first()).toMatchObject({ status: 'refund_pending', paid_at: expect.any(Date) });
-    expect((await t.db('notifications').where({ type: 'cancelled' }).first()).body).toBe('Your order was cancelled. Your SAR 185.00 online payment will be refunded.');
+    expect(note.body).toBe('Your order was cancelled. If you already paid online, the store will handle your refund.');
   });
 
   test('after Preparing → 409 cannot_cancel and nothing changes in ROF', async () => {

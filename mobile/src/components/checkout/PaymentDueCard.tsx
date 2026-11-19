@@ -1,19 +1,40 @@
+import { useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Lock, TriangleAlert } from '@/components/icons';
 import { Button, Card, Text } from '@/components/ui';
 import { CARD_PAYMENT, formatSAR } from '@/domain';
-import type { OrderPayment } from '@/hooks/orderPayment';
+import { t } from '@/i18n';
+import { openPaymentPage } from '@/lib/paymentPage';
+import { payOrder } from '@/services/orderService.js';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
 
 /**
- * "Complete your payment" for a card order that is not paid yet (server/README.md → Card payments). Pay opens
- * RSOF's secure payment page in the phone's browser; `payment` comes from useOrderPayment.
+ * "Complete your payment" after an online-payment order is placed. Deliberately simple: Pay opens RSOF's secure
+ * payment page in the in-app sheet, and that is all — whether the customer paid is RSOF's business, so nothing is
+ * checked or shown here; the text tells them to look at the Orders page. The page comes with the order; when RSOF
+ * gave none, one tap gets it.
  */
-export function PaymentDueCard({ order, payment, style }: { order: Order; payment: OrderPayment; style?: StyleProp<ViewStyle> }) {
+export function PaymentDueCard({ order, style }: { order: Order; style?: StyleProp<ViewStyle> }) {
+  const [link, setLink] = useState<string | null>(order.payment?.link ?? null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const total = formatSAR(order.total);
-  const message = payment.error?.message ?? (payment.notYet ? CARD_PAYMENT.notYet : null);
-  const canPay = Boolean(payment.link) || !payment.error;
+
+  const run = async (work: () => Promise<void>) => {
+    setBusy(true);
+    setError('');
+    try {
+      await work();
+    } catch (e) {
+      setError((e as Error).message || t("We couldn't open the payment page. Please try again."));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const getPage = () => run(async () => setLink(((await payOrder(order.id)) as { link: string }).link));
+  const open = () => run(() => openPaymentPage(link as string));
+
   return (
     <Card style={[styles.card, style]}>
       <Text variant="h3" accessibilityRole="header">
@@ -22,31 +43,15 @@ export function PaymentDueCard({ order, payment, style }: { order: Order; paymen
       <Text color="muted" style={styles.body}>
         {CARD_PAYMENT.waitingBody(total)}
       </Text>
-      {payment.opening ? (
-        <View style={styles.hint2} accessibilityLiveRegion="polite">
-          <Text>{CARD_PAYMENT.popupHint}</Text>
-        </View>
-      ) : null}
-      {message && !payment.opening ? (
-        <View style={styles.alert} accessibilityRole={payment.error ? 'alert' : undefined} accessibilityLiveRegion="polite">
+      {error ? (
+        <View style={styles.alert} accessibilityRole="alert">
           <TriangleAlert size={20} color={colors.hotpink} strokeWidth={1.8} />
-          <Text style={styles.alertText}>{message}</Text>
+          <Text style={styles.alertText}>{error}</Text>
         </View>
       ) : null}
-      {canPay ? (
-        <Button block leftIcon={Lock} loading={payment.opening || (!payment.link && payment.checking)} disabled={!payment.link} onPress={payment.open} style={styles.pay}>
-          {CARD_PAYMENT.pay(total)}
-        </Button>
-      ) : (
-        <Button block leftIcon={Lock} loading={payment.checking} onPress={payment.check} style={styles.pay}>
-          {CARD_PAYMENT.tryAgain}
-        </Button>
-      )}
-      {payment.link ? (
-        <Button block variant="secondary" size="md" loading={payment.checking} onPress={payment.check} style={styles.check}>
-          {CARD_PAYMENT.check}
-        </Button>
-      ) : null}
+      <Button block leftIcon={Lock} loading={busy} onPress={link ? open : getPage} style={styles.pay}>
+        {!link && error ? CARD_PAYMENT.tryAgain : CARD_PAYMENT.pay(total)}
+      </Button>
       <Text variant="small" color="muted" style={styles.hint}>
         {CARD_PAYMENT.returnHint}
       </Text>
@@ -69,8 +74,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   alertText: { flex: 1, fontSize: 15 },
-  hint2: { marginTop: 12, borderRadius: radii.lg, backgroundColor: colors.sand, paddingHorizontal: 16, paddingVertical: 12 },
   pay: { marginTop: 16 },
-  check: { marginTop: 12 },
   hint: { marginTop: 12 },
 });

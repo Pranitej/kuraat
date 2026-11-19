@@ -234,9 +234,8 @@ export async function placeOrder(ctx, userId, input) {
   // Card: the payment page right away, so the app can open it without another request. If RSOF has no link yet
   // the order is still placed; the app's "Pay now" asks again (POST /orders/:id/pay).
   if (!card) return { order: await orderFor(ctx, orderId), created: true };
-  const orderRow = await ctx.db('orders').where({ id: orderId }).first();
-  const answer = await ctx.payments.firstLink(await ctx.db('payments').where({ id: paymentId }).first(), orderRow);
+  const answer = await ctx.payments.firstLink(await ctx.db('orders').where({ id: orderId }).first());
   const order = await orderFor(ctx, orderId);
-  const page = answer?.status === 'pending' ? { link: answer.link, linkExpiresAt: answer.expiresAt } : { link: null, linkExpiresAt: null };
+  const page = answer ? { link: answer.link, linkExpiresAt: answer.expiresAt } : { link: null, linkExpiresAt: null };
   return { order: { ...order, payment: { ...order.payment, ...page } }, created: true };
 }

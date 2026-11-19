@@ -108,19 +108,22 @@ an order is on its way, 400 `unverified` without a fresh verified code. The numb
 Placing an order: create a new `idempotencyKey` (UUID) when the payment screen opens and send the same key on every
 retry — the server then never creates a second ROF order.
 
-Card payments (19 Nov 2026) — RSOF holds the money; the kuraat server never sees a card number:
-1. `POST /orders` with `payment: { method: 'card' }` creates the order in RSOF (RSOF needs its number for the link), then
-   asks RSOF for the payment link. The reply's `payment` is `{ status: 'pending', link, linkExpiresAt }` (`link` null if
-   RSOF had none yet). The app opens `link`.
-2. The customer pays on RSOF's page. Nothing tells us by itself: the app calls `POST /orders/:id/pay` when it shows the
-   order and when the customer comes back; RSOF's `AlreadyPaid` → our payment becomes `paid` (with `paidAt`) and a
-   "Payment received" notification is stored.
-3. Not paid: the order stays in RSOF; the apps show "Waiting for payment · Pay now". RSOF answers: `NotReady` → 503
-   `payment_not_ready`; `Error`, RSOF down or the key refused → 503 `payment_unavailable`; `NoPayableOrder` → 409 `not_payable`.
-4. Cancelling: an unpaid card order is voided; a paid one becomes `refund_pending` (RSOF / the store returns the money).
-   RSOF is asked first whether the customer paid a moment ago.
-`payment.status` in order replies: `paid` · `pending` · `later` (cash / at branch) · `refund_pending` · `refunded` (older
-simulated payments) · `cancelled`. Card details sent by an older app build are dropped and never stored. UPI is not offered (Saudi Arabia).
+Online payment (19 Nov 2026) — kept simple on purpose: RSOF is the master of orders AND of the money, so the kuraat
+server only opens RSOF's payment page and never tracks, checks or shows whether the customer paid:
+1. `POST /orders` with `payment: { method: 'card' }` (the id of "pay online") creates the order in RSOF (it needs the order
+   number for the link), then asks RSOF for the payment link ONCE. The reply's `payment` is
+   `{ status: 'online', link, linkExpiresAt }` (`link` null if RSOF had none). The app opens `link`.
+2. After paying, the apps only say "check your payment status on the Orders page", which shows RSOF's own order status.
+   The kuraat server never asks RSOF again about the payment: no "paid" state, no payment notification, no refund state.
+3. `POST /orders/:id/pay` → `{ link, expiresAt }`: a payment page again (the Pay button when the order reply had none).
+   RSOF answers `NotReady` → 503 `payment_not_ready`; `Error`, RSOF down or the key refused → 503 `payment_unavailable`;
+   `AlreadyPaid` / `NoPayableOrder` → 409 `not_payable` ("Please check the Orders page for your payment status.").
+4. `GET /checkout/payment-options` → `{ card }`: the one other RSOF call — a cached check (5 min when on, 1 min when off)
+   that online payment really works (key set, RSOF's payment gateway set up). Off → the apps grey it out.
+5. Cancelling an order: the payment record is voided and the message says "If you already paid online, the store will handle
+   your refund." (RSOF decides about the money).
+`payment.status` in order replies: `online` · `later` (cash / at branch) · `cancelled`. An older app build that still sends
+card details is refused ("Please update the app"). UPI is not offered (Saudi Arabia).
 
 ## How the ROF connection is built (for whoever switches to UAT)
 

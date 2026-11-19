@@ -10,8 +10,8 @@ export const getOrder = (id, { refresh = false } = {}) => apiRequest(refresh ? `
 
 /**
  * Places the order for the server cart. Same key → same order, so a retry after a time-out is safe. Waits up to
- * 60 s: the server may try RSOF more than once. A card order comes back unpaid (`payment.status: 'pending'`) with
- * RSOF's payment page in `payment.link` (null if RSOF had none yet — `payOrder` asks again).
+ * 60 s: the server may try RSOF more than once. An online-payment order comes back with
+ * RSOF's payment page in `payment.link` (null if RSOF had none — `payOrder` asks again). Whether the customer paid is RSOF's business.
  * A pickup order (design 2026-11-18 §5.3) has no delivery address, so none is sent.
  * @param {{ fulfilment?: 'delivery' | 'pickup', addressId?: string, payment: object, idempotencyKey: string }} input
  */
@@ -31,9 +31,9 @@ export const placeOrder = ({ fulfilment = 'delivery', addressId, payment, idempo
 export const cancelOrder = (id) => apiRequest(`${path(id)}/cancel`, { method: 'POST' });
 
 /**
- * A card order placed in the app: RSOF's secure payment page, or "paid". Ask when an unpaid order is shown and each
- * time the customer comes back from the payment page (that is how "paid" is learned).
- * @returns {Promise<{ status: 'pending', link: string, expiresAt: string|null, amount: number, currency: string } | { status: 'paid' }>}
+ * A fresh RSOF payment page for an online-payment order (the Pay button when the order reply came without one).
+ * Asked only when the customer taps; the kuraat server answers 409 'check the Orders page' if RSOF cannot give one.
+ * @returns {Promise<{ link: string, expiresAt: string|null }>}
  */
 export const payOrder = (id) => apiRequest(`${path(id)}/pay`, { method: 'POST' });
 

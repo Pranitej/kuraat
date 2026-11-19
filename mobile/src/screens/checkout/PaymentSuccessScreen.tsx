@@ -9,36 +9,34 @@ import { PaymentDueCard } from '@/components/checkout/PaymentDueCard';
 import { Button, Card, CirclePattern, ProgressBar, Text, WhatsAppIcon } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useOrder, useOrders } from '@/context/OrderContext';
-import { CARD_PAYMENT, PICKUP, PENDING_BRANCH, awaitingPayment, formatDateTime, formatSAR, paymentLabel } from '@/domain';
+import { CARD_PAYMENT, PICKUP, PENDING_BRANCH, formatDateTime, formatSAR, isOnlinePayment, paymentLabel } from '@/domain';
 import { useBackToHome } from '@/hooks';
-import { useOrderPayment } from '@/hooks/orderPayment';
 import { colors, layout } from '@/theme/theme';
 import { t } from '@/i18n';
 
 /**
  * 15 · Payment successful — then confirms the order with the branch before continuing.
- * A card order is paid on RSOF's secure payment page after it is placed (19 Nov 2026): until RSOF says it is paid,
- * this screen is "Complete your payment" and checks again each time the app comes back to the front.
+ * An online-payment order is paid on RSOF's secure payment page after it is placed (19 Nov 2026): this screen is then
+ * "Complete your payment" — Pay, and a button to the Orders page where RSOF's own status is. Nothing else is checked.
  */
 export default function PaymentSuccessScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { order, loading, refresh } = useOrder(orderId);
+  const { order, loading } = useOrder(orderId);
   const { refresh: refreshOrders } = useOrders();
   // The Orders page, with the latest status of every order (read fresh from RSOF while it opens).
   const toOrders = () => {
     refreshOrders({ force: true }).catch(() => {});
     router.replace(ROUTES.orders);
   };
-  const payment = useOrderPayment(order, { onPaid: refresh });
-  const waiting = awaitingPayment(order) as boolean;
+  const online = isOnlinePayment(order) as boolean;
   const [progress, setProgress] = useState(8);
   const confirmed = progress >= 100;
   useBackToHome();
 
   useEffect(() => {
-    if (!order?.id || waiting) return undefined;
+    if (!order?.id || online) return undefined;
     const steps: [number, number][] = [
       [500, 34],
       [1200, 58],
@@ -47,14 +45,14 @@ export default function PaymentSuccessScreen() {
     ];
     const timers = steps.map(([t, v]) => setTimeout(() => setProgress(v), t));
     return () => timers.forEach(clearTimeout);
-  }, [order?.id, waiting]);
+  }, [order?.id, online]);
 
   if (!order && loading) return <View style={styles.root} />;
   if (!order || !order.payment) return <Redirect href={ROUTES.orders} />;
   // Cash on delivery and pay at the branch: placed now, paid later.
   const later = order.payment.method === 'cod' || order.payment.method === 'branch';
 
-  if (waiting) {
+  if (online) {
     return (
       <View style={styles.root}>
         <Stack.Screen options={{ gestureEnabled: false }} />
@@ -67,7 +65,7 @@ export default function PaymentSuccessScreen() {
             {CARD_PAYMENT.waitingTitle}
           </Text>
           <Text color="muted" align="center" style={styles.subtitle}>{t('Order #{number}', { number: order.number })}</Text>
-          <PaymentDueCard order={order} payment={payment} style={styles.card} />
+          <PaymentDueCard order={order} style={styles.card} />
           <View style={styles.bottom}>
             <Button block variant="secondary" onPress={toOrders}>
               {CARD_PAYMENT.viewOrders}
@@ -86,7 +84,7 @@ export default function PaymentSuccessScreen() {
         [t('Amount due'), formatSAR(order.total)],
       ]
     : [
-        // Paid on RSOF's page: RSOF keeps the card and the transaction; older payments still have their id.
+        // Older simulated card payments (no new ones): they have a transaction id.
         order.payment.transactionId ? [t('Transaction ID'), order.payment.transactionId] : [t('Order number'), `#${order.number}`],
         [t('Date'), formatDateTime(order.payment.paidAt || order.createdAt)],
         [t('Method'), paymentLabel(order.payment)],
@@ -116,9 +114,7 @@ export default function PaymentSuccessScreen() {
             ? PICKUP.paidLater(formatSAR(order.total))
             : later
               ? t('Pay {total} in cash when your order arrives', { total: formatSAR(order.total) })
-              : order.payment.last4
-                ? t('{total} paid with {method}', { total: formatSAR(order.total), method: paymentLabel(order.payment) })
-                : CARD_PAYMENT.paidBody(formatSAR(order.total))}
+              : t('{total} paid with {method}', { total: formatSAR(order.total), method: paymentLabel(order.payment) })}
         </Text>
 
         <Card style={styles.card}>
@@ -145,14 +141,8 @@ export default function PaymentSuccessScreen() {
           <View style={styles.progress}>
             <ProgressBar value={progress} label={t('Confirming with the branch')} />
           </View>
-          {/* Card orders end on the Orders page: the order is there with its latest status, ready to track. */}
-          <Button
-            block
-            disabled={!confirmed}
-            onPress={later ? () => router.replace(ROUTES.orderConfirmed(order.id)) : toOrders}
-            style={styles.continue}
-          >
-            {later ? t('Continue') : CARD_PAYMENT.viewOrders}
+          <Button block disabled={!confirmed} onPress={() => router.replace(ROUTES.orderConfirmed(order.id))} style={styles.continue}>
+            {t('Continue')}
           </Button>
         </View>
       </ScrollView>

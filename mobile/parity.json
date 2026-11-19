@@ -31,8 +31,6 @@
     "services/catalogService.test.js",
     "services/checkout.test.js",
     "services/checkoutService.js",
-    "services/locationService.js",
-    "services/locationService.test.js",
     "services/orderService.js",
     "test/stubFetch.js",
     "theme/tokens.js",

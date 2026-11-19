@@ -234,13 +234,16 @@ export function PhoneField({ label = 'Mobile number', value, onChange, error, he
     return formatNationalInput(s.iso, s.national) as string;
   });
   // The value changed from outside (a form restored or cleared): follow it. Our own typing keeps value === toApiPhone(iso, text).
-  useEffect(() => {
-    if (value === toApiPhone(iso, text)) return;
-    const s = splitPhone(value, iso);
-    setIso(s.iso);
-    setText(formatNationalInput(s.iso, s.national));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  // Done while rendering (React's "adjust state when a prop changes" pattern), not in an effect: no extra render pass.
+  const [seenValue, setSeenValue] = useState(value);
+  if (value !== seenValue) {
+    setSeenValue(value);
+    if (value !== toApiPhone(iso, text)) {
+      const s = splitPhone(value, iso);
+      setIso(s.iso);
+      setText(formatNationalInput(s.iso, s.national));
+    }
+  }
 
   const country = countryOf(iso) as Country;
   const pickCountry = (next: string) => {

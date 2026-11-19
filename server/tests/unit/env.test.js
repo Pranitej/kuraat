@@ -94,6 +94,16 @@ describe('production guards (nothing fake goes live by accident)', () => {
     expect(() => loadConfig({ ...prod, ...whatsapp })).not.toThrow();
   });
 
+  test('the public example sign-in secrets are refused in production, in either field', () => {
+    const whatsapp = { OTP_MODE: 'whatsapp', WHATSAPP_API_USER: 'u', WHATSAPP_API_PASSWORD: 'p', WHATSAPP_SENDER: '+15550001111', WHATSAPP_TEMPLATE_NAME: 'login_code' };
+    const example = 'change-me-access-secret-at-least-32-chars';
+    expect(() => loadConfig({ ...prod, ...whatsapp, JWT_ACCESS_SECRET: example })).toThrow(/forge login tokens/);
+    expect(() => loadConfig({ ...prod, ...whatsapp, JWT_REFRESH_SECRET: example.replace('access', 'refresh') })).toThrow(/forge login tokens/);
+    // Development keeps working with the example values; production with real ones too.
+    expect(() => loadConfig({ ...valid, JWT_ACCESS_SECRET: example })).not.toThrow();
+    expect(() => loadConfig({ ...prod, ...whatsapp })).not.toThrow();
+  });
+
   test('test codes acknowledged (a demo / UAT launch) starts', () => {
     expect(() => loadConfig({ ...prod, OTP_ALLOW_TEST_IN_PRODUCTION: 'true' })).not.toThrow();
   });

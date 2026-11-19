@@ -51,6 +51,15 @@ const schema = z.object({
   TRUST_PROXY: optionalText(),
 });
 
+/** Every setting the server reads (used by the test that keeps .env.example complete). */
+export const SETTING_NAMES = Object.keys(schema.shape);
+
+/** The values printed in the public .env.example: anyone can read them on GitHub, so they must never run in production. */
+const EXAMPLE_SECRET = /^change-me/i;
+const EXAMPLE_SECRETS_IN_PRODUCTION =
+  'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET still hold the example values from .env.example (public). ' +
+  'Anyone could forge login tokens. Set two long random strings (32+ characters) of your own.';
+
 const TEST_OTP_IN_PRODUCTION =
   'OTP_MODE=test lets anyone sign in to any account with the test code. In production use it only for UAT, ' +
   'by also setting OTP_ALLOW_TEST_IN_PRODUCTION=true.';
@@ -69,6 +78,9 @@ export function loadConfig(env = process.env) {
   }
   if (e.NODE_ENV === 'production' && e.OTP_MODE === 'test' && !e.OTP_ALLOW_TEST_IN_PRODUCTION) {
     throw new Error(`Invalid configuration: ${TEST_OTP_IN_PRODUCTION}`);
+  }
+  if (e.NODE_ENV === 'production' && (EXAMPLE_SECRET.test(e.JWT_ACCESS_SECRET) || EXAMPLE_SECRET.test(e.JWT_REFRESH_SECRET))) {
+    throw new Error(`Invalid configuration: ${EXAMPLE_SECRETS_IN_PRODUCTION}`);
   }
   return {
     port: e.PORT,

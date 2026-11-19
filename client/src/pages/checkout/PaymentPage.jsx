@@ -18,16 +18,17 @@ import { CARD_PAYMENT, PICKUP, formatSAR } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle, useIsDesktop } from '@/hooks';
 import { cn } from '@/lib/cn.js';
-import { t, localized } from '@/i18n';
+import { t } from '@/i18n';
 
 // Saudi Arabia: card (incl. Mada) and cash on delivery; branch pickup pays now (card) or at the branch.
 // UPI (shown in the PDF) was removed — it is India-only. A card is paid on RSOF's secure payment page after the
 // order is placed (19 Nov 2026): no card details are typed here.
-const DELIVERY_METHODS = localized([
+/** Built when the screen draws (not when the file loads), so the words follow the language chosen now. */
+const deliveryMethods = () => [
   { id: 'card', title: CARD_PAYMENT.title, subtitle: CARD_PAYMENT.subtitle, icon: CreditCard },
-  { id: 'cod', title: 'Cash on delivery', subtitle: 'Pay when your order arrives', icon: Banknote },
-]);
-const PICKUP_METHODS = [
+  { id: 'cod', title: t('Cash on delivery'), subtitle: t('Pay when your order arrives'), icon: Banknote },
+];
+const pickupMethods = () => [
   { id: 'card', title: PICKUP.payNow, subtitle: PICKUP.payNowSub, icon: CreditCard },
   { id: 'branch', title: PICKUP.payAtBranch, subtitle: PICKUP.payAtBranchSub, icon: Store },
 ];
@@ -43,7 +44,7 @@ export default function PaymentPage() {
   const { placeOrder } = useOrders();
   const checkout = useCheckout();
   const pickup = checkout.fulfilment === 'pickup';
-  const METHODS = pickup ? PICKUP_METHODS : DELIVERY_METHODS;
+  const METHODS = pickup ? pickupMethods() : deliveryMethods();
   const address = pickup ? null : addresses.find((a) => a.id === checkout.addressId) || defaultAddress;
   const { quote: delivery, error: quoteError, retry: retryQuote } = useDeliveryQuote({ addressId: address?.id, productIds: cart.items.map((i) => i.productId), fulfilment: pickup ? 'pickup' : 'delivery' });
   const { ensureIdempotencyKey } = checkout;

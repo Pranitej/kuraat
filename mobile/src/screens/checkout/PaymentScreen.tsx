@@ -20,17 +20,18 @@ import { getPaymentOptions } from '@/services/checkoutService.js';
 import { offeredMethod, toPaymentBody } from '@/services/orderService.js';
 import { colors, radii } from '@/theme/theme';
 import type { PaymentMethod } from '@/types/api';
-import { t, localized } from '@/i18n';
+import { t } from '@/i18n';
 
 // Saudi Arabia: card (incl. Mada) and cash on delivery; branch pickup pays now (card) or at the branch.
 // UPI (shown in the PDF) was removed — it is India-only. A card is paid on RSOF's secure payment page after the
 // order is placed (19 Nov 2026): no card details are typed in the app.
 type MethodRow = { id: PaymentMethod; title: string; subtitle: string; icon: LucideIcon };
-const DELIVERY_METHODS: MethodRow[] = localized([
+/** Built when the screen draws (not when the file loads), so the words follow the language chosen now. */
+const deliveryMethods = (): MethodRow[] => [
   { id: 'card', title: CARD_PAYMENT.title, subtitle: CARD_PAYMENT.subtitle, icon: CreditCard },
-  { id: 'cod', title: 'Cash on delivery', subtitle: 'Pay when your order arrives', icon: Banknote },
-]);
-const PICKUP_METHODS: MethodRow[] = [
+  { id: 'cod', title: t('Cash on delivery'), subtitle: t('Pay when your order arrives'), icon: Banknote },
+];
+const pickupMethods = (): MethodRow[] => [
   { id: 'card', title: PICKUP.payNow, subtitle: PICKUP.payNowSub, icon: CreditCard },
   { id: 'branch', title: PICKUP.payAtBranch, subtitle: PICKUP.payAtBranchSub, icon: Store },
 ];
@@ -46,7 +47,7 @@ export default function PaymentScreen() {
   const { placeOrder } = useOrders();
   const checkout = useCheckout();
   const pickup = checkout.fulfilment === 'pickup';
-  const METHODS = pickup ? PICKUP_METHODS : DELIVERY_METHODS;
+  const METHODS = pickup ? pickupMethods() : deliveryMethods();
   const address = pickup ? null : addresses.find((a) => a.id === checkout.addressId) || defaultAddress;
   const productIds = useMemo(() => cart.items.map((i) => i.productId), [cart.items]);
   const { quote: delivery, error: quoteError, retry: retryQuote } = useDeliveryQuote({

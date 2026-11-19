@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import PaymentDueCard from '@/components/checkout/PaymentDueCard.jsx';
 import { Button, Card, CirclePattern, ProgressBar, WhatsAppIcon } from '@/components/ui';
-import { useOrder } from '@/context/OrderContext.jsx';
+import { useOrder, useOrders } from '@/context/OrderContext.jsx';
 import { useOrderPayment } from '@/hooks/useOrderPayment.js';
 import { CARD_PAYMENT, PENDING_BRANCH, PICKUP, awaitingPayment, formatDateTime, formatSAR, paymentLabel } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
@@ -18,6 +18,12 @@ export default function PaymentSuccessPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { order, loading, refresh } = useOrder(orderId);
+  const { refresh: refreshOrders } = useOrders();
+  // The Orders page, with the latest status of every order (read fresh from RSOF while it opens).
+  const toOrders = () => {
+    refreshOrders({ force: true }).catch(() => {});
+    navigate(ROUTES.orders, { replace: true });
+  };
   const payment = useOrderPayment(order, { onPaid: refresh });
   const waiting = awaitingPayment(order);
   // Cash on delivery and pay at the branch: placed now, paid later.
@@ -50,8 +56,8 @@ export default function PaymentSuccessPage() {
           <p className="mt-2 text-center text-body text-muted">Order #{order.number}</p>
           <PaymentDueCard order={order} payment={payment} className="mt-6" />
           <div className="mt-auto pt-10">
-            <Button block variant="ghost" onClick={() => navigate(ROUTES.order(order.id), { replace: true })}>
-              View my order
+            <Button block variant="secondary" onClick={toOrders}>
+              {CARD_PAYMENT.viewOrders}
             </Button>
           </div>
         </div>
@@ -116,8 +122,9 @@ export default function PaymentSuccessPage() {
             {confirmed ? (order.branch ? `Confirmed by ${order.branch.name}` : PENDING_BRANCH.sent) : 'Confirming your order with the branch…'}
           </p>
           <ProgressBar value={progress} className="mt-3" label="Confirming with the branch" />
-          <Button block className="mt-5" disabled={!confirmed} onClick={() => navigate(ROUTES.orderConfirmed(order.id), { replace: true })}>
-            Continue
+          {/* Card orders end on the Orders page: the order is there with its latest status, ready to track. */}
+          <Button block className="mt-5" disabled={!confirmed} onClick={later ? () => navigate(ROUTES.orderConfirmed(order.id), { replace: true }) : toOrders}>
+            {later ? 'Continue' : CARD_PAYMENT.viewOrders}
           </Button>
         </div>
       </div>

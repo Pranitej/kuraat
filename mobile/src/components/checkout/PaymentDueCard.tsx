@@ -22,7 +22,12 @@ export function PaymentDueCard({ order, payment, style }: { order: Order; paymen
       <Text color="muted" style={styles.body}>
         {CARD_PAYMENT.waitingBody(total)}
       </Text>
-      {message ? (
+      {payment.opening ? (
+        <View style={styles.hint2} accessibilityLiveRegion="polite">
+          <Text>{CARD_PAYMENT.popupHint}</Text>
+        </View>
+      ) : null}
+      {message && !payment.opening ? (
         <View style={styles.alert} accessibilityRole={payment.error ? 'alert' : undefined} accessibilityLiveRegion="polite">
           <TriangleAlert size={20} color={colors.hotpink} strokeWidth={1.8} />
           <Text style={styles.alertText}>{message}</Text>
@@ -34,7 +39,7 @@ export function PaymentDueCard({ order, payment, style }: { order: Order; paymen
         </Button>
       ) : (
         <Button block leftIcon={Lock} loading={payment.checking} onPress={payment.check} style={styles.pay}>
-          Try again
+          {CARD_PAYMENT.tryAgain}
         </Button>
       )}
       {payment.link ? (
@@ -64,6 +69,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   alertText: { flex: 1, fontSize: 15 },
+  hint2: { marginTop: 12, borderRadius: radii.lg, backgroundColor: colors.sand, paddingHorizontal: 16, paddingVertical: 12 },
   pay: { marginTop: 16 },
   check: { marginTop: 12 },
   hint: { marginTop: 12 },

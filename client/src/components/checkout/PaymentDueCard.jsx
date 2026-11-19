@@ -15,7 +15,12 @@ export default function PaymentDueCard({ order, payment, className }) {
       <section aria-label={CARD_PAYMENT.waitingTitle}>
         <h2 className="text-h3 text-ink">{CARD_PAYMENT.waitingTitle}</h2>
         <p className="mt-1 text-body text-muted">{CARD_PAYMENT.waitingBody(total)}</p>
-        {message && (
+        {payment.popupOpen && (
+          <p role="status" className="mt-3 rounded-lg bg-sand px-4 py-3 text-[15px] text-ink">
+            {CARD_PAYMENT.popupHint}
+          </p>
+        )}
+        {message && !payment.popupOpen && (
           <p role={payment.error ? 'alert' : 'status'} className="mt-3 flex gap-2.5 rounded-lg border border-hotpink/40 bg-hotpink/[0.06] px-4 py-3 text-[15px] text-ink">
             <TriangleAlert size={20} strokeWidth={1.8} className="mt-px shrink-0 text-hotpink" aria-hidden />
             {message}
@@ -27,7 +32,7 @@ export default function PaymentDueCard({ order, payment, className }) {
           </Button>
         ) : (
           <Button block className="mt-4" leftIcon={Lock} disabled={!payment.error} loading={payment.checking} onClick={payment.check}>
-            {payment.error ? 'Try again' : CARD_PAYMENT.pay(total)}
+            {payment.error ? CARD_PAYMENT.tryAgain : CARD_PAYMENT.pay(total)}
           </Button>
         )}
         {payment.link && (

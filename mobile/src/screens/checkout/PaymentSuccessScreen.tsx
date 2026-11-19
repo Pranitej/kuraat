@@ -8,7 +8,7 @@ import { Check } from '@/components/icons';
 import { PaymentDueCard } from '@/components/checkout/PaymentDueCard';
 import { Button, Card, CirclePattern, ProgressBar, Text, WhatsAppIcon } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
-import { useOrder } from '@/context/OrderContext';
+import { useOrder, useOrders } from '@/context/OrderContext';
 import { CARD_PAYMENT, PICKUP, PENDING_BRANCH, awaitingPayment, formatDateTime, formatSAR, paymentLabel } from '@/domain';
 import { useBackToHome } from '@/hooks';
 import { useOrderPayment } from '@/hooks/orderPayment';
@@ -24,6 +24,12 @@ export default function PaymentSuccessScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { order, loading, refresh } = useOrder(orderId);
+  const { refresh: refreshOrders } = useOrders();
+  // The Orders page, with the latest status of every order (read fresh from RSOF while it opens).
+  const toOrders = () => {
+    refreshOrders({ force: true }).catch(() => {});
+    router.replace(ROUTES.orders);
+  };
   const payment = useOrderPayment(order, { onPaid: refresh });
   const waiting = awaitingPayment(order) as boolean;
   const [progress, setProgress] = useState(8);
@@ -64,8 +70,8 @@ export default function PaymentSuccessScreen() {
           </Text>
           <PaymentDueCard order={order} payment={payment} style={styles.card} />
           <View style={styles.bottom}>
-            <Button block variant="ghost" onPress={() => router.replace(ROUTES.order(order.id))}>
-              View my order
+            <Button block variant="secondary" onPress={toOrders}>
+              {CARD_PAYMENT.viewOrders}
             </Button>
           </View>
         </ScrollView>
@@ -140,8 +146,14 @@ export default function PaymentSuccessScreen() {
           <View style={styles.progress}>
             <ProgressBar value={progress} label="Confirming with the branch" />
           </View>
-          <Button block disabled={!confirmed} onPress={() => router.replace(ROUTES.orderConfirmed(order.id))} style={styles.continue}>
-            Continue
+          {/* Card orders end on the Orders page: the order is there with its latest status, ready to track. */}
+          <Button
+            block
+            disabled={!confirmed}
+            onPress={later ? () => router.replace(ROUTES.orderConfirmed(order.id)) : toOrders}
+            style={styles.continue}
+          >
+            {later ? 'Continue' : CARD_PAYMENT.viewOrders}
           </Button>
         </View>
       </ScrollView>

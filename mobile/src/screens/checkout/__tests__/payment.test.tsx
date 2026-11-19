@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
-import { BackHandler, Linking } from 'react-native';
+import { BackHandler } from 'react-native';
 import { session } from '@/lib/storage.js';
 import type { FetchCall } from '@/test/jestFetch';
 import { renderScreen } from '@/test/renderScreen';
@@ -9,6 +9,9 @@ import PaymentScreen from '../PaymentScreen';
 import PaymentSuccessScreen from '../PaymentSuccessScreen';
 
 jest.mock('expo-router', () => require('@/test/routerMock').expoRouterMock);
+// The in-app browser sheet: resolves when the customer closes it.
+const mockOpenBrowser = jest.fn();
+jest.mock('expo-web-browser', () => ({ openBrowserAsync: (...args: unknown[]) => mockOpenBrowser(...args) }));
 
 const CART = {
   items: [
@@ -76,6 +79,8 @@ function shop(onOrder: (c: FetchCall) => { status?: number; body?: unknown } | u
 const CONTINUE = 'Continue to payment · SAR 185.00';
 
 beforeEach(() => {
+  mockOpenBrowser.mockReset();
+  mockOpenBrowser.mockResolvedValue({ type: 'dismiss' });
   cardOn = true;
   resetRouterMock();
   session.clearAll();
@@ -285,9 +290,8 @@ describe('15 · Complete your payment (card paid on the secure payment page)', (
   const WAITING = { ...ORDER, payment: { method: 'card', status: 'pending', brand: null, last4: null, transactionId: null, paidAt: null } };
   const PAID = { ...ORDER, payment: { method: 'card', status: 'paid', brand: null, last4: null, transactionId: null, paidAt: '2026-11-16T09:25:00.000Z' } };
 
-  test('a card order not paid yet: Pay opens the payment page in the browser', async () => {
+  test('a card order not paid yet: Pay opens the payment page in the in-app sheet; closing it unpaid says "Payment not completed"', async () => {
     setMockParams({ orderId: 'o1' });
-    const open = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
     const { calls } = await renderScreen(<PaymentSuccessScreen />, {
       server: (c) =>
         c.path === '/orders/o1'
@@ -301,9 +305,44 @@ describe('15 · Complete your payment (card paid on the secure payment page)', (
     const pay = await screen.findByRole('button', { name: 'Pay SAR 185.00' });
     await waitFor(() => expect(pay).toBeEnabled());
     await fireEvent.press(pay);
-    await waitFor(() => expect(open).toHaveBeenCalledWith(PAGE));
-    expect(calls.filter((c) => c.path === '/orders/o1/pay')).toHaveLength(1);
-    open.mockRestore();
+    await waitFor(() => expect(mockOpenBrowser).toHaveBeenCalledWith(PAGE, expect.any(Object)));
+    // The sheet was closed without paying: RSOF is asked again and the screen says so, with Try again / View my orders.
+    expect(await screen.findByText(/Payment not completed/)).toBeTruthy();
+    expect(calls.filter((c) => c.path === '/orders/o1/pay').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByRole('button', { name: 'View my orders' })).toBeTruthy();
+  });
+
+  test('without the in-app browser module (an older dev build) the phone browser is used instead', async () => {
+    setMockParams({ orderId: 'o1' });
+    mockOpenBrowser.mockRejectedValue(new Error('Cannot find native module'));
+    await renderScreen(<PaymentSuccessScreen />, {
+      server: (c) =>
+        c.path === '/orders/o1'
+          ? { body: WAITING }
+          : c.path === '/orders/o1/pay'
+            ? { body: { status: 'pending', link: PAGE, expiresAt: '2099-01-01T00:00:00.000Z', amount: 185, currency: 'SAR' } }
+            : shop(() => undefined)(c),
+    });
+    const pay = await screen.findByRole('button', { name: 'Pay SAR 185.00' });
+    await waitFor(() => expect(pay).toBeEnabled());
+    await fireEvent.press(pay);
+    // The sheet itself failed: the message offers another try instead of a blank screen.
+    expect(await screen.findAllByText("We couldn't open the payment page. Please try again.")).toBeTruthy();
+  });
+
+  test('"View my orders" goes to the Orders page and re-reads the orders', async () => {
+    setMockParams({ orderId: 'o1' });
+    const { calls } = await renderScreen(<PaymentSuccessScreen />, {
+      server: (c) =>
+        c.path === '/orders/o1'
+          ? { body: WAITING }
+          : c.path === '/orders/o1/pay'
+            ? { body: { status: 'pending', link: PAGE, expiresAt: '2099-01-01T00:00:00.000Z', amount: 185, currency: 'SAR' } }
+            : shop(() => undefined)(c),
+    });
+    await fireEvent.press(await screen.findByRole('button', { name: 'View my orders' }));
+    expect(mockRouter.replace).toHaveBeenCalledWith('/orders');
+    await waitFor(() => expect(calls.some((c) => c.path.startsWith('/orders?refresh=true'))).toBe(true));
   });
 
   test('once the kuraat server says paid, the screen becomes "Payment successful"', async () => {
@@ -322,6 +361,8 @@ describe('15 · Complete your payment (card paid on the secure payment page)', (
     expect(await screen.findByText('Payment successful')).toBeTruthy();
     expect(screen.getByText('SAR 185.00 paid by card')).toBeTruthy();
     expect(screen.getByText('Card · Paid')).toBeTruthy();
+    // A paid card order ends on the Orders page, where it can be tracked.
+    expect(screen.getByRole('button', { name: 'View my orders' })).toBeTruthy();
   });
 
   test('the payment page cannot be made yet: the message shows with Try again', async () => {

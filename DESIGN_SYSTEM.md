@@ -326,8 +326,12 @@ Same screen after "Read more" and scrolling: compact sticky header (back · prod
 Cream with sand circle pattern fading downward; 126 sand halo + 104 maroon circle + white check; title "Payment successful"; "SAR 328.00 paid with Visa •••• 4242"; details card (Transaction ID, Date, Method, Amount); WhatsApp receipt note; "Confirming your order with the branch…" + progress bar (4 pt, maroon on sand) that fills, then primary "Continue" (enabled when confirmed) → Order confirmed. Cash on delivery shows "Order placed" wording with method "Cash on delivery".
 **Card not paid yet (19 Nov 2026):** the same cream page without the check halo: title "Complete your payment", "Order #…",
 then a white card ("Complete your payment" h3, "Your order is placed. Pay SAR … on the secure payment page to confirm it.",
-primary "🔒 Pay SAR …" that opens RSOF's page — a new tab on the web, the phone's browser in the app —, secondary
-"I've paid · Check again", muted return hint) and a ghost "View my order". The same card sits at the top of the order
+primary "🔒 Pay SAR …" that opens RSOF's page — a popup window on the web (a new tab if the browser blocks popups),
+the in-app browser sheet in the app (the lead: inside the website/app) —, secondary "I've paid · Check again", muted hint)
+and a secondary "View my orders". While the window is open a sand note says "Finish your payment in the payment window…";
+when it is closed the payment is checked at once: paid → "Payment successful", otherwise a note "Payment not completed…"
+(RSOF only answers "paid" or "not paid yet") with the Pay button to try again. A paid card order's last button is
+"View my orders" (the Orders page, re-read fresh from RSOF; the order is there with its status, ready to track). The same card sits at the top of the order
 detail screen while the order waits for its payment; order cards in the list add a bold hotpink "Waiting for payment"
 under the total. Once paid it is the normal "Payment successful" page ("SAR … paid by card", details card with Order
 number instead of Transaction ID). The WhatsApp line always reads "Your order details have been sent to your WhatsApp"

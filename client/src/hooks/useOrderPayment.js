@@ -4,6 +4,9 @@ import { payOrder } from '@/services/orderService.js';
 
 /** Coming back to the tab twice within this time asks only once. */
 const RECHECK_MS = 3000;
+/** The payment window (a popup beside the page; a blocked popup falls back to a new tab). */
+const WINDOW_NAME = 'kuraat-payment';
+const WINDOW_FEATURES = 'popup=yes,width=480,height=760,menubar=no,toolbar=no,location=yes,status=no,resizable=yes,scrollbars=yes';
 
 /**
  * A card order paid on RSOF's secure payment page (server/README.md → Card payments). While `order` waits for
@@ -11,9 +14,11 @@ const RECHECK_MS = 3000;
  * comes back to this tab — that is how "paid" is learned (nothing tells the website by itself). `onPaid` runs
  * once the payment is seen (refresh the order there).
  *
- * The page opens in a new tab from a real link (`<a target="_blank">`), so no browser blocks it.
+ * The Pay button is a real link (`<a target="_blank">`). `onOpen` opens it as a popup window instead; when the
+ * browser blocks the popup the link's own new tab is used. When the popup is closed the payment is checked at
+ * once — paid, or "Payment not completed".
  * @returns {{ waiting: boolean, link: string|null, checking: boolean, error: Error|null, notYet: boolean,
- *   check: () => void, onOpen: (event) => void }}
+ *   popupOpen: boolean, check: () => void, onOpen: (event) => void }}
  */
 export function useOrderPayment(order, { onPaid } = {}) {
   const waiting = awaitingPayment(order);
@@ -21,6 +26,8 @@ export function useOrderPayment(order, { onPaid } = {}) {
   const [state, setState] = useState({ link: null, expiresAt: null, checking: false, error: null, notYet: false });
   const lastCheck = useRef(0);
   const opened = useRef(false);
+  const popup = useRef(null);
+  const [popupOpen, setPopupOpen] = useState(false);
   const paidHandler = useRef(onPaid);
   useEffect(() => {
     paidHandler.current = onPaid;
@@ -65,6 +72,27 @@ export function useOrderPayment(order, { onPaid } = {}) {
     };
   }, [waiting, check]);
 
+  // While the payment window is open, notice when it closes and check the payment at once.
+  useEffect(() => {
+    if (!popupOpen) return undefined;
+    const timer = setInterval(() => {
+      if (popup.current && !popup.current.closed) return;
+      clearInterval(timer);
+      popup.current = null;
+      setPopupOpen(false);
+      check({ manual: true });
+    }, 500);
+    return () => clearInterval(timer);
+  }, [popupOpen, check]);
+
+  // Leaving this screen with the window still open closes it: its result would have nowhere to show.
+  useEffect(
+    () => () => {
+      if (popup.current && !popup.current.closed) popup.current.close();
+    },
+    [],
+  );
+
   /** The Pay link's onClick: a page that has run out is replaced first (the customer taps Pay again). */
   const onOpen = useCallback(
     (event) => {
@@ -74,9 +102,20 @@ export function useOrderPayment(order, { onPaid } = {}) {
         return;
       }
       opened.current = true;
+      const win = window.open(state.link, WINDOW_NAME, WINDOW_FEATURES);
+      if (!win) return; // popup blocked: the link opens in a new tab (and focus-return still checks)
+      event.preventDefault();
+      try {
+        win.opener = null; // the payment page must not reach back into this page
+      } catch {
+        /* already cross-origin: nothing to do */
+      }
+      win.focus?.();
+      popup.current = win;
+      setPopupOpen(true);
     },
-    [state.expiresAt, check],
+    [state.link, state.expiresAt, check],
   );
 
-  return { waiting, link: state.link, checking: state.checking, error: state.error, notYet: state.notYet, check: () => check({ manual: true }), onOpen };
+  return { waiting, link: state.link, checking: state.checking, error: state.error, notYet: state.notYet, popupOpen, check: () => check({ manual: true }), onOpen };
 }

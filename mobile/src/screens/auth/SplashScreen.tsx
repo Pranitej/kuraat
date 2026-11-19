@@ -6,6 +6,8 @@ import Animated, { FadeInUp, useAnimatedStyle, withTiming } from 'react-native-r
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CirclePattern, Logo, Text } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
+import { RESUME_ROUTE_KEY } from '@/context/I18nContext';
+import { local } from '@/lib/storage';
 import { ROUTES } from '@/lib/routes';
 import { colors, gradients } from '@/theme/theme';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,7 +30,13 @@ export default function SplashScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
-  const [elapsed, setElapsed] = useState(booted);
+  // After a language switch the app restarts: skip the brand moment and go back to the screen the customer was on.
+  const [resume] = useState<string | null>(() => {
+    const route = local.read(RESUME_ROUTE_KEY) as string | null;
+    if (route) local.remove(RESUME_ROUTE_KEY);
+    return route;
+  });
+  const [elapsed, setElapsed] = useState(booted || Boolean(resume));
   const [tapped, setTapped] = useState(false);
   const done = useRef(false);
 
@@ -38,7 +46,9 @@ export default function SplashScreen() {
     done.current = true;
     booted = true;
     router.replace(isAuthenticated ? ROUTES.home : ROUTES.welcome);
-  }, [status, elapsed, tapped, isAuthenticated, router]);
+    // The route guards still decide: a screen that is not allowed for this session simply is not opened.
+    if (resume && resume !== ROUTES.home && resume !== ROUTES.welcome) setTimeout(() => router.push(resume as never), 50);
+  }, [status, elapsed, tapped, isAuthenticated, router, resume]);
 
   useEffect(() => {
     if (booted) return undefined;

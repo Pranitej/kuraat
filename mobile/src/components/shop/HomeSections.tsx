@@ -10,6 +10,7 @@ import { LanguageToggle } from '@/components/layout/LanguageToggle';
 import { Avatar, BottomSheet, Button, Chip, IconButton, Logo, MaroonPanel, Tag, Text } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { HEAD_OFFICE, SORT_OPTIONS, formatDistance, telUrl } from '@/domain';
+import { ltr } from '@/i18n';
 import { useOpenUrl } from '@/lib/linking';
 import { FONT_FAMILY, MAX_FONT_SCALE, colors, layout, radii, shadows } from '@/theme/theme';
 import type { Branch, User } from '@/types/api';
@@ -230,7 +231,7 @@ export function ContactSection() {
                   {r.label}
                 </Text>
                 <Text weight={700} color="white" style={styles.contactValue}>
-                  {r.value}
+                  {ltr(r.value)}
                 </Text>
               </View>
             </Pressable>

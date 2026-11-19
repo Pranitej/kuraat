@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { getDirection, getLanguage, localized, setLanguage, subscribeLanguage, t } from '@/i18n';
-import { formatSAR } from '@/domain';
+import { getDirection, getLanguage, localized, ltr, setLanguage, subscribeLanguage, t } from '@/i18n';
+import { formatOrderNumber, formatPhone, formatSAR } from '@/domain';
 import ar from './ar.js';
 
 
@@ -63,5 +63,31 @@ describe('Arabic dictionary', () => {
     const names = (s) => (s.match(/\{\w+\}/g) || []).sort().join();
     const broken = Object.entries(ar).filter(([en, translated]) => names(en) !== names(translated)).map(([en]) => en);
     expect(broken).toEqual([]);
+  });
+});
+
+describe('numbers that always read left to right', () => {
+  afterEach(() => setLanguage('en'));
+  const LRI = '⁦';
+  const PDI = '⁩';
+
+  it('English is untouched', () => {
+    expect(ltr('+966 92 001 8958')).toBe('+966 92 001 8958');
+    expect(formatPhone('501234821')).toBe('+966 50 123 4821');
+    expect(formatOrderNumber(20420)).toBe('#20420');
+  });
+
+  it('Arabic wraps a phone number and an order number so the groups and the + / # stay in place', () => {
+    setLanguage('ar');
+    expect(ltr('+966 92 001 8958')).toBe(`${LRI}+966 92 001 8958${PDI}`);
+    expect(formatPhone('501234821')).toBe(`${LRI}+966 50 123 4821${PDI}`);
+    expect(formatPhone('+917905793532')).toMatch(/^⁦\+91 .*⁩$/);
+    expect(formatOrderNumber(20420)).toBe(`${LRI}#20420${PDI}`);
+  });
+
+  it('never wraps twice, and a phone number inside a sentence is wrapped once', () => {
+    setLanguage('ar');
+    expect(ltr(ltr('+966 50 123 4821'))).toBe(`${LRI}+966 50 123 4821${PDI}`);
+    expect(t('A new code was sent to {phone}', { phone: formatPhone('501234821') })).toBe(`تم إرسال رمز جديد إلى ${LRI}+966 50 123 4821${PDI}`);
   });
 });

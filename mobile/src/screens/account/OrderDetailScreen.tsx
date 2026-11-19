@@ -9,7 +9,7 @@ import { Button, Card, ConfirmDialog, EmptyState, MaroonPanel, SummaryRow, Text,
 import { ROUTES } from '@/lib/routes';
 import { useOrder, useOrders } from '@/context/OrderContext';
 import { useToast } from '@/context/ToastContext';
-import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderHistoryView, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
+import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, formatOrderNumber, isPickup, formatPhone, formatSAR, orderHistoryView, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
 import { useCountdown } from '@/hooks';
 import { useOpenUrl } from '@/lib/linking';
 import { colors, radii } from '@/theme/theme';
@@ -178,7 +178,7 @@ export default function OrderDetailScreen() {
               {PICKUP.counterTitle}
             </Text>
             <Text variant="title" color="maroon" align="center" style={styles.counterNumber}>
-              #{order.number}
+              {formatOrderNumber(order.number)}
             </Text>
             <Text variant="small" color="muted" align="center">
               {PICKUP.counterHelp(order.number)}

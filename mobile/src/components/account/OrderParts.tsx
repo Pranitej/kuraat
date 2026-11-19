@@ -8,7 +8,7 @@ import { Card, IconButton, Tag, Text, type TagTone } from '@/components/ui';
 import { useToast } from '@/context/ToastContext';
 import { useProductImage } from '@/hooks/productImage';
 import { ROUTES } from '@/lib/routes';
-import { PENDING_BRANCH, PICKUP, formatOrderDate, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
+import { PENDING_BRANCH, PICKUP, formatOrderDate, formatOrderNumber, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
 import { colors, radii } from '@/theme/theme';
 import type { Order } from '@/types/api';
 import { t } from '@/i18n';
@@ -111,7 +111,7 @@ export const OrderCard = memo(function OrderCard({ order, now }: { order: Order;
         <View style={styles.cardTop}>
           <View>
             <Text weight={700} style={styles.number}>
-              #{order.number}
+              {formatOrderNumber(order.number)}
             </Text>
             <Text variant="label" weight={400} color="muted">
               {formatOrderDate(order.createdAt, now)}

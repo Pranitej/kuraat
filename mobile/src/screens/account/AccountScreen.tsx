@@ -211,7 +211,7 @@ export default function AccountScreen() {
         loading={sendingDeleteCode}
         icon={Trash2}
         title={t('Delete your account?')}
-        message={t('This removes your profile, saved addresses and cards. Past orders stay with the branch for its records. We will send a 6-digit code on WhatsApp to {phone} to confirm.', { v1: formatPhone(u.phone) })}
+        message={t('This removes your profile, saved addresses and cards. Past orders stay with the branch for its records. We will send a 6-digit code on WhatsApp to {phone} to confirm.', { phone: formatPhone(u.phone) })}
         confirmLabel={t('Send code')}
         cancelLabel={t('Keep my account')}
       />

@@ -1,6 +1,6 @@
 /** Formatting helpers (pure — shared with the future React Native app). */
 import { formatInternationalPhone, isInternationalPhone } from './phone.js';
-import { t } from '@/i18n';
+import { ltr, t } from '@/i18n';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -20,8 +20,14 @@ export function formatPhoneLocal(digits = '') {
 
 /** "+966 50 123 4821" for a Saudi number; "+91 79057 93532" for a number of another country (stored as "+…"). */
 export function formatPhone(value = '', code = '+966') {
-  if (isInternationalPhone(value)) return formatInternationalPhone(value) || String(value);
-  return `${code} ${formatPhoneLocal(value)}`;
+  // ltr(): in Arabic a number printed on its own would otherwise show its groups reversed.
+  if (isInternationalPhone(value)) return ltr(formatInternationalPhone(value) || String(value));
+  return ltr(`${code} ${formatPhoneLocal(value)}`);
+}
+
+/** "#20420" — the order number as shown to the customer, always left to right (also inside Arabic text). */
+export function formatOrderNumber(number) {
+  return ltr(`#${number}`);
 }
 
 export function onlyDigits(value = '') {

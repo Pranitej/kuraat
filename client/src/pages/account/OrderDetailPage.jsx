@@ -7,7 +7,7 @@ import { OrderItemImage, OrderTimeline, RefreshButton, StatusTag, branchLabel } 
 import PaymentDueCard from '@/components/checkout/PaymentDueCard.jsx';
 import { useOrder, useOrders } from '@/context/OrderContext.jsx';
 import { useToast } from '@/context/ToastContext.jsx';
-import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, isPickup, formatPhone, formatSAR, orderHistoryView, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
+import { PENDING_BRANCH, PICKUP, cancelRefundText, directionsUrl, formatAddress, formatOrderNumber, isPickup, formatPhone, formatSAR, orderHistoryView, orderStatusView, orderTimelineView, paymentLabel, telUrl } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useCountdown, useDocumentTitle } from '@/hooks';
 import { t } from '@/i18n';
@@ -147,7 +147,7 @@ export default function OrderDetailPage() {
             // Branch pickup: the number to show at the counter (the dashboard's pickup counter searches by order number or phone).
             <Card className="p-4 text-center">
               <p className="text-label font-normal text-muted">{PICKUP.counterTitle}</p>
-              <p className="tabular mt-1 text-title text-maroon">#{order.number}</p>
+              <p className="tabular mt-1 text-title text-maroon">{formatOrderNumber(order.number)}</p>
               <p className="mt-1 text-small text-muted">{PICKUP.counterHelp(order.number)}</p>
             </Card>
           )}

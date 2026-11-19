@@ -48,8 +48,22 @@ export function subscribeLanguage(fn) {
   };
 }
 
-// Wraps phone numbers and amounts in a left-to-right isolate so Arabic text does not reorder their digits.
-const isolate = (value) => (current !== 'en' && /^[+#]?[\d][\d\s.,+()-]*$/.test(value) ? `\u2066${value}\u2069` : value);
+const LRI = '\u2066';
+const PDI = '\u2069';
+
+/**
+ * Show a value that always reads left to right (phone number, "#20420" order number, transaction id) inside
+ * the Arabic layout. Without it the "+" or "#" jumps to the wrong end and the groups of digits reverse
+ * ("8958 001 92 966+"). Needed for any such value printed on its own; values passed to t() are done below.
+ * English is returned untouched.
+ */
+export function ltr(value) {
+  const text = String(value ?? '');
+  return current === 'en' || !text || text.startsWith(LRI) ? text : `${LRI}${text}${PDI}`;
+}
+
+// Phone numbers, order numbers and amounts passed into a sentence get the same treatment.
+const isolate = (value) => (/^[+#]?[\d][\d\s.,+()-]*$/.test(value) ? ltr(value) : value);
 
 /** Translate `key` (the English text) into the current language and fill in {placeholders}. */
 export function t(key, vars) {

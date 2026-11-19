@@ -4,10 +4,10 @@ import { Check } from 'lucide-react';
 import PaymentDueCard from '@/components/checkout/PaymentDueCard.jsx';
 import { Button, Card, CirclePattern, ProgressBar, WhatsAppIcon } from '@/components/ui';
 import { useOrder, useOrders } from '@/context/OrderContext.jsx';
-import { CARD_PAYMENT, PENDING_BRANCH, PICKUP, formatDateTime, formatSAR, isOnlinePayment, paymentLabel } from '@/domain';
+import { CARD_PAYMENT, PENDING_BRANCH, PICKUP, formatDateTime, formatOrderNumber, formatSAR, isOnlinePayment, paymentLabel } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { useDocumentTitle } from '@/hooks';
-import { t } from '@/i18n';
+import { ltr, t } from '@/i18n';
 
 /**
  * 15 · Payment successful — then confirms the order with the branch before continuing.
@@ -66,14 +66,14 @@ export default function PaymentSuccessPage() {
 
   const rows = later
     ? [
-        [t('Order number'), `#${order.number}`],
+        [t('Order number'), formatOrderNumber(order.number)],
         [t('Date'), formatDateTime(order.createdAt)],
         [t('Method'), paymentLabel(order.payment)],
         [t('Amount due'), formatSAR(order.total)],
       ]
     : [
         // Older simulated card payments (no new ones): they have a transaction id.
-        order.payment?.transactionId ? [t('Transaction ID'), order.payment.transactionId] : [t('Order number'), `#${order.number}`],
+        order.payment?.transactionId ? [t('Transaction ID'), ltr(order.payment.transactionId)] : [t('Order number'), formatOrderNumber(order.number)],
         [t('Date'), formatDateTime(order.payment?.paidAt || order.createdAt)],
         [t('Method'), paymentLabel(order.payment)],
         [t('Amount'), formatSAR(order.total)],

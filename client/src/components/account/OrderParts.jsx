@@ -4,7 +4,7 @@ import { Check, ChevronRight, RefreshCw, Store, X } from 'lucide-react';
 import { Card, IconButton, Tag } from '@/components/ui';
 import { useToast } from '@/context/ToastContext.jsx';
 import { useProductImage } from '@/hooks/useProductImage.js';
-import { PENDING_BRANCH, PICKUP, formatOrderDate, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
+import { PENDING_BRANCH, PICKUP, formatOrderDate, formatOrderNumber, formatSAR, isPickup, orderItemCount, orderStatusView } from '@/domain';
 import { ROUTES } from '@/config/routes.js';
 import { cn } from '@/lib/cn.js';
 import { t } from '@/i18n';
@@ -84,7 +84,7 @@ export function OrderCard({ order, now }) {
       <Link to={ROUTES.order(order.id)} className="block" aria-label={t('Order {number}, {status}, {total}', { number: order.number, status: status.label, total: formatSAR(order.total) })}>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[17px] font-bold leading-6 text-ink">#{order.number}</p>
+            <p className="text-[17px] font-bold leading-6 text-ink">{formatOrderNumber(order.number)}</p>
             <p className="text-label font-normal text-muted">{formatOrderDate(order.createdAt, now)}</p>
           </div>
           <StatusTag status={status} />

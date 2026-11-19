@@ -170,7 +170,10 @@ export function ContactSection() {
                 </span>
                 <span className="min-w-0">
                   <span className="block text-label font-normal text-white/75">{r.label}</span>
-                  <span className="block text-[15px] font-bold leading-5 group-hover:underline">{r.value}</span>
+                  {/* A phone number always reads left to right, even inside the Arabic (RTL) layout; the outer block keeps it at the start edge. */}
+                  <span className="block text-[15px] font-bold leading-5 group-hover:underline">
+                    <bdi dir="ltr" className="inline-block">{r.value}</bdi>
+                  </span>
                 </span>
               </a>
             </li>

@@ -9,10 +9,10 @@ import { PaymentDueCard } from '@/components/checkout/PaymentDueCard';
 import { Button, Card, CirclePattern, ProgressBar, Text, WhatsAppIcon } from '@/components/ui';
 import { ROUTES } from '@/lib/routes';
 import { useOrder, useOrders } from '@/context/OrderContext';
-import { CARD_PAYMENT, PICKUP, PENDING_BRANCH, formatDateTime, formatSAR, isOnlinePayment, paymentLabel } from '@/domain';
+import { CARD_PAYMENT, PICKUP, PENDING_BRANCH, formatDateTime, formatOrderNumber, formatSAR, isOnlinePayment, paymentLabel } from '@/domain';
 import { useBackToHome } from '@/hooks';
 import { colors, layout } from '@/theme/theme';
-import { t } from '@/i18n';
+import { ltr, t } from '@/i18n';
 
 /**
  * 15 · Payment successful — then confirms the order with the branch before continuing.
@@ -78,14 +78,14 @@ export default function PaymentSuccessScreen() {
 
   const rows: [string, string][] = later
     ? [
-        [t('Order number'), `#${order.number}`],
+        [t('Order number'), formatOrderNumber(order.number)],
         [t('Date'), formatDateTime(order.createdAt)],
         [t('Method'), paymentLabel(order.payment)],
         [t('Amount due'), formatSAR(order.total)],
       ]
     : [
         // Older simulated card payments (no new ones): they have a transaction id.
-        order.payment.transactionId ? [t('Transaction ID'), order.payment.transactionId] : [t('Order number'), `#${order.number}`],
+        order.payment.transactionId ? [t('Transaction ID'), ltr(order.payment.transactionId)] : [t('Order number'), formatOrderNumber(order.number)],
         [t('Date'), formatDateTime(order.payment.paidAt || order.createdAt)],
         [t('Method'), paymentLabel(order.payment)],
         [t('Amount'), formatSAR(order.total)],
